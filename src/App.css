@@ -1,0 +1,12 @@
+.app-container {
+  min-height: 100vh;
+  background-color: hsl(var(--background));
+}
+
+.progress-bar-fill {
+  transition: width 300ms ease-out;
+}
+
+.modal-enter {
+  animation: fadeIn 200ms ease-out forwards;
+}

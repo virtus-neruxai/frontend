@@ -1,0 +1,151 @@
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { StatsDateRangeControls } from '../stats/StatsDateRangeControls';
+
+export function combineTotalStatsData(history = [], statsInfo = {}) {
+  const activeStatKeys = Object.keys(statsInfo || {});
+  const fallbackHistoryKeys = Array.from(
+    history.reduce((keys, item) => {
+      Object.keys(item || {}).forEach((key) => {
+        if (key !== 'date') {
+          keys.add(key);
+        }
+      });
+      return keys;
+    }, new Set())
+  );
+  const statKeys = activeStatKeys.length > 0 ? activeStatKeys : fallbackHistoryKeys;
+
+  if (statKeys.length === 0) {
+    return [];
+  }
+
+  return history.map((item) => {
+    const entry = {
+      date: new Date(item.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+    };
+    statKeys.forEach((stat) => {
+      entry[stat] = item[stat] || 0;
+    });
+    return entry;
+  });
+}
+
+const CHART_PALETTE = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4'];
+
+/**
+ * TotalStatsEvolutionChart Component
+ *
+ * Displays combined evolution of stat changes from both missions and reflections
+ *
+ * @param {Object} props
+ * @param {Array} props.data - Combined cumulative stats history (from /stats/evolution?source=all)
+ * @param {string} props.range - Selected time range (7, 14, 30, 60)
+ * @param {Function} props.onRangeChange - Callback when range changes
+ * @param {string} props.fromDate - Range start (YYYY-MM-DD)
+ * @param {string} props.toDate - Range end (YYYY-MM-DD)
+ * @param {Function} props.onFromDateChange - Callback when start date changes
+ * @param {Function} props.onToDateChange - Callback when end date changes
+ * @param {boolean} props.loading - Loading state
+ * @param {Object} props.statsInfo - Stat metadata { statKey: { name, description } } for display labels
+ */
+export function TotalStatsEvolutionChart({
+  data = [],
+  range = '30',
+  onRangeChange,
+  fromDate = '',
+  toDate = '',
+  onFromDateChange,
+  onToDateChange,
+  loading = false,
+  statsInfo = {}
+}) {
+  const rangeOptions = [
+    { value: '7', label: '7d' },
+    { value: '14', label: '14d' },
+    { value: '30', label: '30d' },
+    { value: '60', label: '60d' }
+  ];
+  const chartData = combineTotalStatsData(data, statsInfo);
+  const statKeys = chartData.length > 0 ? Object.keys(chartData[0]).filter(k => k !== 'date') : [];
+
+  return (
+    <Card className="border-[#E4E4E7]">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Evolución Total de Stats (Misiones + Reflexiones)
+          </CardTitle>
+          <StatsDateRangeControls
+            range={range}
+            onRangeChange={onRangeChange}
+            fromDate={fromDate}
+            toDate={toDate}
+            onFromDateChange={onFromDateChange}
+            onToDateChange={onToDateChange}
+            rangeOptions={rangeOptions}
+          />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="h-64 flex items-center justify-center">
+            <p className="text-sm text-[#71717A]">Cargando datos...</p>
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="h-64 flex items-center justify-center">
+            <p className="text-sm text-[#71717A]">No hay datos disponibles</p>
+          </div>
+        ) : (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#71717A"
+                  style={{ fontSize: '12px', fontFamily: 'Manrope, sans-serif' }}
+                />
+                <YAxis 
+                  stroke="#71717A"
+                  style={{ fontSize: '12px', fontFamily: 'Manrope, sans-serif' }}
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E4E4E7',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontFamily: 'Manrope, sans-serif'
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{
+                    fontSize: '12px',
+                    fontFamily: 'Manrope, sans-serif'
+                  }}
+                />
+                {statKeys.map((key, i) => {
+                  const color = CHART_PALETTE[i % CHART_PALETTE.length];
+                  const label = statsInfo[key]?.name || key;
+                  return (
+                    <Area
+                      key={key}
+                      type="monotone"
+                      dataKey={key}
+                      stroke={color}
+                      fill={color}
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                      name={label}
+                    />
+                  );
+                })}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

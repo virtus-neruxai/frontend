@@ -1,0 +1,853 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { tasksApi, reflectionsApi } from '../lib/api';
+import { getProfileName } from '../lib/profileUtils';
+import { toast } from 'sonner';
+import Layout from '../components/Layout';
+import TaskDraftModal from '../components/TaskDraftModal';
+import EmotionDraftModal from '../components/EmotionDraftModal';
+import MissionDraftModal from '../components/MissionDraftModal';
+import ConversationHistory from '../components/chat/ConversationHistory';
+import { CharacterStats } from '../presentation/components/character/CharacterStats';
+import { MissionsList } from '../presentation/components/character/MissionsList';
+import { StatsHistoryChart } from '../presentation/components/character/StatsHistoryChart';
+import { ReflectionKPIs } from '../presentation/components/character/ReflectionKPIs';
+import { MissionEvolutionChart } from '../presentation/components/character/MissionEvolutionChart';
+import { useCharacter } from '../presentation/viewmodels/useCharacter';
+import { useMissions } from '../presentation/viewmodels/useMissions';
+import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
+import { useDrafts } from '../presentation/viewmodels/useDrafts';
+import { buildRelativeDateRange } from '../lib/dateRangeUtils';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Textarea } from '../components/ui/textarea';
+import { Badge } from '../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { 
+  Target, Scroll, MessageCircle, Send,
+  XCircle, CheckCircle2, AlertTriangle, Clock
+} from 'lucide-react';
+
+/**
+ * CharacterPage - Refactored Version
+ * 
+ * This is a refactored version of CharacterPage that demonstrates:
+ * - Separation of concerns using custom hooks
+ * - Smaller, reusable components
+ * - Cleaner code structure (from 1,474 → ~250 lines)
+ * 
+ * Architecture:
+ * - useCharacter: Character state management
+ * - useMissions: Missions state management
+ * - useAgentChat: Agent chat interactions
+ * - useDrafts: Draft confirmations (tasks + emotions)
+ * - CharacterStats: Stats display component
+ * - MissionsList: Missions display component
+ * 
+ * This structure is designed for easy migration to:
+ * - Android (Kotlin + Jetpack Compose)
+ * - iOS (Swift + SwiftUI)
+ * 
+ * See MOBILE-MIGRATION.md for conversion guide
+ */
+export default function CharacterPageRefactored() {
+  // Custom hooks for state management
+  const {
+    character,
+    statsInfo,
+    statsHistory,
+    reflectionKPIs,
+    loading,
+    historyLoading,
+    fetchCharacter,
+    fetchStatsInfo,
+    fetchStatsHistory,
+    calculateReflectionKPIs
+  } = useCharacter();
+  const {
+    missions,
+    generatingMissions,
+    nightlyReviewLoading,
+    nightlyReviewResult,
+    showConfirmModal,
+    proposedMissions,
+    confirmingMissions,
+    showScheduleModal,
+    scheduleDateTime,
+    missionStatsHistory,
+    missionStatsLoading,
+    fetchMissions,
+    generateMissions,
+    performNightlyReview,
+    confirmMissions,
+    completeMission,
+    deleteMission,
+    scheduleMission,
+    openScheduleModal,
+    updateProposedMission,
+    fetchMissionEvolution,
+    setShowConfirmModal,
+    setShowScheduleModal,
+    setScheduleDateTime,
+  } = useMissions();
+  
+  const {
+    chatMessage,
+    chatResponse,
+    chatLoading,
+    sessionId,
+    sendMessage,
+    setChatMessage,
+    startNewConversation,
+  } = useAgentChat();
+  
+  const {
+    showTaskDraftModal,
+    showEmotionDraftModal,
+    showMissionDraftModal,
+    currentDraftData,
+    openDraftModal,
+    confirmTaskDraft,
+    rejectTaskDraft,
+    confirmEmotionDraft,
+    rejectEmotionDraft,
+    confirmMissionDraft,
+    rejectMissionDraft,
+    setShowTaskDraftModal,
+    setShowEmotionDraftModal,
+    setShowMissionDraftModal,
+  } = useDrafts();
+  
+  // Ref for refreshing conversation history after sending messages
+  const conversationHistoryRef = useRef();
+
+  const profileName = getProfileName(localStorage.getItem('prompt_profile') || 'stoic');
+
+  // Local state for reflections and mission completion
+  const [reflections, setReflections] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [selectedMission, setSelectedMission] = useState(null);
+  const [reflectionText, setReflectionText] = useState('');
+  const [activeTab, setActiveTab] = useState('missions');
+  const [selectedDate, setSelectedDate] = useState(''); // For reflection filter
+  const [aiResponse, setAiResponse] = useState(null); // AI mentor response
+  const [statChanges, setStatChanges] = useState(null); // Character stat changes
+  const [dailyReflectionsCount, setDailyReflectionsCount] = useState(0); // Today's reflection count
+  const [isSubmittingReflection, setIsSubmittingReflection] = useState(false); // Prevent duplicate reflection submits
+  const reflectionSubmitLockRef = useRef(false); // Immediate lock to avoid same-tick double clicks
+  const [pendingReflectionDraft, setPendingReflectionDraft] = useState(null); // Deferred draft CTA for diary flow
+  const [draftNowTick, setDraftNowTick] = useState(Date.now()); // 1s ticker for TTL countdown
+  
+  // State for charts
+  const initialReflectionRange = buildRelativeDateRange(30);
+  const initialMissionRange = buildRelativeDateRange(30);
+  const [statsRange, setStatsRange] = useState('30');
+  const [statsFromDate, setStatsFromDate] = useState(initialReflectionRange.fromDate);
+  const [statsToDate, setStatsToDate] = useState(initialReflectionRange.toDate);
+  const [missionRange, setMissionRange] = useState('30');
+  const [missionFromDate, setMissionFromDate] = useState(initialMissionRange.fromDate);
+  const [missionToDate, setMissionToDate] = useState(initialMissionRange.toDate);
+
+  useEffect(() => {
+    if (!pendingReflectionDraft) return undefined;
+    const id = setInterval(() => setDraftNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [pendingReflectionDraft]);
+
+  useEffect(() => {
+    if (!pendingReflectionDraft) return;
+    if (Date.now() >= pendingReflectionDraft.expiresAt) {
+      setPendingReflectionDraft(null);
+      toast.info('La propuesta del mentor ha expirado');
+    }
+  }, [pendingReflectionDraft, draftNowTick]);
+
+  const formatPendingDraftType = (type) => {
+    if (type === 'task') return 'tarea';
+    if (type === 'mission') return 'misión';
+    if (type === 'emotion') return 'registro emocional';
+    return 'propuesta';
+  };
+
+  const getPendingDraftTimeLabel = () => {
+    if (!pendingReflectionDraft) return '';
+    const remainingMs = Math.max(0, pendingReflectionDraft.expiresAt - draftNowTick);
+    const remainingSec = Math.floor(remainingMs / 1000);
+    const minutes = Math.floor(remainingSec / 60);
+    const seconds = remainingSec % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  // Fetch all data on mount
+  const fetchAllData = useCallback(async () => {
+    try {
+      const [, activeStatsInfo] = await Promise.all([
+        fetchCharacter(),
+        fetchStatsInfo(),
+        fetchMissions(),
+        fetchStatsHistory({ fromDate: statsFromDate, toDate: statsToDate }),
+        fetchMissionEvolution({ fromDate: missionFromDate, toDate: missionToDate }),
+      ]);
+      
+      // Fetch reflections and tasks
+      const [reflectionsRes, tasksRes] = await Promise.all([
+        selectedDate ? reflectionsApi.getAll(selectedDate) : reflectionsApi.getAll(),
+        tasksApi.getAll()
+      ]);
+      setReflections(reflectionsRes.data);
+      setTasks(tasksRes.data);
+      
+      // Calculate reflection KPIs
+      calculateReflectionKPIs(reflectionsRes.data, activeStatsInfo || {});
+      
+      // Count today's reflections (without date filter)
+      if (!selectedDate) {
+        const today = new Date().toISOString().split('T')[0];
+        const todayReflections = reflectionsRes.data.filter(r => 
+          r.created_at.split('T')[0] === today
+        );
+        setDailyReflectionsCount(todayReflections.length);
+      }
+    } catch (error) {
+      toast.error('Error al cargar datos');
+    }
+  }, [
+    fetchCharacter,
+    fetchStatsInfo,
+    fetchMissions,
+    fetchStatsHistory,
+    fetchMissionEvolution,
+    calculateReflectionKPIs,
+    selectedDate,
+    statsFromDate,
+    statsToDate,
+    missionFromDate,
+    missionToDate,
+  ]);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // Mission completion handler
+  const handleCompleteMission = async (success, reason = null) => {
+    if (!selectedMission) return;
+    
+    try {
+      const missionSnapshot = selectedMission;
+      const response = await completeMission(
+        missionSnapshot.id,
+        success,
+        reflectionText || null,
+        reason
+      );
+      
+      if (response.new_stats) {
+        fetchCharacter();
+      }
+      
+      setSelectedMission(null);
+      setReflectionText('');
+
+      if (!success && response?.can_retry) {
+        openScheduleModal(missionSnapshot, response?.suggested_reschedule || null);
+        toast.info('Reprograma la misión para continuar con el siguiente intento.');
+      }
+
+      await fetchAllData();
+    } catch (error) {
+      console.error('Error completing mission:', error);
+    }
+  };
+
+  const selectedMissionCanRetry = selectedMission
+    ? (selectedMission.attempt_number || 1) < (selectedMission.max_attempts || 3)
+    : false;
+
+  // Reflection submission handler
+  const handleSubmitReflection = async () => {
+    if (!reflectionText.trim() || reflectionSubmitLockRef.current) return;
+    reflectionSubmitLockRef.current = true;
+    setIsSubmittingReflection(true);
+    const submittedReflection = reflectionText.trim();
+    // A new reflection starts a new proposal lifecycle in this tab.
+    setPendingReflectionDraft(null);
+    
+    try {
+      const response = await reflectionsApi.create({ content: reflectionText });
+      const responseData = response.data;
+      
+      // Show AI response and stat changes
+      setAiResponse(responseData.ai_response);
+      setStatChanges(responseData.stat_changes);
+
+      // If diary reflection triggered agent handoff with draft, open confirmation modal
+      if (responseData?.draft_id && responseData?.ui_action?.action) {
+        const actionTypeMap = {
+          SHOW_TASK_CONFIRMATION_MODAL: 'task',
+          SHOW_MISSION_CONFIRMATION_MODAL: 'mission',
+          SHOW_EMOTION_CONFIRMATION_MODAL: 'emotion',
+        };
+        const draftType = actionTypeMap[responseData.ui_action.action];
+        if (draftType) {
+          const expiresInSeconds = responseData?.ui_action?.metadata?.expires_in_seconds ?? 3600;
+          setPendingReflectionDraft({
+            draftId: responseData.draft_id,
+            uiAction: responseData.ui_action,
+            type: draftType,
+            expiresAt: Date.now() + expiresInSeconds * 1000,
+            sourceReflectionPreview: submittedReflection.slice(0, 120),
+          });
+          toast.success('Reflexión guardada. Tienes una propuesta del mentor pendiente de abrir.');
+        } else {
+          toast.success('Reflexión guardada y analizada');
+        }
+      } else {
+        // Explicitly clear any previous pending proposal if this reflection produced none.
+        setPendingReflectionDraft(null);
+        toast.success('Reflexión guardada y analizada');
+      }
+      
+      setReflectionText('');
+      
+      // Refresh character stats (reflections may update stats)
+      await fetchCharacter();
+      
+      // Refresh reflections list and stats
+      await fetchAllData();
+    } catch (error) {
+      console.error('Error saving reflection:', error);
+      toast.error(error.response?.data?.detail || 'Error al guardar la reflexión');
+    } finally {
+      reflectionSubmitLockRef.current = false;
+      setIsSubmittingReflection(false);
+    }
+  };
+  
+  // Chart handlers
+  const handleStatsRangeChange = useCallback((newRange) => {
+    const nextRange = buildRelativeDateRange(parseInt(newRange, 10));
+    setStatsRange(newRange);
+    setStatsFromDate(nextRange.fromDate);
+    setStatsToDate(nextRange.toDate);
+  }, []);
+
+  const handleStatsFromDateChange = useCallback((newDate) => {
+    setStatsRange('custom');
+    setStatsFromDate(newDate);
+  }, []);
+
+  const handleStatsToDateChange = useCallback((newDate) => {
+    setStatsRange('custom');
+    setStatsToDate(newDate);
+  }, []);
+
+  const handleMissionRangeChange = useCallback((newRange) => {
+    const nextRange = buildRelativeDateRange(parseInt(newRange, 10));
+    setMissionRange(newRange);
+    setMissionFromDate(nextRange.fromDate);
+    setMissionToDate(nextRange.toDate);
+  }, []);
+
+  const handleMissionFromDateChange = useCallback((newDate) => {
+    setMissionRange('custom');
+    setMissionFromDate(newDate);
+  }, []);
+
+  const handleMissionToDateChange = useCallback((newDate) => {
+    setMissionRange('custom');
+    setMissionToDate(newDate);
+  }, []);
+
+  // Chat with agent handler
+  const handleChat = async () => {
+    await sendMessage(chatMessage, ({ draftId, uiAction, type }) => {
+      openDraftModal({ draftId, uiAction, type });
+    });
+    
+    // Refresh conversation history after sending message
+    if (conversationHistoryRef.current) {
+      conversationHistoryRef.current.refresh();
+    }
+  };
+
+  // Confirm missions handler
+  const handleConfirmMissions = async () => {
+    await confirmMissions(fetchAllData);
+  };
+
+  // Schedule mission handler
+  const handleScheduleMission = async () => {
+    await scheduleMission(fetchAllData);
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="h-96 flex items-center justify-center">
+          <div className="animate-pulse text-[#71717A]">Cargando tu personaje...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6" data-testid="character-page">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-[#18181B] dark:text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Tu Carácter
+            </h1>
+            <p className="text-[#71717A] mt-1">Desarrolla tu virtud a través de la acción coherente</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm text-[#71717A]">Nivel {character?.level}</p>
+              <p className="font-bold text-[#F97316]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                {character?.level_title}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Character Stats Component */}
+        <CharacterStats character={character} statsInfo={statsInfo} />
+
+        {/* Nightly Review Result (if exists) */}
+        {nightlyReviewResult && (
+          <Card className="border-[#8B5CF6] bg-gradient-to-br from-[#F5F3FF] to-white">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="font-semibold text-[#8B5CF6] mb-2">📊 Revisión Nocturna</p>
+                  <p className="text-sm text-[#52525B] mb-2">{nightlyReviewResult.analysis}</p>
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-[#22C55E]">✓ {nightlyReviewResult.tasks_completed} completadas</span>
+                    <span className="text-[#EF4444]">✗ {nightlyReviewResult.tasks_failed} fallidas</span>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowConfirmModal(false)}>✕</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tabs */}
+        <Tabs defaultValue="missions" className="space-y-4" onValueChange={setActiveTab}>
+          <TabsList className="bg-[#F4F4F5] p-1 rounded-full">
+            <TabsTrigger value="missions" className="rounded-full data-[state=active]:bg-white">
+              <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Misiones
+            </TabsTrigger>
+            <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-white">
+              <Scroll className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Diario
+            </TabsTrigger>
+            <TabsTrigger value="agent" className="rounded-full data-[state=active]:bg-white">
+              <MessageCircle className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Mentor {profileName}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Missions Tab */}
+          <TabsContent value="missions" className="space-y-4">
+            {/* Mission Evolution Chart */}
+            <MissionEvolutionChart
+              data={missionStatsHistory}
+              range={missionRange}
+              onRangeChange={handleMissionRangeChange}
+              fromDate={missionFromDate}
+              toDate={missionToDate}
+              onFromDateChange={handleMissionFromDateChange}
+              onToDateChange={handleMissionToDateChange}
+              loading={missionStatsLoading}
+              statsInfo={statsInfo}
+            />
+            
+            {/* Missions List */}
+            <MissionsList
+              missions={missions}
+              generatingMissions={generatingMissions}
+              nightlyReviewLoading={nightlyReviewLoading}
+              onGenerateMissions={generateMissions}
+              onNightlyReview={performNightlyReview}
+              onSelectMission={setSelectedMission}
+              onScheduleMission={openScheduleModal}
+              onDeleteMission={deleteMission}
+              statsInfo={statsInfo}
+            />
+          </TabsContent>
+
+          {/* Reflection Tab */}
+          <TabsContent value="reflection" className="space-y-4">
+            {/* Reflection KPIs */}
+            <ReflectionKPIs
+              totalReflections={reflectionKPIs.totalReflections}
+              pointsGained={reflectionKPIs.pointsGained}
+              pointsLost={reflectionKPIs.pointsLost}
+              netBalance={reflectionKPIs.netBalance}
+              loading={loading}
+            />
+            
+            {/* Stats History Chart */}
+            <StatsHistoryChart
+              data={statsHistory}
+              range={statsRange}
+              onRangeChange={handleStatsRangeChange}
+              fromDate={statsFromDate}
+              toDate={statsToDate}
+              onFromDateChange={handleStatsFromDateChange}
+              onToDateChange={handleStatsToDateChange}
+              loading={historyLoading}
+              statsInfo={statsInfo}
+            />
+            
+            {/* Reflection Input Card */}
+            <Card className="border-[#E4E4E7]">
+              <CardHeader>
+                <CardTitle className="text-lg">Diario</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* AI Mentor Response (if exists) */}
+                {aiResponse && (
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <p className="text-sm font-semibold text-purple-900 mb-2">📜 Respuesta del Mentor:</p>
+                    <p className="text-sm text-purple-800">{aiResponse}</p>
+                    
+                    {statChanges && (
+                      <div className="mt-3 pt-3 border-t border-purple-200">
+                        <p className="text-xs font-semibold text-purple-700 mb-2">Cambios de Carácter:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(statChanges).map(([stat, value]) => (
+                            value !== 0 && (
+                              <Badge 
+                                key={stat}
+                                className={value > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                              >
+                                {stat}: {value > 0 ? '+' : ''}{value}
+                              </Badge>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={() => { setAiResponse(null); setStatChanges(null); }}
+                      className="mt-3 text-xs text-purple-600 hover:text-purple-800"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                )}
+
+                {/* New Reflection */}
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">Nueva Reflexión</label>
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-50 border-blue-300 text-blue-700"
+                    >
+                      {dailyReflectionsCount} reflexiones hoy
+                    </Badge>
+                  </div>
+                  <Textarea
+                    placeholder="¿Qué has aprendido hoy?..."
+                    value={reflectionText}
+                    onChange={(e) => setReflectionText(e.target.value)}
+                    disabled={isSubmittingReflection}
+                    className="min-h-[120px] mb-4"
+                  />
+                  <Button
+                    onClick={handleSubmitReflection}
+                    disabled={!reflectionText.trim() || isSubmittingReflection}
+                    className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmittingReflection ? 'Enviando...' : 'Guardar Entrada'}
+                  </Button>
+                </div>
+
+                {pendingReflectionDraft && (
+                  <div className="p-4 border border-amber-300 bg-amber-50 rounded-lg">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-amber-900">
+                          Tu mentor te propone una {formatPendingDraftType(pendingReflectionDraft.type)}
+                        </p>
+                        {pendingReflectionDraft.sourceReflectionPreview && (
+                          <p className="text-xs text-amber-800 mt-1 italic">
+                            Basado en: "{pendingReflectionDraft.sourceReflectionPreview}"
+                          </p>
+                        )}
+                        <p className="text-xs text-amber-700 mt-1">
+                          Puedes abrirla, editarla y confirmarla cuando quieras dentro del TTL.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-amber-700 border-amber-300 bg-white">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {getPendingDraftTimeLabel()}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-[#F97316] hover:bg-[#EA580C] text-white"
+                        onClick={() => {
+                          openDraftModal({
+                            draftId: pendingReflectionDraft.draftId,
+                            uiAction: pendingReflectionDraft.uiAction,
+                            type: pendingReflectionDraft.type,
+                          });
+                          setPendingReflectionDraft(null);
+                        }}
+                      >
+                        Abrir propuesta
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setPendingReflectionDraft(null)}
+                      >
+                        Cerrar aviso
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Date Filter */}
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Filtrar por fecha:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    {selectedDate && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedDate('')}
+                        size="sm"
+                      >
+                        Ver Todas
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reflections History */}
+                {reflections.length > 0 && (
+                  <div className="border-t pt-6">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                      Historial de Reflexiones ({reflections.length})
+                      {selectedDate && <span className="text-gray-500 font-normal"> - {new Date(selectedDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
+                    </h3>
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                      {reflections.map((reflection) => (
+                        <div
+                          key={reflection.id}
+                          className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="text-xs text-gray-500">
+                              {new Date(reflection.created_at).toLocaleDateString('es-ES', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">
+                            {reflection.content}
+                          </p>
+                          
+                          {reflection.ai_response && (
+                            <div className="mt-3 p-3 bg-purple-50 border-l-4 border-purple-400 rounded">
+                              <p className="text-xs font-semibold text-purple-900 mb-1">Mentor:</p>
+                              <p className="text-xs text-purple-800">{reflection.ai_response}</p>
+                            </div>
+                          )}
+                          
+                          {reflection.stat_changes && Object.keys(reflection.stat_changes).length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1">
+                              {Object.entries(reflection.stat_changes).map(([stat, value]) => (
+                                value !== 0 && (
+                                  <Badge 
+                                    key={stat}
+                                    variant="outline"
+                                    className={`text-xs ${value > 0 ? 'bg-green-50 border-green-300 text-green-700' : 'bg-red-50 border-red-300 text-red-700'}`}
+                                  >
+                                    {stat}: {value > 0 ? '+' : ''}{value}
+                                  </Badge>
+                                )
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {reflections.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-8">
+                    {selectedDate ? 'No hay reflexiones para esta fecha' : 'No hay reflexiones guardadas'}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Agent Chat Tab */}
+          <TabsContent value="agent">
+            <Card className="border-[#E4E4E7]">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">Mentor {profileName}</CardTitle>
+                <Button
+                  onClick={startNewConversation}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  <MessageCircle className="w-3 h-3 mr-1" />
+                  Nueva Conversación
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {chatResponse && (
+                  <div className="p-4 bg-[#F4F4F5] rounded-lg">
+                    <p className="text-sm text-[#18181B] whitespace-pre-wrap">{chatResponse}</p>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Pregunta a tu mentor..."
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                </div>
+                <Button
+                  onClick={handleChat}
+                  disabled={!chatMessage.trim() || chatLoading}
+                  className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full w-full"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {chatLoading ? 'Pensando...' : 'Enviar'}
+                </Button>
+
+                {/* Conversation History */}
+                <ConversationHistory 
+                  ref={conversationHistoryRef}
+                  activeSessionId={sessionId}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Mission Completion Dialog */}
+        <Dialog open={!!selectedMission} onOpenChange={(open) => !open && setSelectedMission(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Completar Misión</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm">{selectedMission?.title}</p>
+              <Textarea
+                placeholder="Reflexión opcional..."
+                value={reflectionText}
+                onChange={(e) => setReflectionText(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleCompleteMission(false)}
+                className="flex-1"
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                {selectedMissionCanRetry ? 'Reprogramar' : 'Fallida'}
+              </Button>
+              <Button
+                onClick={() => handleCompleteMission(true)}
+                className="flex-1 bg-[#22C55E] hover:bg-[#16A34A]"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Completada
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Schedule Mission Dialog */}
+        <Dialog open={showScheduleModal} onOpenChange={setShowScheduleModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Programar Misión</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Fecha y hora</label>
+                <input
+                  type="datetime-local"
+                  value={scheduleDateTime}
+                  onChange={(e) => setScheduleDateTime(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowScheduleModal(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleScheduleMission}
+                className="bg-[#F97316] hover:bg-[#EA580C]"
+              >
+                Programar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Draft Modals */}
+        <TaskDraftModal
+          isOpen={showTaskDraftModal}
+          onClose={() => setShowTaskDraftModal(false)}
+          draftData={currentDraftData}
+          onConfirm={(editedData) => confirmTaskDraft(editedData, fetchAllData)}
+          onReject={rejectTaskDraft}
+        />
+
+        <EmotionDraftModal
+          isOpen={showEmotionDraftModal}
+          onClose={() => setShowEmotionDraftModal(false)}
+          draftData={currentDraftData}
+          onConfirm={(editedData) => confirmEmotionDraft(editedData, fetchAllData)}
+          onReject={rejectEmotionDraft}
+        />
+
+        <MissionDraftModal
+          isOpen={showMissionDraftModal}
+          onClose={() => setShowMissionDraftModal(false)}
+          draftData={currentDraftData}
+          onConfirm={(editedData) => confirmMissionDraft(editedData, fetchAllData)}
+          onReject={rejectMissionDraft}
+        />
+      </div>
+    </Layout>
+  );
+}

@@ -1,0 +1,308 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #F4F1EC;
+    --card-surface: #FFFFFF;
+    --text: #1E1E1E;
+    --muted: #6B6B6B;
+    --gold: #C6A75E;
+    --gold-hover: #B8973D;
+
+    --background: 36 24% 94%;
+    --foreground: 0 0% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
+    --primary: 42 47% 57%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 34 24% 90%;
+    --secondary-foreground: 0 0% 12%;
+    --muted: 0 0% 42%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 39 36% 90%;
+    --accent-foreground: 0 0% 12%;
+    --destructive: 0 74% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 18% 84%;
+    --input: 40 18% 84%;
+    --ring: 42 47% 57%;
+    --radius: 0.5rem;
+
+    --status-todo: 240 4% 46%;
+    --status-in-progress: 217 91% 60%;
+    --status-done: 142 71% 45%;
+    --status-blocked: 0 84% 60%;
+    --status-failed: 0 73% 51%;
+
+    --chart-1: 42 47% 57%;
+    --chart-2: 0 0% 42%;
+    --chart-3: 120 26% 35%;
+    --chart-4: 0 56% 45%;
+    --chart-5: 33 29% 44%;
+  }
+
+  .dark {
+    --bg: #0F0F0F;
+    --card-surface: #1A1A1A;
+    --text: #EAEAEA;
+    --muted: #A0A0A0;
+    --gold: #D4AF37;
+    --gold-hover: #C6A75E;
+
+    --background: 0 0% 6%;
+    --foreground: 0 0% 92%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 92%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 92%;
+    --primary: 46 65% 52%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 92%;
+    --muted: 0 0% 63%;
+    --muted-foreground: 0 0% 63%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 92%;
+    --destructive: 0 66% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 21%;
+    --input: 0 0% 21%;
+    --ring: 46 65% 52%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+
+  button, a, [role='button'] {
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  [data-debug-wrapper="true"] {
+    display: contents !important;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out forwards;
+}
+
+/* FullCalendar Premium Theme */
+.fc {
+  font-family: 'Inter', sans-serif;
+}
+
+.fc .fc-toolbar-title {
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: hsl(var(--foreground));
+}
+
+.fc .fc-button {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  border-radius: 6px;
+  padding: 0.5rem 0.875rem;
+}
+
+.fc .fc-button:hover {
+  background-color: hsl(var(--accent));
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.fc .fc-daygrid-day.fc-day-today {
+  background-color: color-mix(in srgb, hsl(var(--primary)) 12%, hsl(var(--background)));
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: hsl(var(--border));
+}
+
+.fc .fc-event {
+  border: none;
+  border-left: 2px solid;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.fc .fc-event.status-todo {
+  background-color: hsl(var(--status-todo));
+  border-left-color: hsl(var(--status-todo));
+  color: hsl(var(--primary-foreground));
+}
+
+.fc .fc-event.status-in_progress {
+  background-color: hsl(var(--status-in-progress));
+  border-left-color: hsl(var(--status-in-progress));
+  color: hsl(var(--primary-foreground));
+}
+
+.fc .fc-event.status-done {
+  background-color: color-mix(in srgb, hsl(var(--status-done)) 62%, hsl(var(--card)));
+  border-left-color: color-mix(in srgb, hsl(var(--status-done)) 80%, hsl(var(--card)));
+  color: hsl(var(--foreground));
+}
+
+.fc .fc-event.status-blocked {
+  background-color: hsl(var(--status-blocked));
+  border-left-color: hsl(var(--status-blocked));
+  color: hsl(var(--primary-foreground));
+}
+
+.fc .fc-event.status-failed {
+  background-color: color-mix(in srgb, hsl(var(--status-failed)) 62%, hsl(var(--card)));
+  border-left-color: color-mix(in srgb, hsl(var(--status-failed)) 80%, hsl(var(--card)));
+  color: hsl(var(--foreground));
+}
+
+.fc .fc-event.routine-event,
+.fc .fc-event.routine-event.status-in_progress {
+  background-color: color-mix(in srgb, hsl(var(--status-in-progress)) 42%, white);
+  border-left-color: color-mix(in srgb, hsl(var(--status-in-progress)) 55%, white);
+}
+
+.dark .fc .fc-event.routine-event,
+.dark .fc .fc-event.routine-event.status-in_progress {
+  background-color: color-mix(in srgb, hsl(var(--status-in-progress)) 38%, hsl(var(--card)));
+  border-left-color: color-mix(in srgb, hsl(var(--status-in-progress)) 55%, hsl(var(--card)));
+}
+
+.fc .fc-list-event.status-todo .fc-list-event-dot {
+  border-color: hsl(var(--status-todo));
+}
+
+.fc .fc-list-event.status-in_progress .fc-list-event-dot {
+  border-color: hsl(var(--status-in-progress));
+}
+
+.fc .fc-list-event.routine-event .fc-list-event-dot,
+.fc .fc-list-event.routine-event.status-in_progress .fc-list-event-dot {
+  border-color: color-mix(in srgb, hsl(var(--status-in-progress)) 55%, white);
+}
+
+.fc .fc-list-event.status-done .fc-list-event-dot {
+  border-color: color-mix(in srgb, hsl(var(--status-done)) 80%, hsl(var(--card)));
+}
+
+.fc .fc-list-event.status-blocked .fc-list-event-dot {
+  border-color: hsl(var(--status-blocked));
+}
+
+.fc .fc-list-event.status-failed .fc-list-event-dot {
+  border-color: color-mix(in srgb, hsl(var(--status-failed)) 80%, hsl(var(--card)));
+}
+
+.status-badge {
+  background-color: hsl(var(--muted));
+}
+
+.status-badge.todo {
+  background-color: hsl(var(--status-todo));
+}
+
+.status-badge.in_progress {
+  background-color: hsl(var(--status-in-progress));
+}
+
+.status-badge.done {
+  background-color: hsl(var(--status-done));
+}
+
+.status-badge.blocked {
+  background-color: hsl(var(--status-blocked));
+}
+
+.status-badge.failed {
+  background-color: hsl(var(--status-failed));
+}
+
+.fc .fc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.fc .fc-timegrid-slot {
+  height: 2rem;
+}
+
+/* Keep weekday/day labels black for readability over white calendar cells */
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number,
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-timegrid-slot-label-cushion {
+  color: #18181B !important;
+}
+
+/* Bigger month cells to fit more tasks */
+.fc .fc-dayGridMonth-view .fc-daygrid-day-frame {
+  min-height: 10rem;
+}
+
+
+
+.dark .fc .fc-event.status-done {
+  background-color: color-mix(in srgb, hsl(var(--status-done)) 62%, hsl(var(--card)));
+  border-left-color: color-mix(in srgb, hsl(var(--status-done)) 80%, hsl(var(--card)));
+  color: hsl(var(--foreground));
+}
+
+.dark .fc .fc-event.status-failed {
+  background-color: color-mix(in srgb, hsl(var(--status-failed)) 62%, hsl(var(--card)));
+  border-left-color: color-mix(in srgb, hsl(var(--status-failed)) 80%, hsl(var(--card)));
+  color: hsl(var(--foreground));
+}
+
+
+.dark .fc .fc-list-event.status-done .fc-list-event-dot {
+  border-color: color-mix(in srgb, hsl(var(--status-done)) 80%, hsl(var(--card)));
+}
+
+.dark .fc .fc-list-event.status-failed .fc-list-event-dot {
+  border-color: color-mix(in srgb, hsl(var(--status-failed)) 80%, hsl(var(--card)));
+}
+
+
+.dark .status-badge.done {
+  background-color: color-mix(in srgb, hsl(var(--status-done)) 62%, hsl(var(--card)));
+}
+
+.dark .status-badge.failed {
+  background-color: color-mix(in srgb, hsl(var(--status-failed)) 62%, hsl(var(--card)));
+}
