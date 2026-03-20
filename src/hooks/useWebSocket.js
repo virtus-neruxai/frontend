@@ -321,6 +321,12 @@ function buildNotificationFromWsData(data) {
       task_progress: data.task_progress,
       date_end: data.date_end,
       minutes_left: data.minutes_left,
+      message:
+        data.summary ||
+        data.message ||
+        data.context?.summary ||
+        data.context?.support_message ||
+        null,
       priority: data.priority || 'medium',
       context: data.context || {},
     };

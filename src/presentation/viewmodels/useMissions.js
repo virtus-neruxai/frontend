@@ -2,6 +2,33 @@ import { useState, useCallback } from 'react';
 import { missionsApi, statsApi, tasksApi } from '../../lib/api';
 import { toast } from 'sonner';
 
+const sortMissionsByCreatedAt = (items = []) => [...items].sort((a, b) => {
+  const aTime = a?.created_at ? new Date(a.created_at).getTime() : 0;
+  const bTime = b?.created_at ? new Date(b.created_at).getTime() : 0;
+  return bTime - aTime;
+});
+
+const mergeMissionsById = (current = [], incoming = []) => {
+  const missionMap = new Map();
+
+  current.forEach((mission) => {
+    if (mission?.id) {
+      missionMap.set(mission.id, mission);
+    }
+  });
+
+  incoming.forEach((mission) => {
+    if (mission?.id) {
+      missionMap.set(mission.id, {
+        ...missionMap.get(mission.id),
+        ...mission,
+      });
+    }
+  });
+
+  return sortMissionsByCreatedAt(Array.from(missionMap.values()));
+};
+
 /**
  * Custom hook for managing missions state and operations
  * 
@@ -39,8 +66,9 @@ export const useMissions = () => {
   const fetchMissions = useCallback(async () => {
     try {
       const response = await missionsApi.getAll({ status: 'active' });
-      setMissions(response.data);
-      return response.data;
+      const activeMissions = Array.isArray(response.data) ? response.data : [];
+      setMissions(sortMissionsByCreatedAt(activeMissions));
+      return activeMissions;
     } catch (error) {
       toast.error('Error al cargar misiones');
       throw error;
@@ -54,11 +82,12 @@ export const useMissions = () => {
     setGeneratingMissions(true);
     try {
       const response = await missionsApi.generate({ schedule_to_calendar: false });
+      const createdMissions = Array.isArray(response.data) ? response.data : [];
       
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      const missionsWithDates = response.data.map((m, i) => ({
+      const missionsWithDates = createdMissions.map((m, i) => ({
         ...m,
         addToCalendar: true,
         scheduled_datetime: new Date(tomorrow.setHours(
@@ -66,6 +95,7 @@ export const useMissions = () => {
         )).toISOString()
       }));
       
+      setMissions((prev) => mergeMissionsById(prev, createdMissions));
       setProposedMissions(missionsWithDates);
       setShowConfirmModal(true);
       return missionsWithDates;

@@ -30,6 +30,17 @@ function getProactiveNotificationBody(payload) {
   );
 }
 
+function getTaskNotificationBody(payload) {
+  return (
+    payload?.message ||
+    payload?.context?.summary ||
+    payload?.context?.support_message ||
+    (payload?.minutes_left !== undefined && payload?.minutes_left !== null
+      ? `Faltan ${payload.minutes_left} min para finalizar`
+      : 'Tienes una tarea que requiere atención.')
+  );
+}
+
 export const NotificationPanel = ({ onClose }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, dismissNotification, clearAll } =
     useNotificationContext();
@@ -368,7 +379,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
+            <p className="font-medium text-gray-900 dark:text-white text-sm leading-snug break-words">
               {isEmotionNotification
                 ? `Seguimiento emocional: ${payload.emotion || 'Emoción'}`
                 : isProactiveNotification
@@ -381,16 +392,16 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
           </div>
 
           {isEmotionNotification ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap break-words">
               {payload.message || 'Recordatorio de seguimiento emocional a las 24 horas.'}
             </p>
           ) : isProactiveNotification ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap break-words">
               {getProactiveNotificationBody(payload)}
             </p>
           ) : (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Faltan {payload.minutes_left} min para finalizar
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap break-words">
+              {getTaskNotificationBody(payload)}
             </p>
           )}
 
