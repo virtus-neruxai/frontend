@@ -36,7 +36,7 @@ function getTaskNotificationBody(payload) {
     payload?.context?.summary ||
     payload?.context?.support_message ||
     (payload?.minutes_left !== undefined && payload?.minutes_left !== null
-      ? `Faltan ${payload.minutes_left} min para finalizar`
+      ? `Faltan ${payload.minutes_left} min para empezar`
       : 'Tienes una tarea que requiere atención.')
   );
 }

@@ -225,7 +225,7 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
     let title;
     if (isEmotion) title = '🫶 Seguimiento emocional';
     else if (isProactive) title = '💡 Nueva sugerencia proactiva';
-    else title = '⏰ Tarea próxima a finalizar';
+    else title = '⏰ Tarea por empezar';
 
     let body = '';
     if (isEmotion) {
@@ -235,7 +235,7 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
     } else if (isProactive) {
       body = payload.message || 'El asistente tiene una nueva sugerencia para ti.';
     } else {
-      body = `"${payload.task_title}" faltan ${payload.minutes_left} minutos`;
+      body = `"${payload.task_title}" empieza en ${payload.minutes_left} minutos`;
       if (payload.task_progress !== undefined) {
         body += ` (${payload.task_progress}% completado)`;
       }
@@ -319,7 +319,7 @@ function buildNotificationFromWsData(data) {
       task_title: data.task_title || 'Sin título',
       task_domain: data.task_domain,
       task_progress: data.task_progress,
-      date_end: data.date_end,
+      date_start: data.date_start,
       minutes_left: data.minutes_left,
       message:
         data.summary ||

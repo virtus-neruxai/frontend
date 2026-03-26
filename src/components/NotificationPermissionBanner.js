@@ -66,7 +66,7 @@ export const NotificationPermissionBanner = () => {
               Activa las notificaciones
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-              Recibe alertas cuando tus tareas estén próximas a finalizar, incluso cuando estés en otra pestaña.
+              Recibe alertas cuando tus tareas estén por empezar, incluso cuando estés en otra pestaña.
             </p>
             
             <div className="flex gap-2">

@@ -134,7 +134,7 @@ const Toast = ({ notification, onDismiss }) => {
               ? (notification.type === 'PROACTIVE_ACTION_APPLIED' ? '✅ Cambio aplicado' : '💡 Nueva sugerencia')
               : isRoutine
               ? '⏰ Rutina a punto de vencer'
-              : '⏰ Tarea próxima a finalizar'}
+              : '⏰ Tarea por empezar'}
           </p>
           {isEmotionNotification ? (
             <>
@@ -163,7 +163,7 @@ const Toast = ({ notification, onDismiss }) => {
                 {payload.task_title}
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Faltan {payload.minutes_left} minutos
+                Empieza en {payload.minutes_left} minutos
               </p>
             </>
           )}
