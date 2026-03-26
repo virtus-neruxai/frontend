@@ -1,10 +1,8 @@
 import axios from 'axios';
 
-const EMOTION_API_URL =
-  process.env.REACT_APP_EMOTION_BACKEND_URL ||
-  (process.env.REACT_APP_BACKEND_URL
-    ? `${process.env.REACT_APP_BACKEND_URL}/emotion-api`
-    : `${window.location.origin}/emotion-api`);
+const EMOTION_API_URL = process.env.REACT_APP_BACKEND_URL
+  ? `${process.env.REACT_APP_BACKEND_URL}/emotion-api`
+  : `${window.location.origin}/emotion-api`;
 
 const emotionApi = axios.create({
   baseURL: `${EMOTION_API_URL}/v1`,
