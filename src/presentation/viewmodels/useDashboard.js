@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { eventsApi, statsApi, characterApi, graphAnalyticsApi, routinesApi } from '../../lib/api';
+import { eventsApi, statsApi, characterApi, graphAnalyticsApi, routinesApi, proactiveApi } from '../../lib/api';
 import { buildRelativeDateRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 
@@ -37,6 +37,8 @@ export function useDashboard() {
   const [quadrantRange, setQuadrantRange] = useState('30');
   const [quadrantLoading, setQuadrantLoading] = useState(false);
   const [routinesDashboard, setRoutinesDashboard] = useState([]);
+  const [mentorDashboard, setMentorDashboard] = useState(null);
+  const [mentorLoading, setMentorLoading] = useState(false);
 
   // Fetch statistics
   const fetchStats = useCallback(async () => {
@@ -150,6 +152,20 @@ export function useDashboard() {
     }
   }, []);
 
+  const fetchMentorDashboard = useCallback(async () => {
+    setMentorLoading(true);
+    try {
+      const days = parseInt(range, 10);
+      const response = await proactiveApi.getMentorDashboard({ days_back: days });
+      setMentorDashboard(response.data);
+    } catch (error) {
+      toast.error('Error al cargar dashboard del mentor');
+      console.error('Error fetching mentor dashboard:', error);
+    } finally {
+      setMentorLoading(false);
+    }
+  }, [range]);
+
   // Effects
   useEffect(() => {
     fetchStats();
@@ -170,6 +186,10 @@ export function useDashboard() {
   useEffect(() => {
     fetchRoutinesDashboard();
   }, [fetchRoutinesDashboard]);
+
+  useEffect(() => {
+    fetchMentorDashboard();
+  }, [fetchMentorDashboard]);
 
   return {
     // Stats
@@ -204,6 +224,8 @@ export function useDashboard() {
     setQuadrantRange,
     quadrantLoading,
     routinesDashboard,
+    mentorDashboard,
+    mentorLoading,
 
     // Actions
     refreshStats: fetchStats,
@@ -211,6 +233,7 @@ export function useDashboard() {
     refreshTotalStats: fetchTotalStatsData,
     refreshQuadrants: fetchQuadrantDistribution,
     refreshRoutinesDashboard: fetchRoutinesDashboard,
+    refreshMentorDashboard: fetchMentorDashboard,
     handleTotalStatsRangeChange,
     handleTotalStatsFromDateChange,
     handleTotalStatsToDateChange,

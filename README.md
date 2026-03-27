@@ -59,7 +59,7 @@ src/
 │   ├── CharacterPage.js   # 312 lines (refactored)
 │   ├── ArenaPage.js       # 250 lines (refactored)
 │   ├── EmotionsPage.js    # 180 lines (refactored)
-│   ├── DashboardPage.js   # 156 lines (refactored)
+│   ├── DashboardPage.js   # Dashboard principal + pestaña Mentor
 │   └── CalendarPage.js    # 93 lines (refactored)
 │
 ├── components/          # Shared UI components

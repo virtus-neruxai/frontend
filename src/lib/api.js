@@ -195,6 +195,11 @@ export const proactiveApi = {
   getById: (id) => proactiveApiInstance.get(`/suggestions/${id}`),
   confirm: (id, body = {}) => proactiveApiInstance.post(`/suggestions/${id}/confirm`, body),
   reject: (id) => proactiveApiInstance.post(`/suggestions/${id}/reject`),
+  getMentorProfile: () => proactiveApiInstance.get('/mentor/profile'),
+  getMentorDashboard: (params = {}) => proactiveApiInstance.get('/mentor/dashboard', { params }),
+  getMentorEpisodes: (params = {}) => proactiveApiInstance.get('/mentor/episodes', { params }),
+  patchMentorObjective: (objectiveKey, data) => proactiveApiInstance.patch(`/mentor/objectives/${objectiveKey}`, data),
+  patchMentorItem: (itemKey, data) => proactiveApiInstance.patch(`/mentor/items/${itemKey}`, data),
 };
 
 // Project Manager API (usa /project-api/v1 - Traefik stripea /project-api)
