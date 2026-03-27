@@ -268,6 +268,10 @@ const {
 } = useDashboard();
 ```
 
+Notas actuales:
+- La pestaña `Mentor` lee el dashboard analítico desde `graph-query-service` (`/v1/analytics/mentor-dashboard`).
+- El perfil del mentor y los overrides manuales (`hidden`, `status`, `pinned_priority`) siguen escribiéndose vía `proactive-orchestrator-service`.
+
 **Portable to Kotlin:**
 ```kotlin
 class DashboardViewModel : ViewModel() {

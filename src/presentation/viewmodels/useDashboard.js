@@ -38,7 +38,9 @@ export function useDashboard() {
   const [quadrantLoading, setQuadrantLoading] = useState(false);
   const [routinesDashboard, setRoutinesDashboard] = useState([]);
   const [mentorDashboard, setMentorDashboard] = useState(null);
+  const [mentorProfile, setMentorProfile] = useState(null);
   const [mentorLoading, setMentorLoading] = useState(false);
+  const [mentorActionKey, setMentorActionKey] = useState('');
 
   // Fetch statistics
   const fetchStats = useCallback(async () => {
@@ -156,8 +158,12 @@ export function useDashboard() {
     setMentorLoading(true);
     try {
       const days = parseInt(range, 10);
-      const response = await proactiveApi.getMentorDashboard({ days_back: days });
-      setMentorDashboard(response.data);
+      const [dashboardResponse, profileResponse] = await Promise.all([
+        graphAnalyticsApi.getMentorDashboard({ days_back: days }),
+        proactiveApi.getMentorProfile(),
+      ]);
+      setMentorDashboard(dashboardResponse.data);
+      setMentorProfile(profileResponse.data);
     } catch (error) {
       toast.error('Error al cargar dashboard del mentor');
       console.error('Error fetching mentor dashboard:', error);
@@ -165,6 +171,36 @@ export function useDashboard() {
       setMentorLoading(false);
     }
   }, [range]);
+
+  const updateMentorObjective = useCallback(async (objectiveKey, patch, actionKey = `objective:${objectiveKey}`) => {
+    setMentorActionKey(actionKey);
+    try {
+      const response = await proactiveApi.patchMentorObjective(objectiveKey, patch);
+      setMentorProfile(response.data);
+      await fetchMentorDashboard();
+      toast.success('Objetivo del mentor actualizado');
+    } catch (error) {
+      toast.error('Error al actualizar el objetivo del mentor');
+      console.error('Error updating mentor objective:', error);
+    } finally {
+      setMentorActionKey('');
+    }
+  }, [fetchMentorDashboard]);
+
+  const updateMentorItem = useCallback(async (itemKey, patch, actionKey = `item:${itemKey}`) => {
+    setMentorActionKey(actionKey);
+    try {
+      const response = await proactiveApi.patchMentorItem(itemKey, patch);
+      setMentorProfile(response.data);
+      await fetchMentorDashboard();
+      toast.success('Item del mentor actualizado');
+    } catch (error) {
+      toast.error('Error al actualizar el item del mentor');
+      console.error('Error updating mentor item:', error);
+    } finally {
+      setMentorActionKey('');
+    }
+  }, [fetchMentorDashboard]);
 
   // Effects
   useEffect(() => {
@@ -225,7 +261,9 @@ export function useDashboard() {
     quadrantLoading,
     routinesDashboard,
     mentorDashboard,
+    mentorProfile,
     mentorLoading,
+    mentorActionKey,
 
     // Actions
     refreshStats: fetchStats,
@@ -234,6 +272,8 @@ export function useDashboard() {
     refreshQuadrants: fetchQuadrantDistribution,
     refreshRoutinesDashboard: fetchRoutinesDashboard,
     refreshMentorDashboard: fetchMentorDashboard,
+    updateMentorObjective,
+    updateMentorItem,
     handleTotalStatsRangeChange,
     handleTotalStatsFromDateChange,
     handleTotalStatsToDateChange,

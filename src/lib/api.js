@@ -164,6 +164,10 @@ export const graphAnalyticsApi = {
     graphQueryApiInstance.get('/analytics/productive-free-slots', {
       params: { duration_minutes: durationMinutes, horizon_days: 7, top_n: 1 },
     }),
+  getMentorDashboard: (params = {}) =>
+    graphQueryApiInstance.get('/analytics/mentor-dashboard', { params }),
+  getMentorObjectiveDetail: (params = {}) =>
+    graphQueryApiInstance.get('/analytics/mentor-objective-detail', { params }),
 };
 
 // Proactive Orchestrator API (usa /proactive-api - Traefik stripea /proactive-api)
