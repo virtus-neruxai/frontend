@@ -159,7 +159,7 @@ export function useDashboard() {
     try {
       const days = parseInt(range, 10);
       const [dashboardResponse, profileResponse] = await Promise.all([
-        graphAnalyticsApi.getMentorDashboard({ days_back: days }),
+        proactiveApi.getMentorDashboard({ days_back: days }),
         proactiveApi.getMentorProfile(),
       ]);
       setMentorDashboard(dashboardResponse.data);
