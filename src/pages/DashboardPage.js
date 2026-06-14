@@ -11,7 +11,6 @@ import { EventsList } from '../presentation/components/dashboard/EventsList';
 import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/TotalStatsEvolutionChart';
 import { QuadrantDistributionChart } from '../presentation/components/dashboard/QuadrantDistributionChart';
 import { RoutinesTable } from '../presentation/components/dashboard/RoutinesTable';
-import { MentorDashboardTab } from '../presentation/components/dashboard/MentorDashboardTab';
 
 export default function DashboardPageRefactored() {
   const {
@@ -43,12 +42,6 @@ export default function DashboardPageRefactored() {
     setQuadrantRange,
     quadrantLoading,
     routinesDashboard,
-    mentorDashboard,
-    mentorProfile,
-    mentorLoading,
-    mentorActionKey,
-    updateMentorObjective,
-    updateMentorItem,
   } = useDashboard();
 
   return (
@@ -93,9 +86,6 @@ export default function DashboardPageRefactored() {
               </TabsTrigger>
               <TabsTrigger value="events" className="rounded-full data-[state=active]:bg-white">
                 Eventos
-              </TabsTrigger>
-              <TabsTrigger value="mentor" className="rounded-full data-[state=active]:bg-white">
-                Mentor
               </TabsTrigger>
             </TabsList>
 
@@ -195,16 +185,6 @@ export default function DashboardPageRefactored() {
               />
             </TabsContent>
 
-            <TabsContent value="mentor" className="space-y-6">
-              <MentorDashboardTab
-                mentorDashboard={mentorDashboard}
-                mentorProfile={mentorProfile}
-                mentorLoading={mentorLoading}
-                mentorActionKey={mentorActionKey}
-                onObjectivePatch={updateMentorObjective}
-                onItemPatch={updateMentorItem}
-              />
-            </TabsContent>
           </Tabs>
         )}
       </div>

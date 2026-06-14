@@ -2,14 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import LoginPage from "./pages/LoginPage";
 import CalendarPage from "./pages/CalendarPage";
-import EmotionsPage from "./pages/EmotionsPage";
 import DashboardPage from "./pages/DashboardPage";
 import CharacterPage from "./pages/CharacterPage";
-import ArenaPage from "./pages/ArenaPage";
 import QuestionnairePage from "./pages/QuestionnairePage";
 import SettingsPage from "./pages/SettingsPage";
-import ProactiveSuggestionsPage from "./pages/ProactiveSuggestionsPage";
-import ProjectChatPage from "./pages/ProjectChatPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { NotificationSystem } from "./components/NotificationSystem";
 import { ThemeProvider } from "./components/theme-provider";
@@ -59,22 +55,6 @@ function AppRoutes() {
         } 
       />
       <Route 
-        path="/emotions" 
-        element={
-          <ProtectedRoute>
-            <EmotionsPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/emotions/:view" 
-        element={
-          <ProtectedRoute>
-            <EmotionsPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
         path="/dashboard" 
         element={
           <ProtectedRoute>
@@ -98,35 +78,11 @@ function AppRoutes() {
           </ProtectedRoute>
         } 
       />
-      <Route 
-        path="/arena" 
-        element={
-          <ProtectedRoute>
-            <ArenaPage />
-          </ProtectedRoute>
-        } 
-      />
       <Route
         path="/settings"
         element={
           <ProtectedRoute>
             <SettingsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/suggestions"
-        element={
-          <ProtectedRoute>
-            <ProactiveSuggestionsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/project-chat"
-        element={
-          <ProtectedRoute>
-            <ProjectChatPage />
           </ProtectedRoute>
         }
       />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { eventsApi, statsApi, characterApi, graphAnalyticsApi, routinesApi, proactiveApi } from '../../lib/api';
+import { eventsApi, statsApi, characterApi, graphAnalyticsApi, routinesApi } from '../../lib/api';
 import { buildRelativeDateRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 
@@ -37,10 +37,6 @@ export function useDashboard() {
   const [quadrantRange, setQuadrantRange] = useState('30');
   const [quadrantLoading, setQuadrantLoading] = useState(false);
   const [routinesDashboard, setRoutinesDashboard] = useState([]);
-  const [mentorDashboard, setMentorDashboard] = useState(null);
-  const [mentorProfile, setMentorProfile] = useState(null);
-  const [mentorLoading, setMentorLoading] = useState(false);
-  const [mentorActionKey, setMentorActionKey] = useState('');
 
   // Fetch statistics
   const fetchStats = useCallback(async () => {
@@ -154,54 +150,6 @@ export function useDashboard() {
     }
   }, []);
 
-  const fetchMentorDashboard = useCallback(async () => {
-    setMentorLoading(true);
-    try {
-      const days = parseInt(range, 10);
-      const [dashboardResponse, profileResponse] = await Promise.all([
-        proactiveApi.getMentorDashboard({ days_back: days }),
-        proactiveApi.getMentorProfile(),
-      ]);
-      setMentorDashboard(dashboardResponse.data);
-      setMentorProfile(profileResponse.data);
-    } catch (error) {
-      toast.error('Error al cargar dashboard del mentor');
-      console.error('Error fetching mentor dashboard:', error);
-    } finally {
-      setMentorLoading(false);
-    }
-  }, [range]);
-
-  const updateMentorObjective = useCallback(async (objectiveKey, patch, actionKey = `objective:${objectiveKey}`) => {
-    setMentorActionKey(actionKey);
-    try {
-      const response = await proactiveApi.patchMentorObjective(objectiveKey, patch);
-      setMentorProfile(response.data);
-      await fetchMentorDashboard();
-      toast.success('Objetivo del mentor actualizado');
-    } catch (error) {
-      toast.error('Error al actualizar el objetivo del mentor');
-      console.error('Error updating mentor objective:', error);
-    } finally {
-      setMentorActionKey('');
-    }
-  }, [fetchMentorDashboard]);
-
-  const updateMentorItem = useCallback(async (itemKey, patch, actionKey = `item:${itemKey}`) => {
-    setMentorActionKey(actionKey);
-    try {
-      const response = await proactiveApi.patchMentorItem(itemKey, patch);
-      setMentorProfile(response.data);
-      await fetchMentorDashboard();
-      toast.success('Item del mentor actualizado');
-    } catch (error) {
-      toast.error('Error al actualizar el item del mentor');
-      console.error('Error updating mentor item:', error);
-    } finally {
-      setMentorActionKey('');
-    }
-  }, [fetchMentorDashboard]);
-
   // Effects
   useEffect(() => {
     fetchStats();
@@ -222,10 +170,6 @@ export function useDashboard() {
   useEffect(() => {
     fetchRoutinesDashboard();
   }, [fetchRoutinesDashboard]);
-
-  useEffect(() => {
-    fetchMentorDashboard();
-  }, [fetchMentorDashboard]);
 
   return {
     // Stats
@@ -260,10 +204,6 @@ export function useDashboard() {
     setQuadrantRange,
     quadrantLoading,
     routinesDashboard,
-    mentorDashboard,
-    mentorProfile,
-    mentorLoading,
-    mentorActionKey,
 
     // Actions
     refreshStats: fetchStats,
@@ -271,9 +211,6 @@ export function useDashboard() {
     refreshTotalStats: fetchTotalStatsData,
     refreshQuadrants: fetchQuadrantDistribution,
     refreshRoutinesDashboard: fetchRoutinesDashboard,
-    refreshMentorDashboard: fetchMentorDashboard,
-    updateMentorObjective,
-    updateMentorItem,
     handleTotalStatsRangeChange,
     handleTotalStatsFromDateChange,
     handleTotalStatsToDateChange,

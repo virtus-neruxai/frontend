@@ -15,15 +15,12 @@ function getNotificationKey(notification) {
   if (notification.history_id) return `history:${notification.history_id}`;
 
   const payload = notification.payload || {};
-  if (notification.type === 'PROACTIVE_TASK_SUGGESTION' || notification.type === 'PROACTIVE_ACTION_APPLIED') {
-    if (payload.suggestion_id) return `proactive:${payload.suggestion_id}`;
-    if (notification.user_id && payload.context?.suggestion_type && notification.payload?.message) {
-      return `proactive-fallback:${notification.user_id}:${payload.context.suggestion_type}:${notification.payload.message}`;
-    }
+  if (notification.type === 'MISSION_REMINDER') {
+    if (payload.mission_id) return `mission:${payload.mission_id}`;
   }
 
   if (notification.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H') {
-    if (payload.emotion_id) return `emotion:${payload.emotion_id}`;
+    if (payload.reflection_id) return `emotion:${payload.reflection_id}`;
     if (notification.user_id && payload.occurred_at) return `emotion-fallback:${notification.user_id}:${payload.occurred_at}`;
   }
 

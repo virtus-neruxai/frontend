@@ -4,8 +4,8 @@ import { getProfileName } from '../lib/profileUtils';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import TaskDraftModal from '../components/TaskDraftModal';
-import EmotionDraftModal from '../components/EmotionDraftModal';
 import MissionDraftModal from '../components/MissionDraftModal';
+import EmotionPicker from '../components/EmotionPicker';
 import ConversationHistory from '../components/chat/ConversationHistory';
 import { CharacterStats } from '../presentation/components/character/CharacterStats';
 import { MissionsList } from '../presentation/components/character/MissionsList';
@@ -103,18 +103,14 @@ export default function CharacterPageRefactored() {
   
   const {
     showTaskDraftModal,
-    showEmotionDraftModal,
     showMissionDraftModal,
     currentDraftData,
     openDraftModal,
     confirmTaskDraft,
     rejectTaskDraft,
-    confirmEmotionDraft,
-    rejectEmotionDraft,
     confirmMissionDraft,
     rejectMissionDraft,
     setShowTaskDraftModal,
-    setShowEmotionDraftModal,
     setShowMissionDraftModal,
   } = useDrafts();
   
@@ -133,6 +129,7 @@ export default function CharacterPageRefactored() {
   const [aiResponse, setAiResponse] = useState(null); // AI mentor response
   const [statChanges, setStatChanges] = useState(null); // Character stat changes
   const [dailyReflectionsCount, setDailyReflectionsCount] = useState(0); // Today's reflection count
+  const [emotionSnapshot, setEmotionSnapshot] = useState(null); // Selected emotion for next reflection
   const [isSubmittingReflection, setIsSubmittingReflection] = useState(false); // Prevent duplicate reflection submits
   const reflectionSubmitLockRef = useRef(false); // Immediate lock to avoid same-tick double clicks
   const [pendingReflectionDraft, setPendingReflectionDraft] = useState(null); // Deferred draft CTA for diary flow
@@ -165,7 +162,6 @@ export default function CharacterPageRefactored() {
   const formatPendingDraftType = (type) => {
     if (type === 'task') return 'tarea';
     if (type === 'mission') return 'misión';
-    if (type === 'emotion') return 'registro emocional';
     return 'propuesta';
   };
 
@@ -274,7 +270,7 @@ export default function CharacterPageRefactored() {
     setPendingReflectionDraft(null);
     
     try {
-      const response = await reflectionsApi.create({ content: reflectionText });
+      const response = await reflectionsApi.create({ content: reflectionText, emotion_snapshot: emotionSnapshot || undefined });
       const responseData = response.data;
       
       // Show AI response and stat changes
@@ -286,7 +282,6 @@ export default function CharacterPageRefactored() {
         const actionTypeMap = {
           SHOW_TASK_CONFIRMATION_MODAL: 'task',
           SHOW_MISSION_CONFIRMATION_MODAL: 'mission',
-          SHOW_EMOTION_CONFIRMATION_MODAL: 'emotion',
         };
         const draftType = actionTypeMap[responseData.ui_action.action];
         if (draftType) {
@@ -309,7 +304,8 @@ export default function CharacterPageRefactored() {
       }
       
       setReflectionText('');
-      
+      setEmotionSnapshot(null);
+
       // Refresh character stats (reflections may update stats)
       await fetchCharacter();
       
@@ -559,8 +555,11 @@ export default function CharacterPageRefactored() {
                     value={reflectionText}
                     onChange={(e) => setReflectionText(e.target.value)}
                     disabled={isSubmittingReflection}
-                    className="min-h-[120px] mb-4"
+                    className="min-h-[120px] mb-3"
                   />
+                  <div className="mb-4">
+                    <EmotionPicker value={emotionSnapshot} onChange={setEmotionSnapshot} />
+                  </div>
                   <Button
                     onClick={handleSubmitReflection}
                     disabled={!reflectionText.trim() || isSubmittingReflection}
@@ -664,6 +663,20 @@ export default function CharacterPageRefactored() {
                                 minute: '2-digit'
                               })}
                             </span>
+                            {reflection.emotion_snapshot && (
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ml-2 ${
+                                  reflection.emotion_snapshot.polarity === 'positive'
+                                    ? 'bg-green-50 border-green-300 text-green-700'
+                                    : reflection.emotion_snapshot.polarity === 'negative'
+                                    ? 'bg-red-50 border-red-300 text-red-700'
+                                    : 'bg-blue-50 border-blue-300 text-blue-700'
+                                }`}
+                              >
+                                {reflection.emotion_snapshot.emotion} · {reflection.emotion_snapshot.intensity}/5
+                              </Badge>
+                            )}
                           </div>
                           
                           <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">
@@ -830,14 +843,6 @@ export default function CharacterPageRefactored() {
           draftData={currentDraftData}
           onConfirm={(editedData) => confirmTaskDraft(editedData, fetchAllData)}
           onReject={rejectTaskDraft}
-        />
-
-        <EmotionDraftModal
-          isOpen={showEmotionDraftModal}
-          onClose={() => setShowEmotionDraftModal(false)}
-          draftData={currentDraftData}
-          onConfirm={(editedData) => confirmEmotionDraft(editedData, fetchAllData)}
-          onReject={rejectEmotionDraft}
         />
 
         <MissionDraftModal

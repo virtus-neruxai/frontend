@@ -5,30 +5,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { notificationsApi } from '../lib/api';
 
-function getProactiveNotificationTitle(notification, payload) {
-  const suggestionType = payload?.suggestion_type || payload?.context?.suggestion_type;
-
-  if (notification.type === 'PROACTIVE_ACTION_APPLIED') {
-    if (suggestionType === 'SPLIT_TASK') return '✅ Tarea dividida';
-    if (suggestionType === 'EDIT_TASK') return '✅ Tarea reprogramada';
-    return '✅ Cambio aplicado';
-  }
-
-  if (suggestionType === 'SPLIT_TASK') return '💡 Sugerencia: dividir tarea';
-  if (suggestionType === 'EDIT_TASK') return '💡 Sugerencia: reprogramar tarea';
-  if (payload?.context?.proposal_family === 'new_mission') return '💡 Nueva misión sugerida';
-  if (payload?.context?.proposal_family === 'new_routine') return '💡 Nueva rutina sugerida';
-  return '💡 Nueva sugerencia';
-}
-
-function getProactiveNotificationBody(payload) {
-  return (
-    payload?.message ||
-    payload?.context?.summary ||
-    payload?.task_title ||
-    'El asistente tiene una nueva sugerencia para ti.'
-  );
-}
 
 function getTaskNotificationBody(payload) {
   return (
@@ -274,7 +250,7 @@ export const NotificationPanel = ({ onClose }) => {
                           : item.priority,
                       suggestion_type: item.context?.suggestion_type,
                       proposal_family: item.context?.proposal_family,
-                      emotion_id: item.context?.emotion_id,
+                      reflection_id: item.context?.reflection_id,
                       emotion: item.context?.emotion,
                       emotion_note: item.context?.emotion_note,
                       message:
@@ -303,9 +279,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const { payload, read } = notification;
   const [showTodayTasks, setShowTodayTasks] = useState(false);
   const isEmotionNotification = notification.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H';
-  const isProactiveNotification =
-    notification.type === 'PROACTIVE_TASK_SUGGESTION' ||
-    notification.type === 'PROACTIVE_ACTION_APPLIED';
+  const isMissionReminder = notification.type === 'MISSION_REMINDER';
 
   // Priority colors
   const getPriorityConfig = (priority) => {
@@ -355,8 +329,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
     if (!read) {
       onMarkAsRead(notification.id);
     }
-    if (isEmotionNotification) window.location.href = '/emotions';
-    else if (isProactiveNotification) window.location.href = '/suggestions';
+    if (isEmotionNotification) window.location.href = '/character';
+    else if (isMissionReminder) window.location.href = '/mission-statement';
     else window.location.href = '/calendar';
   };
 
@@ -382,8 +356,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
             <p className="font-medium text-gray-900 dark:text-white text-sm leading-snug break-words">
               {isEmotionNotification
                 ? `Seguimiento emocional: ${payload.emotion || 'Emoción'}`
-                : isProactiveNotification
-                ? getProactiveNotificationTitle(notification, payload)
+                : isMissionReminder
+                ? `🎯 ${payload.mission_title || 'Recordatorio de misión'}`
                 : payload.task_title}
             </p>
             {!read && (
@@ -395,9 +369,9 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap break-words">
               {payload.message || 'Recordatorio de seguimiento emocional a las 24 horas.'}
             </p>
-          ) : isProactiveNotification ? (
+          ) : isMissionReminder ? (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap break-words">
-              {getProactiveNotificationBody(payload)}
+              {payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`}
             </p>
           ) : (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap break-words">
