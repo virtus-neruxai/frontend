@@ -1,6 +1,6 @@
 import Layout from '../components/Layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { CheckCircle2, Clock, Target, XCircle, ListTodo } from 'lucide-react';
+import { CheckCircle2, Clock, Target, ListTodo } from 'lucide-react';
 import { useDashboard } from '../presentation/viewmodels/useDashboard';
 import { KPICard } from '../presentation/components/dashboard/KPICard';
 import { NorthStarCard } from '../presentation/components/dashboard/NorthStarCard';
@@ -87,15 +87,6 @@ export default function DashboardPageRefactored() {
                 testId="kpi-completed"
               />
               <KPICard
-                title="Falladas"
-                value={summary?.failed || 0}
-                subtitle="Tareas no completadas a tiempo"
-                icon={XCircle}
-                iconColor="#EF4444"
-                iconBg="#FEF2F2"
-                testId="kpi-failed"
-              />
-              <KPICard
                 title="En Progreso"
                 value={summary?.in_progress || 0}
                 icon={Clock}
@@ -104,12 +95,13 @@ export default function DashboardPageRefactored() {
                 testId="kpi-in-progress"
               />
               <KPICard
-                title="Prom. Intentos"
-                value={summary?.avg_attempts || 0}
+                title="Vencidas"
+                value={summary?.overdue || 0}
+                subtitle="Tareas con fecha pasada"
                 icon={Target}
                 iconColor="#F97316"
                 iconBg="#FFF7ED"
-                testId="kpi-avg-attempts"
+                testId="kpi-overdue"
               />
             </div>
 

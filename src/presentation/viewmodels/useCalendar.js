@@ -26,6 +26,12 @@ const parseRule = (raw) => {
 
 
 
+const isOverdue = (task) => {
+  if (!task.date_end) return false;
+  if (['done', 'completed'].includes(task.status)) return false;
+  return new Date(task.date_end) < new Date();
+};
+
 const getDateKey = (date) => {
   const d = new Date(date);
   const y = d.getFullYear();
@@ -78,13 +84,16 @@ const expandRecurringTask = (task, rangeStart, rangeEnd) => {
     if (startDate >= rangeEnd || startDate < rangeStart) return;
     if (recurrenceUntil && startDate > recurrenceUntil) return;
     const endDate = sourceEnd ? new Date(startDate.getTime() + durationMs) : null;
+    const occurrenceTask = { ...task, date_end: endDate ? endDate.toISOString() : null };
+    const overdueOccurrence = isOverdue({ ...occurrenceTask, date_end: endDate ? endDate.toISOString() : null });
+    const statusClass = overdueOccurrence ? 'status-failed' : `status-${task.status}`;
     occurrences.push({
       id: `${task.id}__r${occurrenceIndex}`,
       title: task.title,
       start: startDate.toISOString(),
       end: computeAllDayEnd({ ...task, date_end: endDate ? endDate.toISOString() : null }, startDate),
       allDay: !!task.all_day,
-      className: task.task_kind === "routine" ? `status-${task.status} routine-event` : `status-${task.status}`,
+      className: task.task_kind === "routine" ? `${statusClass} routine-event` : statusClass,
       extendedProps: {
         status: task.status,
         progress: task.progress_percent,
@@ -303,13 +312,15 @@ export function useCalendar() {
       if (rule) {
         recurring.push(...expandRecurringTask(task, visibleRange.start, visibleRange.end));
       } else {
+        const overdue = isOverdue(task);
+        const statusClass = overdue ? 'status-failed' : `status-${task.status}`;
         base.push({
           id: task.id,
           title: task.title,
           start: task.date_start,
           end: computeAllDayEnd(task),
           allDay: !!task.all_day,
-          className: task.task_kind === "routine" ? `status-${task.status} routine-event` : `status-${task.status}`,
+          className: task.task_kind === "routine" ? `${statusClass} routine-event` : statusClass,
           extendedProps: {
             status: task.status,
             progress: task.progress_percent,

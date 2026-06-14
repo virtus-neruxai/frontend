@@ -29,6 +29,24 @@ const mergeMissionsById = (current = [], incoming = []) => {
   return sortMissionsByCreatedAt(Array.from(missionMap.values()));
 };
 
+const buildMissionConfirmPayload = (mission) => ({
+  title: mission.title,
+  description: mission.description,
+  mission_type: mission.mission_type || 'daily',
+  stat_rewards: mission.stat_rewards || {},
+  stat_penalties: mission.stat_penalties || {},
+  difficulty: mission.difficulty || 1,
+  domain: mission.domain || 'Hábitos',
+  estimated_minutes: mission.estimated_minutes || 30,
+  prompt_profile: mission.prompt_profile || null,
+  mentor_context: mission.mentor_context || null,
+  base_template_id: mission.base_template_id || null,
+  semantic_fingerprint: mission.semantic_fingerprint || null,
+  related_to: mission.related_to || null,
+  scheduled_datetime: mission.addToCalendar === false ? null : (mission.scheduled_datetime || mission.start_date || null),
+  addToCalendar: mission.addToCalendar !== false,
+});
+
 /**
  * Custom hook for managing missions state and operations
  * 
@@ -141,45 +159,36 @@ export const useMissions = () => {
    * Confirms and creates proposed missions
    * @param {Function} onSuccess - Callback to refresh character data after confirmation
    */
-  const confirmMissions = useCallback(async (onSuccess) => {
+  const confirmMissions = useCallback(async (editedData, onSuccess) => {
     setConfirmingMissions(true);
     try {
-      const existingMissions = proposedMissions.filter(m => m.id);
-      const newMissions = proposedMissions.filter(m => !m.id);
+      const currentMission = proposedMissions[0];
+      if (!currentMission) return;
 
-      if (newMissions.length > 0) {
-        const missionsToCreate = newMissions.map(m => ({
-          title: m.title,
-          description: m.description,
-          mission_type: m.mission_type || 'daily',
-          stat_rewards: m.stat_rewards || {},
-          stat_penalties: m.stat_penalties || {},
-          difficulty: m.difficulty || 1,
-          attempt_number: 1,
-          prompt_profile: m.prompt_profile || null,
-          scheduled_datetime: m.addToCalendar ? m.scheduled_datetime : null,
-          addToCalendar: m.addToCalendar
-        }));
+      const missionToConfirm = {
+        ...currentMission,
+        ...editedData,
+        scheduled_datetime: editedData?.start_date || currentMission.scheduled_datetime,
+      };
 
-        await missionsApi.confirmMissions(missionsToCreate);
-      }
-
-      const missionsToSchedule = existingMissions.filter(m => m.addToCalendar && m.scheduled_datetime);
-      if (missionsToSchedule.length > 0) {
-        await Promise.all(missionsToSchedule.map(m => {
-          const start = new Date(m.scheduled_datetime);
-          const end = new Date(start.getTime() + 60 * 60 * 1000);
-          return missionsApi.schedule(m.id, {
-            mission_id: m.id,
+      if (missionToConfirm.id) {
+        if (missionToConfirm.addToCalendar !== false && missionToConfirm.scheduled_datetime) {
+          const start = new Date(missionToConfirm.scheduled_datetime);
+          const end = new Date(start.getTime() + (missionToConfirm.estimated_minutes || 60) * 60 * 1000);
+          await missionsApi.schedule(missionToConfirm.id, {
+            mission_id: missionToConfirm.id,
             date_start: start.toISOString(),
             date_end: end.toISOString()
           });
-        }));
+        }
+      } else {
+        await missionsApi.confirmMissions([buildMissionConfirmPayload(missionToConfirm)]);
       }
-      
-      toast.success(`${proposedMissions.length} misiones creadas`);
-      setShowConfirmModal(false);
-      setProposedMissions([]);
+
+      const remainingMissions = proposedMissions.slice(1);
+      toast.success('Misión creada');
+      setProposedMissions(remainingMissions);
+      setShowConfirmModal(remainingMissions.length > 0);
       
       if (onSuccess) onSuccess();
       await fetchMissions();
@@ -191,6 +200,13 @@ export const useMissions = () => {
       setConfirmingMissions(false);
     }
   }, [proposedMissions, fetchMissions]);
+
+  const rejectProposedMission = useCallback(async () => {
+    const remainingMissions = proposedMissions.slice(1);
+    setProposedMissions(remainingMissions);
+    setShowConfirmModal(remainingMissions.length > 0);
+    toast.info('Misión rechazada');
+  }, [proposedMissions]);
 
   /**
    * Completes a mission with success or failure
@@ -295,20 +311,6 @@ export const useMissions = () => {
   }, []);
 
   /**
-   * Updates a proposed mission field
-   * @param {number} index - Mission index in proposed missions array
-   * @param {string} field - Field name to update
-   * @param {any} value - New value
-   */
-  const updateProposedMission = useCallback((index, field, value) => {
-    setProposedMissions(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
-  }, []);
-
-  /**
    * Fetches mission-only stats evolution from the canonical stats endpoint.
    * @param {Object} params
    * @param {number} params.days - Relative range in days when from/to are not provided
@@ -345,7 +347,6 @@ export const useMissions = () => {
     missionStatsLoading,
     showConfirmModal,
     proposedMissions,
-    confirmingMissions,
     showScheduleModal,
     missionToSchedule,
     scheduleDateTime,
@@ -355,11 +356,11 @@ export const useMissions = () => {
     generateMissions,
     performNightlyReview,
     confirmMissions,
+    rejectProposedMission,
     completeMission,
     deleteMission,
     scheduleMission,
     openScheduleModal,
-    updateProposedMission,
     fetchMissionEvolution,
     setShowConfirmModal,
     setShowScheduleModal,

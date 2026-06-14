@@ -71,7 +71,6 @@ export default function CharacterPageRefactored() {
     nightlyReviewResult,
     showConfirmModal,
     proposedMissions,
-    confirmingMissions,
     showScheduleModal,
     scheduleDateTime,
     missionStatsHistory,
@@ -80,11 +79,11 @@ export default function CharacterPageRefactored() {
     generateMissions,
     performNightlyReview,
     confirmMissions,
+    rejectProposedMission,
     completeMission,
     deleteMission,
     scheduleMission,
     openScheduleModal,
-    updateProposedMission,
     fetchMissionEvolution,
     setShowConfirmModal,
     setShowScheduleModal,
@@ -245,20 +244,11 @@ export default function CharacterPageRefactored() {
       setSelectedMission(null);
       setReflectionText('');
 
-      if (!success && response?.can_retry) {
-        openScheduleModal(missionSnapshot, response?.suggested_reschedule || null);
-        toast.info('Reprograma la misión para continuar con el siguiente intento.');
-      }
-
       await fetchAllData();
     } catch (error) {
       console.error('Error completing mission:', error);
     }
   };
-
-  const selectedMissionCanRetry = selectedMission
-    ? (selectedMission.attempt_number || 1) < (selectedMission.max_attempts || 3)
-    : false;
 
   // Reflection submission handler
   const handleSubmitReflection = async () => {
@@ -367,15 +357,24 @@ export default function CharacterPageRefactored() {
     }
   };
 
-  // Confirm missions handler
-  const handleConfirmMissions = async () => {
-    await confirmMissions(fetchAllData);
-  };
-
   // Schedule mission handler
   const handleScheduleMission = async () => {
     await scheduleMission(fetchAllData);
   };
+
+  const currentGeneratedMission = proposedMissions[0] || null;
+  const generatedMissionDraftData = currentGeneratedMission ? {
+    data: {
+      ...currentGeneratedMission,
+      addToCalendar: currentGeneratedMission.addToCalendar !== false,
+      start_date: currentGeneratedMission.scheduled_datetime || currentGeneratedMission.start_date,
+      due_date: currentGeneratedMission.expires_at || currentGeneratedMission.due_date,
+    },
+    metadata: {
+      agent_reasoning: currentGeneratedMission.agent_reasoning,
+      confidence: currentGeneratedMission.confidence,
+    },
+  } : null;
 
   if (loading) {
     return (
@@ -789,7 +788,7 @@ export default function CharacterPageRefactored() {
                 className="flex-1"
               >
                 <XCircle className="w-4 h-4 mr-2" />
-                {selectedMissionCanRetry ? 'Reprogramar' : 'Fallida'}
+                Fallida
               </Button>
               <Button
                 onClick={() => handleCompleteMission(true)}
@@ -837,6 +836,14 @@ export default function CharacterPageRefactored() {
         </Dialog>
 
         {/* Draft Modals */}
+        <MissionDraftModal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          draftData={generatedMissionDraftData}
+          onConfirm={(editedData) => confirmMissions(editedData, fetchAllData)}
+          onReject={rejectProposedMission}
+        />
+
         <TaskDraftModal
           isOpen={showTaskDraftModal}
           onClose={() => setShowTaskDraftModal(false)}

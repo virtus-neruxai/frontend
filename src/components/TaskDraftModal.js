@@ -58,25 +58,8 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const profileName = getProfileName(localStorage.getItem('prompt_profile') || 'stoic');
 
-  const getCoveyQuadrant = (urgent, important) => {
-    if (urgent && important) return 'Q1';
-    if (!urgent && important) return 'Q2';
-    if (urgent && !important) return 'Q3';
-    return 'Q4';
-  };
-
-  const getCoveyLabel = (urgent, important) => {
-    if (urgent && important) return 'Q1 - Urgente e Importante';
-    if (!urgent && important) return 'Q2 - Importante y No Urgente';
-    if (urgent && !important) return 'Q3 - No Importante y Urgente';
-    return 'Q4 - No Urgente y No Importante';
-  };
-
   useEffect(() => {
     if (draftData?.data) {
-      const incoming = draftData.data.covey_classification || {};
-      const urgent = !!incoming.urgent;
-      const important = !!incoming.important;
       const taskKind = draftData.data.task_kind || 'task';
       const isRoutineDraft = taskKind === 'routine';
       const recurrence = draftData.data.recurrence_rule || null;
@@ -99,11 +82,6 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
         recurrence_weekdays: isRoutineDraft && Array.isArray(recurrence?.weekdays) ? recurrence.weekdays : [1, 2, 3, 4, 5],
         recurrence_until: isRoutineDraft && recurrence?.until ? formatDateTimeLocal(recurrence.until) : '',
         tags: draftData.data.tags || [],
-        covey_classification: {
-          urgent,
-          important,
-          quadrant: incoming.quadrant || getCoveyQuadrant(urgent, important),
-        },
       });
     }
   }, [draftData]);
@@ -193,14 +171,6 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
           calculateDurationMinutes(editedData.date_start, editedData.date_end)
           ?? editedData.estimated_duration_minutes
           ?? 30,
-        covey_classification: {
-          urgent: !!editedData?.covey_classification?.urgent,
-          important: !!editedData?.covey_classification?.important,
-          quadrant: getCoveyQuadrant(
-            !!editedData?.covey_classification?.urgent,
-            !!editedData?.covey_classification?.important
-          ),
-        },
       };
 
       const isRoutine = (editedData.task_kind || 'task') === 'routine';
@@ -258,11 +228,6 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
     ? (isEditDraft ? 'Confirmar y Modificar Rutina' : 'Confirmar y Crear Rutina')
     : (isEditDraft ? 'Confirmar y Modificar Tarea' : 'Confirmar y Crear Tarea');
   const submittingLabel = isEditDraft ? 'Modificando...' : 'Creando...';
-  const covey = editedData?.covey_classification || {
-    urgent: false,
-    important: false,
-    quadrant: 'Q4',
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -477,52 +442,6 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Covey Classification */}
-          <div className="space-y-2">
-            <Label>Clasificación Covey</Label>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="draft-covey-urgent"
-                  checked={!!covey.urgent}
-                  onCheckedChange={(checked) => {
-                    const urgent = checked === true;
-                    const important = !!covey.important;
-                    setEditedData({
-                      ...editedData,
-                      covey_classification: {
-                        urgent,
-                        important,
-                        quadrant: getCoveyQuadrant(urgent, important),
-                      },
-                    });
-                  }}
-                />
-                <Label htmlFor="draft-covey-urgent">Urgente</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="draft-covey-important"
-                  checked={!!covey.important}
-                  onCheckedChange={(checked) => {
-                    const urgent = !!covey.urgent;
-                    const important = checked === true;
-                    setEditedData({
-                      ...editedData,
-                      covey_classification: {
-                        urgent,
-                        important,
-                        quadrant: getCoveyQuadrant(urgent, important),
-                      },
-                    });
-                  }}
-                />
-                <Label htmlFor="draft-covey-important">Importante</Label>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500">{getCoveyLabel(!!covey.urgent, !!covey.important)}</p>
           </div>
 
           {/* Tags */}

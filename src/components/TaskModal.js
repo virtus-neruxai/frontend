@@ -60,13 +60,6 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
   const isEditing = !!task;
   const isRoutineMode = mode === 'routine';
 
-  const getQuadrant = (urgent, important) => {
-    if (urgent && important) return 'Q1 - Urgente e Importante';
-    if (!urgent && important) return 'Q2 - Importante y No Urgente';
-    if (urgent && !important) return 'Q3 - No Importante y Urgente';
-    return 'Q4 - No Urgente y No Importante';
-  };
-  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -75,13 +68,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
     date_end: '',
     progress_percent: 0,
     is_complete: false,
-    attempt_count: 0,
     status: 'todo',
-    covey_classification: {
-      urgent: false,
-      important: false,
-      quadrant: 'Q4',
-    },
     all_day: false,
     recurrence_type: isRoutineMode ? 'daily' : 'none',
     recurrence_interval: 1,
@@ -97,16 +84,6 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
   const [dateError, setDateError] = useState('');
 
   useEffect(() => {
-    const normalizeCovey = (input) => {
-      const urgent = !!(input && input.urgent);
-      const important = !!(input && input.important);
-      return {
-        urgent,
-        important,
-        quadrant: input?.quadrant || (urgent && important ? 'Q1' : !urgent && important ? 'Q2' : urgent && !important ? 'Q3' : 'Q4'),
-      };
-    };
-
     const loadData = async () => {
       if (task) {
         const loadedTaskKind = task.task_kind || 'task';
@@ -119,9 +96,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
           date_end: task.date_end ? formatDateTimeLocal(task.date_end) : '',
           progress_percent: task.progress_percent || 0,
           is_complete: task.is_complete || false,
-          attempt_count: task.attempt_count || 0,
           status: task.status || 'todo',
-          covey_classification: normalizeCovey(task.covey_classification),
           all_day: !!task.all_day,
           recurrence_type: loadedIsRoutine
             ? (task.recurrence_rule?.type === 'weekly' ? 'custom' : 'daily')
@@ -159,13 +134,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
           date_end: '',
           progress_percent: 0,
           is_complete: false,
-          attempt_count: 0,
           status: 'todo',
-          covey_classification: {
-            urgent: false,
-            important: false,
-            quadrant: 'Q4',
-          },
           all_day: false,
           recurrence_type: isRoutineMode ? 'daily' : 'none',
           recurrence_interval: 1,
@@ -237,22 +206,6 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
         updated.progress_percent = 100;
       }
       
-      // Auto-incrementar attempt_count cuando cambia date_end (pospone tarea)
-      // EXCEPTO si la tarea está en FAILED (campos disabled, no puede editar)
-      // Compara siempre con la fecha ORIGINAL para evitar incrementos múltiples sin guardar
-      if (field === 'date_end' && task && prev.status !== 'failed') {
-        const originalEnd = task.date_end ? new Date(task.date_end).toISOString() : null;
-        const newEnd = value ? new Date(value).toISOString() : null;
-        
-        if (originalEnd !== newEnd) {
-          // Fecha cambió respecto a la original → incrementar UNA VEZ desde el attempt_count original
-          updated.attempt_count = (task.attempt_count || 0) + 1;
-        } else {
-          // Fecha volvió a ser la original → resetear al valor original
-          updated.attempt_count = task.attempt_count || 0;
-        }
-      }
-      
       return updated;
     });
 
@@ -272,27 +225,6 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
         recurrence_interval: 1,
       }));
     }
-  };
-
-  const handleCoveyChange = (field, checked) => {
-    const asBool = checked === true;
-    setFormData(prev => {
-      const covey = {
-        ...prev.covey_classification,
-        [field]: asBool,
-      };
-      const urgent = !!covey.urgent;
-      const important = !!covey.important;
-      const quadrant = urgent && important ? 'Q1' : !urgent && important ? 'Q2' : urgent && !important ? 'Q3' : 'Q4';
-      return {
-        ...prev,
-        covey_classification: {
-          urgent,
-          important,
-          quadrant,
-        },
-      };
-    });
   };
 
   const handleSubmit = async (e) => {
@@ -481,29 +413,6 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
     }
   };
 
-  const handleRetry = async () => {
-    if (!task || task.status !== 'failed') return;
-    
-    // Confirmation dialog for multiple retries
-    if (formData.attempt_count >= 3) {
-      const confirm = window.confirm(
-        `⚠️ Has pospuesto esta tarea ${formData.attempt_count} veces (modificando fechas).\n\n¿Necesitas dividirla en subtareas más pequeñas?`
-      );
-      if (!confirm) return;
-    }
-    
-    setLoading(true);
-    try {
-      await tasksApi.retry(task.id);
-      toast.success('Tarea lista para reintentar. Puedes modificar las fechas ahora.');
-      onSaved();
-    } catch (error) {
-      const msg = error.response?.data?.detail || 'Error al reintentar tarea';
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -526,37 +435,11 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                 <Target className="w-4 h-4 text-[#F97316]" strokeWidth={1.5} />
                 <span className="text-sm font-medium text-[#F97316]">Misión Estoica Vinculada</span>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="text-xs border-[#F97316] text-[#F97316]">
-                  Intento {linkedMission.attempt_number || 1}/{linkedMission.max_attempts || 3}
-                </Badge>
-                {linkedMission.attempt_number > 1 && (
-                  <Badge variant="outline" className="text-xs border-[#EF4444] text-[#EF4444]">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    Reintento
-                  </Badge>
-                )}
-              </div>
               <p className="text-xs text-[#71717A] mt-2">
                 Puedes completar la misión directamente aquí para registrar tu progreso estoico.
               </p>
               <p className="text-xs text-[#71717A] mt-1">
                 Fecha límite de la misión: <span className="font-semibold text-[#18181B]">{formatDeadline(linkedMission?.expires_at || task?.date_end) || 'Sin definir'}</span>.
-              </p>
-            </div>
-          )}
-
-          {/* FAILED State Warning */}
-          {formData.status === 'failed' && (
-            <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-[#DC2626]" strokeWidth={1.5} />
-                <span className="text-sm font-medium text-[#DC2626]">Tarea Fallida</span>
-              </div>
-              <p className="text-xs text-[#71717A]">
-                {isMissionLinkedTask
-                  ? 'Esta misión no se completó por superar el número máximo de intentos. Solo se puede ver en modo consulta.'
-                  : 'Esta tarea no se completó exitosamente durante la revisión nocturna. Solo se puede ver en modo consulta.'}
               </p>
             </div>
           )}
@@ -574,7 +457,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
               placeholder="Nombre de la tarea"
               className="border-[#E4E4E7]"
               required
-              disabled={!!linkedMission || formData.status === 'failed'}
+              disabled={!!linkedMission}
             />
           </div>
 
@@ -590,7 +473,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
               onChange={(e) => handleChange('description', e.target.value)}
               placeholder="Detalles de la tarea..."
               className="border-[#E4E4E7] min-h-[80px] resize-none"
-              disabled={formData.status === 'failed'}
+
             />
           </div>
 
@@ -602,7 +485,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
             <Select 
               value={formData.domain} 
               onValueChange={(v) => handleChange('domain', v)}
-              disabled={formData.status === 'failed'}
+
             >
               <SelectTrigger className="border-[#E4E4E7]" data-testid="task-domain-select">
                 <SelectValue placeholder="Selecciona un dominio" />
@@ -622,40 +505,6 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
             )}
           </div>
 
-          <div className="space-y-3">
-            <Label className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
-              Clasificación Covey
-            </Label>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="covey-urgent"
-                  checked={!!formData.covey_classification?.urgent}
-                  onCheckedChange={(checked) => handleCoveyChange('urgent', checked)}
-                  disabled={formData.status === 'failed'}
-                  data-testid="task-covey-urgent-checkbox"
-                />
-                <Label htmlFor="covey-urgent" className="text-sm text-[#71717A]">Urgente</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="covey-important"
-                  checked={!!formData.covey_classification?.important}
-                  onCheckedChange={(checked) => handleCoveyChange('important', checked)}
-                  disabled={formData.status === 'failed'}
-                  data-testid="task-covey-important-checkbox"
-                />
-                <Label htmlFor="covey-important" className="text-sm text-[#71717A]">Importante</Label>
-              </div>
-            </div>
-            <p className="text-xs text-[#71717A]">
-              {getQuadrant(
-                !!formData.covey_classification?.urgent,
-                !!formData.covey_classification?.important
-              )}
-            </p>
-          </div>
-
           <div className="flex items-center justify-between py-2">
             <Label htmlFor="all_day" className="text-sm font-medium text-[#71717A]">
               Seleccionar todo el día
@@ -664,7 +513,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
               id="all_day"
               checked={!!formData.all_day}
               onCheckedChange={(v) => handleChange('all_day', v)}
-              disabled={formData.status === 'failed'}
+
               data-testid="task-all-day-switch"
             />
           </div>
@@ -684,7 +533,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                   onChange={(e) => handleChange('date_start', e.target.value)}
                   className="border-[#E4E4E7]"
                   required
-                  disabled={formData.status === 'failed'}
+    
                 />
               </div>
               <div className="space-y-2">
@@ -698,7 +547,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                   value={formData.date_end}
                   onChange={(e) => handleChange('date_end', e.target.value)}
                   className="border-[#E4E4E7]"
-                  disabled={formData.status === 'failed'}
+    
                 />
                 {formData.date_start && formData.date_end && (
                   <p className="text-xs text-[#71717A] mt-1">
@@ -717,7 +566,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
               <Select
                 value={formData.recurrence_type}
                 onValueChange={(v) => handleChange('recurrence_type', v)}
-                disabled={formData.status === 'failed'}
+  
               >
                 <SelectTrigger className="border-[#E4E4E7]" data-testid="task-recurrence-type-select">
                   <SelectValue />
@@ -806,7 +655,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                 <Select 
                   value={formData.status} 
                   onValueChange={(v) => handleChange('status', v)}
-                  disabled={formData.status === 'failed'}
+    
                 >
                   <SelectTrigger className="border-[#E4E4E7]" data-testid="task-status-select">
                     <SelectValue />
@@ -844,7 +693,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                   max={100}
                   step={5}
                   className="[&_[role=slider]]:bg-[#F97316]"
-                  disabled={formData.status === 'failed'}
+    
                 />
               </div>
 
@@ -858,25 +707,11 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                   data-testid="task-complete-switch"
                   checked={formData.is_complete}
                   onCheckedChange={(v) => handleChange('is_complete', v)}
-                  disabled={formData.status === 'failed'}
+    
                   className="data-[state=checked]:bg-[#F97316] data-[state=unchecked]:bg-zinc-300 dark:data-[state=unchecked]:bg-zinc-700"
                 />
               </div>
 
-              {/* Attempt Count (read-only indicator) */}
-              {isEditing && !isRoutine && (
-                <div className="flex items-center justify-between py-2 px-3 bg-[#F4F4F5] rounded-lg">
-                  <Label className="text-sm font-medium text-[#71717A]">
-                    Intentos (auto)
-                  </Label>
-                  <span 
-                    className="text-sm font-bold text-[#18181B]"
-                    data-testid="task-attempts-value"
-                  >
-                    {formData.attempt_count}
-                  </span>
-                </div>
-              )}
             </>
           )}
 
@@ -888,7 +723,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                     type="button"
                     variant="outline"
                     onClick={handleCompleteLinkedMission}
-                    disabled={loading || missionActionLoading || formData.status === 'failed'}
+                    disabled={loading || missionActionLoading}
                     className="rounded-full border-[#22C55E] text-[#22C55E] hover:bg-[#DCFCE7]"
                     data-testid="task-complete-mission-btn"
                   >
@@ -897,20 +732,6 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                   </Button>
                 )}
                 
-                {/* Retry button for failed standalone tasks */}
-                {formData.status === 'failed' && !linkedMission && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleRetry}
-                    disabled={loading || missionActionLoading}
-                    className="rounded-full border-[#F97316] text-[#F97316] hover:bg-[#FFF7ED]"
-                    data-testid="task-retry-btn"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
-                    Reintentar
-                  </Button>
-                )}
                 
                 <Button
                   type="button"
@@ -924,7 +745,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                   {deleteConfirm ? '¿Confirmar?' : 'Eliminar'}
                 </Button>
                 
-                {((isRoutine && isEditing && !(task?.routine_completed_dates || []).includes(getDateKeyLocal(new Date()))) || (!isRoutine && !formData.is_complete && !linkedMission && formData.status !== 'failed')) && (
+                {((isRoutine && isEditing && !(task?.routine_completed_dates || []).includes(getDateKeyLocal(new Date()))) || (!isRoutine && !formData.is_complete && !linkedMission)) && (
                   <Button
                     type="button"
                     variant="outline"
@@ -940,17 +761,14 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
               </>
             )}
             
-            {/* Hide Save button if task is FAILED (read-only mode) */}
-            {formData.status !== 'failed' && (
-              <Button
-                type="submit"
-                disabled={loading || (!isEditing && !formData.domain)}
-                className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full font-medium ml-auto"
-                data-testid="task-save-btn"
-              >
-                {loading ? 'Guardando...' : isEditing ? 'Guardar cambios' : isRoutine ? 'Crear rutina' : 'Crear tarea'}
-              </Button>
-            )}
+            <Button
+              type="submit"
+              disabled={loading || (!isEditing && !formData.domain)}
+              className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full font-medium ml-auto"
+              data-testid="task-save-btn"
+            >
+              {loading ? 'Guardando...' : isEditing ? 'Guardar cambios' : isRoutine ? 'Crear rutina' : 'Crear tarea'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
