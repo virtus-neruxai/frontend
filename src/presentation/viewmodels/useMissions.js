@@ -81,21 +81,21 @@ export const useMissions = () => {
   const generateMissions = useCallback(async () => {
     setGeneratingMissions(true);
     try {
-      const response = await missionsApi.generate({ schedule_to_calendar: false });
-      const createdMissions = Array.isArray(response.data) ? response.data : [];
-      
+      const response = await missionsApi.generate({});
+      // generate-with-context returns { drafts: [...], metadata: {...} }
+      const drafts = response.data?.drafts || (Array.isArray(response.data) ? response.data : []);
+
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const missionsWithDates = createdMissions.map((m, i) => ({
+
+      const missionsWithDates = drafts.map((m, i) => ({
         ...m,
         addToCalendar: true,
         scheduled_datetime: new Date(tomorrow.setHours(
           m.mission_type === 'reflection' ? 8 + i : 14 + i, 0, 0, 0
         )).toISOString()
       }));
-      
-      setMissions((prev) => mergeMissionsById(prev, createdMissions));
+
       setProposedMissions(missionsWithDates);
       setShowConfirmModal(true);
       return missionsWithDates;
@@ -202,22 +202,14 @@ export const useMissions = () => {
    */
   const completeMission = useCallback(async (missionId, success, reflection = null, reason = null) => {
     try {
-      const response = await missionsApi.complete(missionId, {
-        success,
-        reflection,
-        reason
-      });
-      
-      if (response.data.ai_response) {
-        toast.info(response.data.ai_response, { duration: 6000 });
-      }
-      
+      const response = await missionsApi.complete(missionId, { success });
+
       if (success) {
         toast.success('¡Misión completada!');
       } else {
         toast.error('Misión fallida. Sigue adelante.');
       }
-      
+
       await fetchMissions();
       return response.data;
     } catch (error) {

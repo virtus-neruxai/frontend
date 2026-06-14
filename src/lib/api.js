@@ -25,34 +25,24 @@ api.interceptors.response.use(
   }
 );
 
-// Task API
+// Task API — backed by /items?item_type=task
 export const tasksApi = {
-  getAll: (params = {}) => api.get('/tasks', { params }),
-  getById: (id) => api.get(`/tasks/${id}`),
-  create: (data) => api.post('/tasks', data),
-  update: (id, data) => api.put(`/tasks/${id}`, data),
-  patch: (id, data) => api.patch(`/tasks/${id}`, data),
-  delete: (id, params = {}) => api.delete(`/tasks/${id}`, { params }),
-  retry: (id) => api.post(`/tasks/${id}/retry`),
-  markRoutineToday: (id, data = {}) => api.post(`/tasks/${id}/routine-completions`, data),
+  getAll: (params = {}) => api.get('/items', { params: { ...params, item_type: 'task' } }),
+  getById: (id) => api.get(`/items/${id}`),
+  create: (data) => api.post('/items', { ...data, item_type: 'task' }),
+  update: (id, data) => api.patch(`/items/${id}`, data),
+  patch: (id, data) => api.patch(`/items/${id}`, data),
+  delete: (id) => api.delete(`/items/${id}`),
+  retry: (id) => api.patch(`/items/${id}`, { status: 'todo', is_complete: false }),
+  markRoutineToday: (id, data = {}) => api.patch(`/items/${id}`, data),
 };
 
-
-export const routinesApi = {
-  getDashboard: () => api.get('/routines/dashboard'),
-};
 
 // Stats API
 export const statsApi = {
   getSummary: (params = {}) => api.get('/stats/summary', { params }),
   getTimeseries: (days = 30) => api.get('/stats/timeseries', { params: { days } }),
   getEvolution: (params = {}) => api.get('/stats/evolution', { params }),
-};
-
-// Events API
-export const eventsApi = {
-  getTaskEvents: (params = {}) => api.get('/events/tasks', { params }),
-  getMissionEvents: (params = {}) => api.get('/events/missions', { params }),
 };
 
 // Character API
@@ -62,15 +52,18 @@ export const characterApi = {
   getStatsHistory: (days = 30) => api.get('/character/stats-history', { params: { days } }),
 };
 
-// Missions API
+// Missions API — backed by /items?item_type=mission
 export const missionsApi = {
-  getAll: (params = {}) => api.get('/missions', { params }),
-  generate: (data = {}) => api.post('/missions/generate', data),
-  complete: (id, data) => api.post(`/missions/${id}/complete`, data),
-  nightlyReview: () => api.post('/missions/nightly-review'),
-  confirmMissions: (missions) => api.post('/missions/confirm', { missions }),
-  schedule: (missionId, data) => api.post(`/missions/${missionId}/schedule`, data),
-  remove: (missionId) => api.delete(`/missions/${missionId}`),
+  getAll: (params = {}) => api.get('/items', { params: { ...params, item_type: 'mission' } }),
+  generate: (data = {}) => api.post('/items/generate-with-context', data),
+  complete: (id, data = {}) => api.patch(`/items/${id}`, {
+    status: data.success === false ? 'failed' : 'done',
+    is_complete: data.success !== false,
+  }),
+  nightlyReview: () => api.post('/items/nightly-review'),
+  confirmMissions: (missions) => api.post('/items/confirm', { missions }),
+  schedule: (missionId, data) => api.patch(`/items/${missionId}`, data),
+  remove: (missionId) => api.delete(`/items/${missionId}`),
 };
 
 // Reflections API
@@ -79,13 +72,6 @@ export const reflectionsApi = {
   getHistory: (limit = 100, date) => api.get('/reflections/history', { params: { limit, ...(date ? { date } : {}) } }),
   getStatsHistory: (days = 30) => api.get('/reflections/stats-history', { params: { days } }),
   create: (data) => api.post('/reflections', data),
-};
-
-// Conversations API
-export const conversationsApi = {
-  getAll: (params = {}) => api.get('/conversations', { params }),
-  getById: (sessionId) => api.get(`/conversations/${sessionId}`),
-  delete: (sessionId) => api.delete(`/conversations/${sessionId}`),
 };
 
 // Notifications API
@@ -129,45 +115,69 @@ export const agentApi = {
   confirmDraft: (data) => agentApiInstance.post('/agent/draft/confirm', data),
 };
 
-// Graph Query API (usa /graph-query-api/v1 - Traefik stripea /graph-query-api)
-const graphQueryApiInstance = axios.create({
-  baseURL: `${API_URL}/graph-query-api/v1`,
-});
+const getAgentInteractions = async (params = {}) => {
+  const response = await agentApiInstance.get('/agent/interactions', {
+    params: { limit: 500, skip: 0, ...params },
+  });
+  return { response, interactions: response.data?.interactions || [] };
+};
 
-graphQueryApiInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Conversations API — compatibility adapter over agent-service interactions.
+export const conversationsApi = {
+  getAll: async (params = {}) => {
+    const { response, interactions } = await getAgentInteractions(params);
+    const conversations = {};
 
-graphQueryApiInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
+    interactions.forEach((item) => {
+      const sessionId = item.session_id || 'sin-sesion';
+      const timestamp = item.timestamp || new Date().toISOString();
+      const current = conversations[sessionId] || {
+        session_id: sessionId,
+        last_message_at: timestamp,
+        preview: '',
+        message_count: 0,
+      };
 
-export const graphAnalyticsApi = {
-  getQuadrantDistribution: (daysBack = 30) =>
-    graphQueryApiInstance.get('/analytics/quadrant-distribution', {
-      params: { days_back: daysBack },
-    }),
-  getQuadrantEmotionCorrelation: (params = {}) =>
-    graphQueryApiInstance.get('/analytics/quadrant-emotion-correlation', { params }),
-  getBestSlot: (durationMinutes = 45) =>
-    graphQueryApiInstance.get('/analytics/productive-free-slots', {
-      params: { duration_minutes: durationMinutes, horizon_days: 7, top_n: 1 },
-    }),
-  getMentorDashboard: (params = {}) =>
-    graphQueryApiInstance.get('/analytics/mentor-dashboard', { params }),
-  getMentorObjectiveDetail: (params = {}) =>
-    graphQueryApiInstance.get('/analytics/mentor-objective-detail', { params }),
+      current.message_count += item.agent_response ? 2 : 1;
+      if (!current.preview || new Date(timestamp) >= new Date(current.last_message_at)) {
+        current.last_message_at = timestamp;
+        current.preview = item.user_message || item.agent_response || '';
+      }
+      conversations[sessionId] = current;
+    });
+
+    return {
+      ...response,
+      data: Object.values(conversations).sort(
+        (a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)
+      ),
+    };
+  },
+  getById: async (sessionId, params = {}) => {
+    const { response, interactions } = await getAgentInteractions(params);
+    const messages = interactions
+      .filter((item) => (item.session_id || 'sin-sesion') === sessionId)
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+      .flatMap((item) => [
+        item.user_message && {
+          role: 'user',
+          message: item.user_message,
+          timestamp: item.timestamp,
+          friction: item.observer_output?.primary_friction,
+          mode: item.selected_mode,
+        },
+        item.agent_response && {
+          role: 'assistant',
+          message: item.agent_response,
+          timestamp: item.timestamp,
+          friction: item.observer_output?.primary_friction,
+          mode: item.selected_mode,
+        },
+      ].filter(Boolean));
+
+    return { ...response, data: { session_id: sessionId, messages } };
+  },
+  delete: () => Promise.reject(new Error('Conversation deletion is not supported by the current agent API')),
 };
 
 // Profile API
