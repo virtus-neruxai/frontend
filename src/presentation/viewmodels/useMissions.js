@@ -45,6 +45,7 @@ const buildMissionConfirmPayload = (mission) => ({
   related_to: mission.related_to || null,
   scheduled_datetime: mission.addToCalendar === false ? null : (mission.scheduled_datetime || mission.start_date || null),
   addToCalendar: mission.addToCalendar !== false,
+  expires_at: mission.due_date || mission.expires_at || null,
 });
 
 /**

@@ -29,6 +29,7 @@ const parseRule = (raw) => {
 const isOverdue = (task) => {
   if (!task.date_end) return false;
   if (['done', 'completed'].includes(task.status)) return false;
+  if (task.linked_mission_id) return false;
   return new Date(task.date_end) < new Date();
 };
 
