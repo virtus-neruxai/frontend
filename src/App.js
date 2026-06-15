@@ -71,7 +71,7 @@ function AppRoutes() {
         } 
       />
       <Route 
-        path="/mission-statement" 
+        path="/profile" 
         element={
           <ProtectedRoute>
             <QuestionnairePage />
@@ -86,7 +86,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/profile" element={<Navigate to="/mission-statement" replace />} />
+      <Route path="/mission-statement" element={<Navigate to="/profile" replace />} />
       <Route path="/" element={<Navigate to="/calendar/day" replace />} />
       <Route path="*" element={<Navigate to="/calendar/day" replace />} />
     </Routes>

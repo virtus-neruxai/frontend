@@ -23,7 +23,7 @@ export default function Layout({ children }) {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/calendar', label: 'Tareas', icon: Calendar },
     { path: '/character', label: 'Carácter', icon: Sparkles },
-    { path: '/mission-statement', label: 'Misión', icon: ClipboardList },
+    { path: '/profile', label: 'Perfil', icon: ClipboardList },
     { path: '/settings', label: 'Ajustes', icon: Settings },
   ];
 

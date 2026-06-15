@@ -266,7 +266,7 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
     n.onclick = () => {
       window.focus();
       if (isEmotion) window.location.href = '/character';
-      else if (isMissionReminder) window.location.href = '/mission-statement';
+      else if (isMissionReminder) window.location.href = '/character';
       else window.location.href = '/calendar';
     };
   }

@@ -330,7 +330,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
       onMarkAsRead(notification.id);
     }
     if (isEmotionNotification) window.location.href = '/character';
-    else if (isMissionReminder) window.location.href = '/mission-statement';
+    else if (isMissionReminder) window.location.href = '/character';
     else window.location.href = '/calendar';
   };
 

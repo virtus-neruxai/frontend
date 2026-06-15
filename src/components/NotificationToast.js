@@ -149,7 +149,7 @@ const Toast = ({ notification, onDismiss }) => {
                 {payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`}
               </p>
               <a
-                href="/mission-statement"
+                href="/character"
                 className="text-xs text-blue-600 dark:text-blue-400 mt-1 hover:underline inline-block"
               >
                 Ver misión →
