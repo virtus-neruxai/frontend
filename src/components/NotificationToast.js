@@ -46,10 +46,8 @@ export const NotificationToast = () => {
 const Toast = ({ notification, onDismiss }) => {
   const { payload } = notification;
   const isEmotionNotification = notification.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H';
-  const isProactive =
-    notification.type === 'PROACTIVE_TASK_SUGGESTION' ||
-    notification.type === 'PROACTIVE_ACTION_APPLIED';
-  const isRoutine = !isProactive && payload?.task_kind === 'routine';
+  const isMissionReminder = notification.type === 'MISSION_REMINDER';
+  const isRoutine = !isMissionReminder && payload?.task_kind === 'routine';
 
   const formatNextTaskTime = (nextTask) => {
     const dateStart = nextTask?.date_start;
@@ -130,11 +128,11 @@ const Toast = ({ notification, onDismiss }) => {
           <p className="font-semibold text-gray-900 dark:text-white text-sm">
             {isEmotionNotification
               ? '🫶 Seguimiento emocional'
-              : isProactive
-              ? (notification.type === 'PROACTIVE_ACTION_APPLIED' ? '✅ Cambio aplicado' : '💡 Nueva sugerencia')
+              : isMissionReminder
+              ? '🎯 Recordatorio de misión'
               : isRoutine
               ? '⏰ Rutina a punto de vencer'
-              : '⏰ Tarea próxima a finalizar'}
+              : '⏰ Tarea por empezar'}
           </p>
           {isEmotionNotification ? (
             <>
@@ -145,16 +143,16 @@ const Toast = ({ notification, onDismiss }) => {
                 {payload.message || 'Han pasado casi 24 horas desde tu registro emocional.'}
               </p>
             </>
-          ) : isProactive ? (
+          ) : isMissionReminder ? (
             <>
               <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-2">
-                {payload.message || 'El asistente tiene una nueva sugerencia para ti.'}
+                {payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`}
               </p>
               <a
-                href="/suggestions"
+                href="/mission-statement"
                 className="text-xs text-blue-600 dark:text-blue-400 mt-1 hover:underline inline-block"
               >
-                Ver sugerencias →
+                Ver misión →
               </a>
             </>
           ) : (
@@ -163,12 +161,12 @@ const Toast = ({ notification, onDismiss }) => {
                 {payload.task_title}
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Faltan {payload.minutes_left} minutos
+                Empieza en {payload.minutes_left} minutos
               </p>
             </>
           )}
 
-          {!isEmotionNotification && !isProactive && !isRoutine && payload.task_progress !== undefined && (
+          {!isEmotionNotification && !isMissionReminder && !isRoutine && payload.task_progress !== undefined && (
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
                 <span>Progreso</span>
@@ -184,7 +182,7 @@ const Toast = ({ notification, onDismiss }) => {
           )}
 
           {/* Sprint 2.1: Show next task */}
-          {!isEmotionNotification && !isProactive && payload.context?.next_task && (
+          {!isEmotionNotification && !isMissionReminder && payload.context?.next_task && (
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 flex items-center gap-1">
               <span className="font-medium">Siguiente:</span>
               <span className="truncate">{payload.context.next_task.title}</span>
@@ -192,7 +190,7 @@ const Toast = ({ notification, onDismiss }) => {
             </p>
           )}
 
-          {!isEmotionNotification && !isProactive && payload.task_domain && (
+          {!isEmotionNotification && !isMissionReminder && payload.task_domain && (
             <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
               {payload.task_domain}
             </span>

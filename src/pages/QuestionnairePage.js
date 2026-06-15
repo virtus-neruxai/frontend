@@ -31,6 +31,7 @@ const buildLikertOptions = () => [1, 2, 3, 4, 5, 6, 7];
 export default function QuestionnairePage() {
   const [template, setTemplate] = useState(null);
   const [answers, setAnswers] = useState({});
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -78,16 +79,26 @@ export default function QuestionnairePage() {
 
   const updateAnswer = (questionId, value) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    setErrors((prev) => ({ ...prev, [questionId]: null }));
   };
 
-  const toggleMultiSelect = (questionId, option) => {
+  const toggleMultiSelect = (question, option) => {
+    const currentValue = Array.isArray(answers[question.id]) ? answers[question.id] : [];
+    if (!currentValue.includes(option) && question.max_choices && currentValue.length >= question.max_choices) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [question.id]: `Selecciona como máximo ${question.max_choices} opciones.`
+      }));
+      return;
+    }
     setAnswers((prev) => {
-      const current = Array.isArray(prev[questionId]) ? prev[questionId] : [];
+      const current = Array.isArray(prev[question.id]) ? prev[question.id] : [];
       if (current.includes(option)) {
-        return { ...prev, [questionId]: current.filter((item) => item !== option) };
+        return { ...prev, [question.id]: current.filter((item) => item !== option) };
       }
-      return { ...prev, [questionId]: [...current, option] };
+      return { ...prev, [question.id]: [...current, option] };
     });
+    setErrors((prevErrors) => ({ ...prevErrors, [question.id]: null }));
   };
 
   const updateRanking = (questionId, item, rankValue) => {
@@ -95,11 +106,79 @@ export default function QuestionnairePage() {
       ...prev,
       [questionId]: { ...(prev[questionId] || {}), [item]: rankValue }
     }));
+    setErrors((prev) => ({ ...prev, [questionId]: null }));
+  };
+
+  const getRankingCount = (question) =>
+    question.validation?.ranking_count || question.ranking_items?.length || 0;
+
+  const validateQuestion = (question, value) => {
+    const validation = question.validation || {};
+    const isEmpty =
+      value == null ||
+      (typeof value === 'string' && value.trim() === '') ||
+      (Array.isArray(value) && value.length === 0) ||
+      (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0);
+
+    if (isEmpty) {
+      return validation.required ? 'Esta pregunta es obligatoria.' : null;
+    }
+
+    if (question.answer_type === 'likert_1_7') {
+      return Number.isInteger(value) && value >= 1 && value <= 7
+        ? null
+        : 'Debe ser un entero entre 1 y 7.';
+    }
+
+    if (question.answer_type === 'single_select') {
+      return question.options?.includes(value) ? null : 'La opción seleccionada no es válida.';
+    }
+
+    if (question.answer_type === 'multi_select') {
+      if (!Array.isArray(value)) return 'Debe ser una lista de opciones.';
+      if (value.some((item) => !question.options?.includes(item))) return 'Contiene opciones no válidas.';
+      if (question.max_choices && value.length > question.max_choices) {
+        return `Selecciona como máximo ${question.max_choices} opciones.`;
+      }
+      return null;
+    }
+
+    if (question.answer_type === 'ranking') {
+      const rankingCount = getRankingCount(question);
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return `Ordena exactamente ${rankingCount} elementos.`;
+      }
+      const ranks = Object.values(value).filter((rank) => rank !== '' && rank != null);
+      if (ranks.length !== rankingCount) return `Ordena exactamente ${rankingCount} elementos.`;
+      if (ranks.some((rank) => !Number.isInteger(rank))) return 'Las posiciones deben ser enteros.';
+      const expected = Array.from({ length: rankingCount }, (_, idx) => idx + 1);
+      const uniqueRanks = new Set(ranks);
+      const hasExpectedRanks = expected.every((rank) => uniqueRanks.has(rank));
+      return uniqueRanks.size === ranks.length && hasExpectedRanks
+        ? null
+        : `Usa posiciones únicas 1..${rankingCount}, sin empates ni huecos.`;
+    }
+
+    return null;
+  };
+
+  const validateAnswers = () => {
+    const nextErrors = {};
+    flattenedQuestions.forEach((question) => {
+      const message = validateQuestion(question, answers[question.id]);
+      if (message) nextErrors[question.id] = message;
+    });
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!template) return;
+    if (!validateAnswers()) {
+      toast.error('Revisa las respuestas marcadas');
+      return;
+    }
     setSaving(true);
     try {
       await profileApi.saveProfile({
@@ -130,20 +209,29 @@ export default function QuestionnairePage() {
         );
       case 'likert_1_7':
         return (
-          <RadioGroup
-            value={value?.toString() || ''}
-            onValueChange={(val) => updateAnswer(question.id, Number(val))}
-            className="grid grid-cols-7 gap-2"
-          >
-            {buildLikertOptions().map((option) => (
-              <div key={option} className="flex flex-col items-center gap-2">
-                <RadioGroupItem value={option.toString()} id={`${question.id}-${option}`} />
-                <Label htmlFor={`${question.id}-${option}`} className="text-xs text-muted-foreground">
-                  {option}
-                </Label>
+          <div className="space-y-2">
+            <RadioGroup
+              value={value?.toString() || ''}
+              onValueChange={(val) => updateAnswer(question.id, Number(val))}
+              className="grid grid-cols-7 gap-2"
+            >
+              {buildLikertOptions().map((option) => (
+                <div key={option} className="flex flex-col items-center gap-2">
+                  <RadioGroupItem value={option.toString()} id={`${question.id}-${option}`} />
+                  <Label htmlFor={`${question.id}-${option}`} className="text-xs text-muted-foreground">
+                    {option}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+            {question.anchors && (
+              <div className="grid grid-cols-3 gap-2 text-xs text-[#71717A]">
+                <span>1 · {question.anchors['1']}</span>
+                <span className="text-center">4 · {question.anchors['4']}</span>
+                <span className="text-right">7 · {question.anchors['7']}</span>
               </div>
-            ))}
-          </RadioGroup>
+            )}
+          </div>
         );
       case 'ranking':
         return (
@@ -159,7 +247,7 @@ export default function QuestionnairePage() {
                     <SelectValue placeholder="Selecciona orden" />
                   </SelectTrigger>
                   <SelectContent>
-                    {question.ranking_items.map((_, idx) => (
+                    {Array.from({ length: getRankingCount(question) }, (_, idx) => (
                       <SelectItem key={`${item}-${idx + 1}`} value={(idx + 1).toString()}>
                         {idx + 1}
                       </SelectItem>
@@ -177,7 +265,13 @@ export default function QuestionnairePage() {
               <label key={option} className="flex items-center gap-2 text-sm text-[#18181B] dark:text-white">
                 <Checkbox
                   checked={Array.isArray(value) ? value.includes(option) : false}
-                  onCheckedChange={() => toggleMultiSelect(question.id, option)}
+                  disabled={
+                    Array.isArray(value) &&
+                    !value.includes(option) &&
+                    question.max_choices &&
+                    value.length >= question.max_choices
+                  }
+                  onCheckedChange={() => toggleMultiSelect(question, option)}
                 />
                 {option}
               </label>
@@ -218,6 +312,9 @@ export default function QuestionnairePage() {
             <div key={question.id} className="space-y-3">
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-[#18181B] dark:text-white">{question.prompt}</p>
+                {question.microcopy && (
+                  <p className="text-xs text-[#71717A]">{question.microcopy}</p>
+                )}
                 <div className="flex flex-wrap gap-2 text-xs text-[#71717A]">
                   <span className="rounded-full bg-[#F4F4F5] px-2 py-1">
                     {QUESTION_TYPE_LABELS[question.answer_type] || question.answer_type}
@@ -225,9 +322,17 @@ export default function QuestionnairePage() {
                   <span className="rounded-full bg-[#F4F4F5] px-2 py-1">
                     Objetivo: {question.objective}
                   </span>
+                  {question.validation?.hint && (
+                    <span className="rounded-full bg-[#F4F4F5] px-2 py-1">
+                      Formato: {question.validation.hint}
+                    </span>
+                  )}
                 </div>
               </div>
               {renderQuestionInput(question)}
+              {errors[question.id] && (
+                <p className="text-xs font-medium text-red-600">{errors[question.id]}</p>
+              )}
             </div>
           ))}
         </CardContent>

@@ -4,8 +4,8 @@ import { getProfileName } from '../lib/profileUtils';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import TaskDraftModal from '../components/TaskDraftModal';
-import EmotionDraftModal from '../components/EmotionDraftModal';
 import MissionDraftModal from '../components/MissionDraftModal';
+import EmotionPicker from '../components/EmotionPicker';
 import ConversationHistory from '../components/chat/ConversationHistory';
 import { CharacterStats } from '../presentation/components/character/CharacterStats';
 import { MissionsList } from '../presentation/components/character/MissionsList';
@@ -71,7 +71,6 @@ export default function CharacterPageRefactored() {
     nightlyReviewResult,
     showConfirmModal,
     proposedMissions,
-    confirmingMissions,
     showScheduleModal,
     scheduleDateTime,
     missionStatsHistory,
@@ -80,11 +79,11 @@ export default function CharacterPageRefactored() {
     generateMissions,
     performNightlyReview,
     confirmMissions,
+    rejectProposedMission,
     completeMission,
     deleteMission,
     scheduleMission,
     openScheduleModal,
-    updateProposedMission,
     fetchMissionEvolution,
     setShowConfirmModal,
     setShowScheduleModal,
@@ -103,18 +102,14 @@ export default function CharacterPageRefactored() {
   
   const {
     showTaskDraftModal,
-    showEmotionDraftModal,
     showMissionDraftModal,
     currentDraftData,
     openDraftModal,
     confirmTaskDraft,
     rejectTaskDraft,
-    confirmEmotionDraft,
-    rejectEmotionDraft,
     confirmMissionDraft,
     rejectMissionDraft,
     setShowTaskDraftModal,
-    setShowEmotionDraftModal,
     setShowMissionDraftModal,
   } = useDrafts();
   
@@ -128,11 +123,14 @@ export default function CharacterPageRefactored() {
   const [tasks, setTasks] = useState([]);
   const [selectedMission, setSelectedMission] = useState(null);
   const [reflectionText, setReflectionText] = useState('');
+  const [missionReflectionText, setMissionReflectionText] = useState('');
   const [activeTab, setActiveTab] = useState('missions');
   const [selectedDate, setSelectedDate] = useState(''); // For reflection filter
+  const [reflectionHistoryMode, setReflectionHistoryMode] = useState('journal');
   const [aiResponse, setAiResponse] = useState(null); // AI mentor response
   const [statChanges, setStatChanges] = useState(null); // Character stat changes
   const [dailyReflectionsCount, setDailyReflectionsCount] = useState(0); // Today's reflection count
+  const [emotionSnapshot, setEmotionSnapshot] = useState(null); // Selected emotion for next reflection
   const [isSubmittingReflection, setIsSubmittingReflection] = useState(false); // Prevent duplicate reflection submits
   const reflectionSubmitLockRef = useRef(false); // Immediate lock to avoid same-tick double clicks
   const [pendingReflectionDraft, setPendingReflectionDraft] = useState(null); // Deferred draft CTA for diary flow
@@ -165,7 +163,6 @@ export default function CharacterPageRefactored() {
   const formatPendingDraftType = (type) => {
     if (type === 'task') return 'tarea';
     if (type === 'mission') return 'misión';
-    if (type === 'emotion') return 'registro emocional';
     return 'propuesta';
   };
 
@@ -189,21 +186,34 @@ export default function CharacterPageRefactored() {
         fetchMissionEvolution({ fromDate: missionFromDate, toDate: missionToDate }),
       ]);
       
-      // Fetch reflections and tasks
-      const [reflectionsRes, tasksRes] = await Promise.all([
-        selectedDate ? reflectionsApi.getAll(selectedDate) : reflectionsApi.getAll(),
+      const reflectionDateParams = selectedDate ? { date: selectedDate } : {};
+      const [journalReflectionsRes, tasksRes] = await Promise.all([
+        reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'journal' }),
         tasksApi.getAll()
       ]);
-      setReflections(reflectionsRes.data);
+
+      let displayReflections = journalReflectionsRes.data;
+      if (reflectionHistoryMode === 'linked') {
+        const [taskReflectionsRes, missionReflectionsRes] = await Promise.all([
+          reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'task' }),
+          reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'mission' }),
+        ]);
+        displayReflections = [
+          ...(taskReflectionsRes.data || []),
+          ...(missionReflectionsRes.data || []),
+        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      }
+
+      setReflections(displayReflections);
       setTasks(tasksRes.data);
       
-      // Calculate reflection KPIs
-      calculateReflectionKPIs(reflectionsRes.data, activeStatsInfo || {});
+      // Calculate diary KPIs only from journal reflections.
+      calculateReflectionKPIs(journalReflectionsRes.data, activeStatsInfo || {});
       
       // Count today's reflections (without date filter)
       if (!selectedDate) {
         const today = new Date().toISOString().split('T')[0];
-        const todayReflections = reflectionsRes.data.filter(r => 
+        const todayReflections = journalReflectionsRes.data.filter(r =>
           r.created_at.split('T')[0] === today
         );
         setDailyReflectionsCount(todayReflections.length);
@@ -219,6 +229,7 @@ export default function CharacterPageRefactored() {
     fetchMissionEvolution,
     calculateReflectionKPIs,
     selectedDate,
+    reflectionHistoryMode,
     statsFromDate,
     statsToDate,
     missionFromDate,
@@ -238,8 +249,9 @@ export default function CharacterPageRefactored() {
       const response = await completeMission(
         missionSnapshot.id,
         success,
-        reflectionText || null,
-        reason
+        missionReflectionText || null,
+        reason,
+        missionSnapshot
       );
       
       if (response.new_stats) {
@@ -247,22 +259,13 @@ export default function CharacterPageRefactored() {
       }
       
       setSelectedMission(null);
-      setReflectionText('');
-
-      if (!success && response?.can_retry) {
-        openScheduleModal(missionSnapshot, response?.suggested_reschedule || null);
-        toast.info('Reprograma la misión para continuar con el siguiente intento.');
-      }
+      setMissionReflectionText('');
 
       await fetchAllData();
     } catch (error) {
       console.error('Error completing mission:', error);
     }
   };
-
-  const selectedMissionCanRetry = selectedMission
-    ? (selectedMission.attempt_number || 1) < (selectedMission.max_attempts || 3)
-    : false;
 
   // Reflection submission handler
   const handleSubmitReflection = async () => {
@@ -274,7 +277,7 @@ export default function CharacterPageRefactored() {
     setPendingReflectionDraft(null);
     
     try {
-      const response = await reflectionsApi.create({ content: reflectionText });
+      const response = await reflectionsApi.create({ content: reflectionText, emotion_snapshot: emotionSnapshot || undefined });
       const responseData = response.data;
       
       // Show AI response and stat changes
@@ -286,7 +289,6 @@ export default function CharacterPageRefactored() {
         const actionTypeMap = {
           SHOW_TASK_CONFIRMATION_MODAL: 'task',
           SHOW_MISSION_CONFIRMATION_MODAL: 'mission',
-          SHOW_EMOTION_CONFIRMATION_MODAL: 'emotion',
         };
         const draftType = actionTypeMap[responseData.ui_action.action];
         if (draftType) {
@@ -309,7 +311,8 @@ export default function CharacterPageRefactored() {
       }
       
       setReflectionText('');
-      
+      setEmotionSnapshot(null);
+
       // Refresh character stats (reflections may update stats)
       await fetchCharacter();
       
@@ -371,15 +374,24 @@ export default function CharacterPageRefactored() {
     }
   };
 
-  // Confirm missions handler
-  const handleConfirmMissions = async () => {
-    await confirmMissions(fetchAllData);
-  };
-
   // Schedule mission handler
   const handleScheduleMission = async () => {
     await scheduleMission(fetchAllData);
   };
+
+  const currentGeneratedMission = proposedMissions[0] || null;
+  const generatedMissionDraftData = currentGeneratedMission ? {
+    data: {
+      ...currentGeneratedMission,
+      addToCalendar: currentGeneratedMission.addToCalendar !== false,
+      start_date: currentGeneratedMission.scheduled_datetime || currentGeneratedMission.start_date,
+      due_date: currentGeneratedMission.expires_at || currentGeneratedMission.due_date,
+    },
+    metadata: {
+      agent_reasoning: currentGeneratedMission.agent_reasoning,
+      confidence: currentGeneratedMission.confidence,
+    },
+  } : null;
 
   if (loading) {
     return (
@@ -473,7 +485,10 @@ export default function CharacterPageRefactored() {
               nightlyReviewLoading={nightlyReviewLoading}
               onGenerateMissions={generateMissions}
               onNightlyReview={performNightlyReview}
-              onSelectMission={setSelectedMission}
+              onSelectMission={(mission) => {
+                setMissionReflectionText('');
+                setSelectedMission(mission);
+              }}
               onScheduleMission={openScheduleModal}
               onDeleteMission={deleteMission}
               statsInfo={statsInfo}
@@ -559,8 +574,11 @@ export default function CharacterPageRefactored() {
                     value={reflectionText}
                     onChange={(e) => setReflectionText(e.target.value)}
                     disabled={isSubmittingReflection}
-                    className="min-h-[120px] mb-4"
+                    className="min-h-[120px] mb-3"
                   />
+                  <div className="mb-4">
+                    <EmotionPicker value={emotionSnapshot} onChange={setEmotionSnapshot} />
+                  </div>
                   <Button
                     onClick={handleSubmitReflection}
                     disabled={!reflectionText.trim() || isSubmittingReflection}
@@ -619,6 +637,38 @@ export default function CharacterPageRefactored() {
 
                 {/* Date Filter */}
                 <div className="border-t pt-4">
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        Historial de Reflexiones
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {reflectionHistoryMode === 'journal'
+                          ? 'Entradas libres del diario'
+                          : 'Comentarios guardados desde tareas y misiones'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setReflectionHistoryMode('journal')}
+                        className={reflectionHistoryMode === 'journal' ? 'border-[#F97316] text-[#F97316] bg-[#FFF7ED]' : ''}
+                      >
+                        Diario
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setReflectionHistoryMode('linked')}
+                        className={reflectionHistoryMode === 'linked' ? 'border-[#F97316] text-[#F97316] bg-[#FFF7ED]' : ''}
+                      >
+                        Tareas y misiones
+                      </Button>
+                    </div>
+                  </div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Filtrar por fecha:
                   </label>
@@ -645,7 +695,7 @@ export default function CharacterPageRefactored() {
                 {reflections.length > 0 && (
                   <div className="border-t pt-6">
                     <h3 className="text-sm font-semibold text-gray-700 mb-4">
-                      Historial de Reflexiones ({reflections.length})
+                      {reflectionHistoryMode === 'journal' ? 'Entradas del diario' : 'Reflexiones de tareas y misiones'} ({reflections.length})
                       {selectedDate && <span className="text-gray-500 font-normal"> - {new Date(selectedDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
                     </h3>
                     <div className="space-y-4 max-h-[500px] overflow-y-auto">
@@ -664,7 +714,34 @@ export default function CharacterPageRefactored() {
                                 minute: '2-digit'
                               })}
                             </span>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              {reflectionHistoryMode === 'linked' && (
+                                <Badge variant="outline" className="text-xs bg-orange-50 border-orange-300 text-orange-700">
+                                  {reflection.reflection_type === 'mission' ? 'Misión' : 'Tarea'}
+                                </Badge>
+                              )}
+                              {reflection.emotion_snapshot && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    reflection.emotion_snapshot.polarity === 'positive'
+                                      ? 'bg-green-50 border-green-300 text-green-700'
+                                      : reflection.emotion_snapshot.polarity === 'negative'
+                                      ? 'bg-red-50 border-red-300 text-red-700'
+                                      : 'bg-blue-50 border-blue-300 text-blue-700'
+                                  }`}
+                                >
+                                  {reflection.emotion_snapshot.emotion} · {reflection.emotion_snapshot.intensity}/5
+                                </Badge>
+                              )}
+                            </div>
                           </div>
+
+                          {reflectionHistoryMode === 'linked' && reflection.source_item_title && (
+                            <p className="text-xs font-medium text-gray-500 mb-2">
+                              Origen: {reflection.source_item_title}
+                            </p>
+                          )}
                           
                           <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">
                             {reflection.content}
@@ -700,7 +777,11 @@ export default function CharacterPageRefactored() {
                 
                 {reflections.length === 0 && (
                   <p className="text-sm text-gray-500 text-center py-8">
-                    {selectedDate ? 'No hay reflexiones para esta fecha' : 'No hay reflexiones guardadas'}
+                    {selectedDate
+                      ? 'No hay reflexiones para esta fecha'
+                      : reflectionHistoryMode === 'journal'
+                      ? 'No hay reflexiones guardadas'
+                      : 'No hay reflexiones de tareas o misiones guardadas'}
                   </p>
                 )}
               </CardContent>
@@ -756,17 +837,28 @@ export default function CharacterPageRefactored() {
         </Tabs>
 
         {/* Mission Completion Dialog */}
-        <Dialog open={!!selectedMission} onOpenChange={(open) => !open && setSelectedMission(null)}>
+        <Dialog
+          open={!!selectedMission}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedMission(null);
+              setMissionReflectionText('');
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Completar Misión</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm">{selectedMission?.title}</p>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                Comentario o reflexión
+              </label>
               <Textarea
-                placeholder="Reflexión opcional..."
-                value={reflectionText}
-                onChange={(e) => setReflectionText(e.target.value)}
+                placeholder="¿Qué observaste, aprendiste o sentiste al hacer esto?"
+                value={missionReflectionText}
+                onChange={(e) => setMissionReflectionText(e.target.value)}
               />
             </div>
             <DialogFooter className="flex gap-2">
@@ -776,7 +868,7 @@ export default function CharacterPageRefactored() {
                 className="flex-1"
               >
                 <XCircle className="w-4 h-4 mr-2" />
-                {selectedMissionCanRetry ? 'Reprogramar' : 'Fallida'}
+                Fallida
               </Button>
               <Button
                 onClick={() => handleCompleteMission(true)}
@@ -824,20 +916,20 @@ export default function CharacterPageRefactored() {
         </Dialog>
 
         {/* Draft Modals */}
+        <MissionDraftModal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          draftData={generatedMissionDraftData}
+          onConfirm={(editedData) => confirmMissions(editedData, fetchAllData)}
+          onReject={rejectProposedMission}
+        />
+
         <TaskDraftModal
           isOpen={showTaskDraftModal}
           onClose={() => setShowTaskDraftModal(false)}
           draftData={currentDraftData}
           onConfirm={(editedData) => confirmTaskDraft(editedData, fetchAllData)}
           onReject={rejectTaskDraft}
-        />
-
-        <EmotionDraftModal
-          isOpen={showEmotionDraftModal}
-          onClose={() => setShowEmotionDraftModal(false)}
-          draftData={currentDraftData}
-          onConfirm={(editedData) => confirmEmotionDraft(editedData, fetchAllData)}
-          onReject={rejectEmotionDraft}
         />
 
         <MissionDraftModal

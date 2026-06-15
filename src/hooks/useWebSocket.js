@@ -218,33 +218,31 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
   // Only show if tab is hidden and LOW priority or above
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
     const isEmotion = notification.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H';
-    const isProactive =
-      notification.type === 'PROACTIVE_TASK_SUGGESTION' ||
-      notification.type === 'PROACTIVE_ACTION_APPLIED';
+    const isMissionReminder = notification.type === 'MISSION_REMINDER';
 
     let title;
     if (isEmotion) title = '🫶 Seguimiento emocional';
-    else if (isProactive) title = '💡 Nueva sugerencia proactiva';
-    else title = '⏰ Tarea próxima a finalizar';
+    else if (isMissionReminder) title = '🎯 Recordatorio de misión';
+    else title = '⏰ Tarea por empezar';
 
     let body = '';
     if (isEmotion) {
       body =
         payload.message ||
         `Hace casi 24 horas registraste ${String(payload.emotion || 'una emoción').toLowerCase()}.`;
-    } else if (isProactive) {
-      body = payload.message || 'El asistente tiene una nueva sugerencia para ti.';
+    } else if (isMissionReminder) {
+      body = payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`;
     } else {
-      body = `"${payload.task_title}" faltan ${payload.minutes_left} minutos`;
+      body = `"${payload.task_title}" empieza en ${payload.minutes_left} minutos`;
       if (payload.task_progress !== undefined) {
         body += ` (${payload.task_progress}% completado)`;
       }
     }
 
     const tag = isEmotion
-      ? `emotion-${payload.emotion_id || notification.id}`
-      : isProactive
-      ? `proactive-${payload.suggestion_id || notification.id}`
+      ? `emotion-${payload.reflection_id || notification.id}`
+      : isMissionReminder
+      ? `mission-${payload.mission_id || notification.id}`
       : payload.task_id;
 
     const options = {
@@ -267,8 +265,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
 
     n.onclick = () => {
       window.focus();
-      if (isEmotion) window.location.href = '/emotions';
-      else if (isProactive) window.location.href = '/suggestions';
+      if (isEmotion) window.location.href = '/character';
+      else if (isMissionReminder) window.location.href = '/mission-statement';
       else window.location.href = '/calendar';
     };
   }
@@ -278,24 +276,23 @@ function isSupportedNotificationType(type) {
   return (
     type === 'TASK_DUE_SOON' ||
     type === 'EMOTION_NEGATIVE_FOLLOWUP_24H' ||
-    type === 'PROACTIVE_TASK_SUGGESTION' ||
-    type === 'PROACTIVE_ACTION_APPLIED'
+    type === 'MISSION_REMINDER'
   );
 }
 
 function buildNotificationFromWsData(data) {
   const isEmotion = data.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H';
-  const isProactive = data.type === 'PROACTIVE_TASK_SUGGESTION' || data.type === 'PROACTIVE_ACTION_APPLIED';
+  const isMissionReminder = data.type === 'MISSION_REMINDER';
   const baseId = isEmotion
-    ? data.emotion_id || data.notification_id
-    : isProactive
-    ? data.suggestion_id || data.notification_id
+    ? data.reflection_id || data.notification_id
+    : isMissionReminder
+    ? data.mission_id || data.notification_id
     : data.task_id;
 
   let payload;
   if (isEmotion) {
     payload = {
-      emotion_id: data.emotion_id,
+      reflection_id: data.reflection_id,
       emotion: data.emotion || 'Emoción',
       emotion_note: data.emotion_note,
       message: data.message,
@@ -305,11 +302,11 @@ function buildNotificationFromWsData(data) {
       priority: 'low',
       context: data.context || {},
     };
-  } else if (isProactive) {
+  } else if (isMissionReminder) {
     payload = {
-      suggestion_id: data.suggestion_id,
-      suggestion_type: data.suggestion_type,
-      message: data.summary || data.message || 'Nueva sugerencia proactiva disponible',
+      mission_id: data.mission_id,
+      mission_title: data.mission_title,
+      message: data.message || `Recuerda tu misión: ${data.mission_title || ''}`,
       priority: data.priority || 'medium',
       context: data.context || {},
     };
@@ -319,7 +316,7 @@ function buildNotificationFromWsData(data) {
       task_title: data.task_title || 'Sin título',
       task_domain: data.task_domain,
       task_progress: data.task_progress,
-      date_end: data.date_end,
+      date_start: data.date_start,
       minutes_left: data.minutes_left,
       message:
         data.summary ||

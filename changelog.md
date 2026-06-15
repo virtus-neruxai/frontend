@@ -2,6 +2,160 @@
 
 # This changelog is a reference for the changes made to the frontend that need to be applied to the mobile app in the future.
 
+## [Sprint-6] Mentor Background Dashboard — 2026-03-27
+
+### Summary
+Dashboard now includes a dedicated `Mentor` tab backed directly by `proactive-orchestrator-service`. The tab shows the active mentor profile, mentor KPIs, objective cards, coverage/progress charts, recent proposal episodes, and manual controls to pause, hide, restore, reprioritize, or mark objectives/items as achieved.
+
+Important source-of-truth note:
+- The mentor tab intentionally reads from `/proactive-api/v1/mentor/*`, not from `graph-query-service`, to avoid stale graph projections and ensure the UI always reflects the latest regenerated mentor profile.
+
+---
+
+### New files
+
+| File | Description |
+|------|-------------|
+| `frontend/src/presentation/components/dashboard/MentorDashboardTab.js` | Full mentor dashboard tab UI. Renders profile header, KPI row, progress/episode charts, coverage/evidence charts, objective cards, recent episodes feed, and hidden-object restore controls. |
+
+---
+
+### Frontend modified files
+
+#### `frontend/src/pages/DashboardPage.js`
+- Added a new `Mentor` tab to the Dashboard tab set.
+- Wired the page to render `MentorDashboardTab`.
+- Passed mentor state and patch handlers from `useDashboard` into the new tab:
+  - `mentorDashboard`
+  - `mentorProfile`
+  - `mentorLoading`
+  - `mentorActionKey`
+  - `updateMentorObjective`
+  - `updateMentorItem`
+
+#### `frontend/src/presentation/viewmodels/useDashboard.js`
+- Added mentor-specific state:
+  - `mentorDashboard`
+  - `mentorProfile`
+  - `mentorLoading`
+  - `mentorActionKey`
+- Added `fetchMentorDashboard()` which loads in parallel:
+  - `GET /proactive-api/v1/mentor/dashboard`
+  - `GET /proactive-api/v1/mentor/profile`
+- The mentor tab refreshes automatically on mount and whenever the dashboard date range changes.
+- Added mutation handlers:
+  - `updateMentorObjective(objectiveKey, patch, actionKey?)`
+  - `updateMentorItem(itemKey, patch, actionKey?)`
+- After each objective/item patch, the hook refetches the mentor dashboard and profile so charts, KPIs, and cards stay in sync.
+
+#### `frontend/src/lib/api.js`
+- Added proactive mentor endpoints under `proactiveApi`:
+  - `getMentorProfile()`
+  - `getMentorDashboard(params)`
+  - `getMentorEpisodes(params)`
+  - `patchMentorObjective(objectiveKey, data)`
+  - `patchMentorItem(itemKey, data)`
+- Note: `graphAnalyticsApi.getMentorDashboard()` and `getMentorObjectiveDetail()` may still exist for graph analytics, but the Dashboard mentor UI does not use them as its primary source.
+
+#### `frontend/src/presentation/components/dashboard/MentorDashboardTab.js`
+- Added mentor profile header showing:
+  - active mentor profile name and emoji
+  - profile description
+  - policy caps (`max_active_objectives`, `max_items_per_objective`)
+  - last profile update timestamp
+- Added KPI row:
+  - active objectives
+  - covered items
+  - consistent items
+  - stalled items
+  - proposal acceptance rate + average objective progress
+- Added charts:
+  - progress timeseries
+  - episode timeseries
+  - coverage by objective
+  - evidence mix
+- Added objective cards with:
+  - title, status badge, optional pinned priority badge
+  - summary and domains
+  - progress and coverage bars
+  - next gap and last signal timestamp
+- Added item rows inside each objective with:
+  - item status badge
+  - strategy type badge
+  - progress and coverage bars
+  - last signal timestamp
+- Added manual controls for objectives:
+  - set priority (`auto` or `1..max_active_objectives`)
+  - pause / reactivate
+  - mark as achieved
+  - hide
+- Added manual controls for items:
+  - change status
+  - mark as achieved
+  - hide
+- Added hidden elements restore panel:
+  - restore hidden objectives
+  - restore hidden items
+- Added recent episodes feed showing:
+  - status
+  - proposal family / suggestion type
+  - summary/message
+  - linked objective title when available
+  - proposal cluster and timestamp
+
+---
+
+### Backend API dependency for mobile
+
+The mobile app will need these proactive mentor endpoints:
+
+- `GET /proactive-api/v1/mentor/profile`
+- `GET /proactive-api/v1/mentor/dashboard?days_back=<n>`
+- `GET /proactive-api/v1/mentor/episodes?objective_key=&days_back=&limit=`
+- `PATCH /proactive-api/v1/mentor/objectives/{objective_key}`
+- `PATCH /proactive-api/v1/mentor/items/{item_key}`
+
+Current Dashboard usage:
+- The mentor UI uses `days_back` derived from the Dashboard range selector (`7`, `30`, `90`).
+- Objective/item patches are optimistic only in the sense of showing a busy state; the canonical post-patch state is always reloaded from backend.
+
+Patch examples:
+
+```json
+{ "pinned_priority": 2 }
+```
+
+```json
+{ "status": "paused" }
+```
+
+```json
+{ "hidden": true }
+```
+
+```json
+{ "hidden": false }
+```
+
+---
+
+### Mobile migration notes
+
+- Add a `Mentor` section/tab inside Dashboard rather than a separate page first.
+- Use `GET /proactive-api/v1/mentor/dashboard` as the main dataset for visualizations and KPI cards.
+- Load `GET /proactive-api/v1/mentor/profile` alongside it to power hidden-item restoration and manual control state.
+- Keep the active mentor profile label visible (`stoic`, `spiritual`, `calm`, `performance`, `student`).
+- Include at minimum:
+  - KPI row
+  - objective coverage chart
+  - progress chart
+  - objective cards with item list
+  - recent episodes feed
+  - manual controls for hide/pause/achieved/priority
+- Do not use `graph-query-service` as the source of truth for the mentor tab unless a future product decision explicitly switches back to a graph-projected view.
+
+---
+
 ## [Sprint-5] Proactive Suggestions Page — 2026-03-10
 
 ### Summary

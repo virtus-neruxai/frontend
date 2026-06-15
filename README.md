@@ -21,9 +21,6 @@ src/
 │   │   ├── useMissions.js
 │   │   ├── useAgentChat.js
 │   │   ├── useDrafts.js
-│   │   ├── useArena.js
-│   │   ├── usePvPBattles.js
-│   │   ├── useEmotions.js
 │   │   ├── useDashboard.js
 │   │   └── useCalendar.js
 │   │
@@ -31,24 +28,12 @@ src/
 │       ├── character/   # Character page components
 │       │   ├── CharacterStats.js
 │       │   └── MissionsList.js
-│       ├── arena/       # Arena page components
-│       │   ├── LeaderboardCard.js
-│       │   ├── MissionCard.js
-│       │   ├── SubmissionsList.js
-│       │   ├── PlayerProfileModal.js
-│       │   └── ReportModal.js
-│       ├── emotions/    # Emotions page components
-│       │   ├── EmotionCalendar.js
-│       │   ├── RecentEmotionsCard.js
-│       │   ├── AddEmotionModal.js
-│       │   ├── EditEmotionModal.js
-│       │   └── DayDetailModal.js
 │       ├── dashboard/   # Dashboard page components
 │       │   ├── KPICard.js
+│       │   ├── NorthStarCard.jsx
 │       │   ├── StatusDistributionChart.js
 │       │   ├── StatusBarChart.js
-│       │   ├── TimeseriesChart.js
-│       │   └── EventsList.js
+│       │   └── TimeseriesChart.js
 │       └── calendar/    # Calendar page components
 │           ├── CalendarNavigation.js
 │           ├── ViewSelector.js
@@ -56,23 +41,20 @@ src/
 │           └── StatusLegend.js
 │
 ├── pages/               # Page components
-│   ├── CharacterPage.js   # 312 lines (refactored)
-│   ├── ArenaPage.js       # 250 lines (refactored)
-│   ├── EmotionsPage.js    # 180 lines (refactored)
-│   ├── DashboardPage.js   # 156 lines (refactored)
-│   └── CalendarPage.js    # 93 lines (refactored)
+│   ├── CharacterPage.js   # Character + missions
+│   ├── DashboardPage.js   # Dashboard + NorthStarCard
+│   ├── CalendarPage.js    # Calendar view
+│   ├── MissionsPage.js    # Missions list
+│   └── ReflectionsPage.js # Reflections
 │
 ├── components/          # Shared UI components
 │   ├── Layout.js
 │   ├── TaskModal.js
 │   ├── TaskDraftModal.js
-│   ├── EmotionDraftModal.js
 │   └── ui/              # shadcn/ui components
 │
 ├── lib/                 # API clients & utilities
-│   ├── api.js           # Main API client
-│   ├── emotionApi.js
-│   └── arenaApi.js
+│   └── api.js           # Main API client (tasksApi, missionsApi, profileApi, etc.)
 │
 ├── context/             # React contexts
 │   └── AuthContext.js
@@ -164,95 +146,6 @@ const {
 } = useDrafts();
 ```
 
-### useArena
-Manages arena info and room leaderboard:
-```javascript
-const {
-  loading,
-  arenaInfo,
-  roomInfo,
-  sortedLeaderboard,
-  membersWithScores,
-  refresh
-} = useArena();
-```
-
-**Portable to Kotlin:**
-```kotlin
-class ArenaViewModel : ViewModel() {
-    val loading: StateFlow<Boolean>
-    val arenaInfo: StateFlow<ArenaInfo?>
-    val roomInfo: StateFlow<RoomInfo?>
-    val sortedLeaderboard: StateFlow<List<LeaderboardEntry>>
-    val membersWithScores: StateFlow<List<MemberWithScore>>
-    fun refresh()
-}
-```
-
-### usePvPBattles
-Manages PvP battles, submissions, and voting:
-```javascript
-const {
-  mission,
-  submissions,
-  results,
-  userHasVoted,
-  showSubmissionForm,
-  submissionText,
-  handleSubmit,
-  handleVote,
-  handleReport,
-  ...
-} = usePvPBattles();
-```
-
-**Portable to Kotlin:**
-```kotlin
-class PvPBattlesViewModel : ViewModel() {
-    val mission: StateFlow<Mission?>
-    val submissions: StateFlow<List<Submission>>
-    val results: StateFlow<Results?>
-    val userHasVoted: StateFlow<Boolean>
-    suspend fun submitReflection(text: String, imageBase64: String?)
-    suspend fun vote(targetUserId: Int)
-    suspend fun reportSubmission(submissionId: Int, reason: String)
-}
-```
-
-### useEmotions
-Manages emotions tracking and calendar navigation:
-```javascript
-const {
-  view,
-  currentDate,
-  entries,
-  groupedEntries,
-  daysInRange,
-  handlePrev,
-  handleNext,
-  createEmotion,
-  updateEmotion,
-  deleteEmotion,
-  ...
-} = useEmotions();
-```
-
-**Portable to Kotlin:**
-```kotlin
-class EmotionsViewModel : ViewModel() {
-    val view: StateFlow<ViewType>
-    val currentDate: StateFlow<Date>
-    val entries: StateFlow<List<Emotion>>
-    val groupedEntries: StateFlow<Map<String, List<Emotion>>>
-    val daysInRange: StateFlow<List<Date>>
-    fun navigatePrev()
-    fun navigateNext()
-    suspend fun createEmotion(payload: EmotionPayload)
-    suspend fun updateEmotion(id: Int, payload: EmotionPayload)
-    suspend fun deleteEmotion(id: Int)
-}
-```
-
 ### useDashboard
 Manages dashboard statistics and events:
 ```javascript
@@ -267,6 +160,9 @@ const {
   ...
 } = useDashboard();
 ```
+
+Notas actuales:
+- Lee stats desde `GET /api/v1/stats/summary` y `/stats/timeseries` (backend).
 
 **Portable to Kotlin:**
 ```kotlin
@@ -344,56 +240,8 @@ Displays missions with action buttons.
 - `onSelectMission`: Callback
 - `onDeleteMission`: Callback
 
-### LeaderboardCard
-Displays room leaderboard with rankings.
-
-**Props:**
-- `roomInfo`: Room data
-- `arenaInfo`: Current user info
-- `membersWithScores`: Sorted members
-- `onPlayerClick`: Player click callback
-
-### MissionCard (Arena)
-Displays daily arena mission with submission form.
-
-**Props:**
-- `mission`: Mission data
-- `showSubmissionForm`: Boolean
-- `submissionText`: Controlled value
-- `onSubmit`: Submit callback
-- ...other form handlers
-
-### SubmissionsList
-Displays arena submissions/reflexiones with voting.
-
-**Props:**
-- `mission`: Mission data
-- `submissions`: Array of submissions
-- `userHasVoted`: Boolean
-- `onVote`: Vote callback
-- `onReport`: Report callback
-
-### EmotionCalendar
-Displays emotions in calendar view (month/week/day).
-
-**Props:**
-- `view`: 'month' | 'week' | 'day'
-- `currentDate`: Date object
-- `daysInRange`: Array of dates
-- `groupedEntries`: Emotions grouped by date
-- `onDayClick`: Day click callback
-- `onEmojiClick`: Emoji click callback
-
-### RecentEmotionsCard
-Displays recent emotions in sidebar.
-
-**Props:**
-- `recentEntries`: Array of recent emotions
-
-### AddEmotionModal / EditEmotionModal / DayDetailModal
-Modals for creating, editing, and viewing emotions by day.
-
-**Props:** Standard modal props (open, onOpenChange, onSubmit, etc.)
+### NorthStarCard
+Muestra misión activa, estrella norte del perfil y primera tarea del día. Auto-fetch interno; retorna null si todo está vacío.
 
 ### KPICard
 Displays key performance indicator with icon and value.
@@ -412,16 +260,6 @@ Recharts components for visualizing task statistics.
 **Props:** 
 - `summary`: Task summary data
 - `timeseries`: Time-series data
-
-### EventsList
-Filtered list of task events with date and type filters.
-
-**Props:**
-- `taskEvents`: Array of events
-- `eventsLoading`: Loading state
-- `eventsDate`, `setEventsDate`: Date filter
-- `eventType`, `setEventType`: Type filter
-- `clearEventFilters`: Clear filters callback
 
 ### CalendarNavigation / ViewSelector / CalendarGrid / StatusLegend
 Calendar page components for navigation, view selection, FullCalendar grid, and status legend.
@@ -527,37 +365,10 @@ Build complex UIs from simple components:
 - **Components**: 50-150 lines
 - **Pages**: 100-300 lines
 
-### Current Status
-✅ `useCharacter.js`: 71 lines  
-✅ `useMissions.js`: 298 lines  
-✅ `useAgentChat.js`: 68 lines  
-✅ `useDrafts.js`: 147 lines  
-✅ `CharacterStats.js`: 131 lines  
-✅ `MissionsList.js`: 196 lines  
-✅ `CharacterPageRefactored.js`: 312 lines  
-❌ `CharacterPage.js` (original): 1,474 lines → **needs migration**
-
 ## 🎯 Next Steps
 
-1. **Migrate Remaining Pages**:
-   - `ArenaPage.js` (805 lines) → split into hooks + components
-   - `EmotionsPage.js` (777 lines) → split into hooks + components
-   - `DashboardPage.js` (513 lines) → split into hooks + components
-
-2. **Add Domain Layer**:
-   - Create domain models (`Character.js`, `Mission.js`, `Task.js`)
-   - Create use cases (`GetCharacterUseCase.js`, `CompleteMissionUseCase.js`)
-   - Create repository interfaces
-
-3. **TypeScript Migration**:
-   - Convert `.js` → `.ts` for type safety
-   - Define interfaces for all models
-   - Easier conversion to Kotlin/Swift
-
-4. **Testing**:
-   - Unit tests for hooks (80% coverage target)
-   - Component tests with React Testing Library
-   - E2E tests with Cypress
+1. **TypeScript Migration**: Convert `.js` → `.ts` for type safety
+2. **Testing**: Unit tests for hooks; component tests with React Testing Library
 
 ## 🤝 Contributing
 

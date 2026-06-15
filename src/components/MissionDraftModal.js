@@ -53,6 +53,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
         estimated_minutes: draftData.data.estimated_minutes || 30,
         target_stats: draftData.data.target_stats || [],
         stat_rewards: draftData.data.stat_rewards || {},
+        addToCalendar: draftData.data.addToCalendar !== false,
         start_date: draftData.data.start_date ? formatDateTimeLocal(draftData.data.start_date) : '',
         due_date: draftData.data.due_date ? formatDateTimeLocal(draftData.data.due_date) : ''
       });
@@ -269,21 +270,33 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
           </div>
 
           {/* Dates */}
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!!editedData.addToCalendar}
+              onChange={(e) => setEditedData({ ...editedData, addToCalendar: e.target.checked })}
+              className="h-4 w-4 accent-[#C1502E]"
+            />
+            Añadir al calendario
+          </label>
+
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="start_date">Fecha en Calendario *</Label>
-              <Input
-                id="start_date"
-                type="datetime-local"
-                value={editedData.start_date}
-                onChange={(e) => setEditedData({ ...editedData, start_date: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                {editedData.start_date
-                  ? <><Calendar className="w-3 h-3 inline mr-1" />{formatDisplayDate(new Date(editedData.start_date).toISOString())}</>
-                  : 'La tarea de la misión se creará en esta fecha'}
-              </p>
-            </div>
+            {editedData.addToCalendar && (
+              <div className="space-y-2">
+                <Label htmlFor="start_date">Fecha en Calendario *</Label>
+                <Input
+                  id="start_date"
+                  type="datetime-local"
+                  value={editedData.start_date}
+                  onChange={(e) => setEditedData({ ...editedData, start_date: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {editedData.start_date
+                    ? <><Calendar className="w-3 h-3 inline mr-1" />{formatDisplayDate(new Date(editedData.start_date).toISOString())}</>
+                    : 'La tarea de la misión se creará en esta fecha'}
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="due_date">Vencimiento</Label>
@@ -313,7 +326,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={isSubmitting || !editedData.title || !editedData.start_date}
+            disabled={isSubmitting || !editedData.title || (editedData.addToCalendar && !editedData.start_date)}
             className="bg-[#C1502E] hover:bg-[#A13E23]"
           >
             {isSubmitting ? 'Confirmando...' : 'Aceptar Misión'}

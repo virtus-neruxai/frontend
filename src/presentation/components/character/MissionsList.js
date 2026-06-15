@@ -43,16 +43,6 @@ const MissionCard = ({ mission, onSelect, onSchedule, onDelete, statsInfo = {} }
               <Badge variant="outline" className="text-xs">
                 Dificultad: {mission.difficulty}/5
               </Badge>
-              <Badge
-                variant="outline"
-                className="text-xs"
-                style={{
-                  borderColor: mission.attempt_number > 1 ? '#F97316' : '#E4E4E7',
-                  color: mission.attempt_number > 1 ? '#F97316' : '#71717A'
-                }}
-              >
-                Intento {mission.attempt_number}/{mission.max_attempts}
-              </Badge>
               <Badge variant="outline" className="text-xs border-purple-300 text-purple-700 bg-purple-50">
                 {getProfileEmoji(mission.prompt_profile || 'stoic')} {getProfileName(mission.prompt_profile || 'stoic')}
               </Badge>
