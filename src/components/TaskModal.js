@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { tasksApi, missionsApi } from '../lib/api';
+import { tasksApi, missionsApi, reflectionsApi } from '../lib/api';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -80,6 +80,8 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [linkedMission, setLinkedMission] = useState(null);
   const [missionActionLoading, setMissionActionLoading] = useState(false);
+  const [completionReflection, setCompletionReflection] = useState('');
+  const [linkedItemReflections, setLinkedItemReflections] = useState([]);
   const [domainError, setDomainError] = useState('');
   const [dateError, setDateError] = useState('');
 
@@ -124,6 +126,30 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
         } else {
           setLinkedMission(null);
         }
+
+        try {
+          const reflectionRequests = task.linked_mission_id
+            ? [
+                reflectionsApi.getAll({ reflection_type: 'mission', task_id: task.id }),
+                reflectionsApi.getAll({ reflection_type: 'mission', mission_id: task.linked_mission_id }),
+              ]
+            : [
+                reflectionsApi.getAll({ reflection_type: 'task', task_id: task.id }),
+              ];
+          const reflectionResponses = await Promise.all(reflectionRequests);
+          const reflectionMap = new Map();
+          reflectionResponses.forEach((response) => {
+            (response.data || []).forEach((reflection) => {
+              if (reflection?.id) reflectionMap.set(reflection.id, reflection);
+            });
+          });
+          setLinkedItemReflections(
+            Array.from(reflectionMap.values())
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          );
+        } catch (err) {
+          setLinkedItemReflections([]);
+        }
       } else if (initialDate) {
         const dateStr = formatDateTimeLocal(initialDate);
         setFormData({
@@ -143,8 +169,10 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
           task_kind: mode,
         });
         setLinkedMission(null);
+        setLinkedItemReflections([]);
       }
       setDeleteConfirm(false);
+      setCompletionReflection('');
       setDomainError('');
       setDateError('');
     };
@@ -164,7 +192,6 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
 
 
   const isRoutine = (formData.task_kind || mode) === 'routine';
-  const isMissionLinkedTask = !!(task?.linked_mission_id || linkedMission?.id);
   const linkedMissionIsActive = linkedMission?.status === 'active';
   const formatDeadline = (dateValue) => {
     if (!dateValue) return null;
@@ -327,6 +354,9 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
 
       if (isEditing) {
         await tasksApi.patch(task.id, payload);
+        if (completionReflection.trim()) {
+          await saveCompletionReflection((linkedMission || task?.linked_mission_id) ? 'mission' : 'task');
+        }
         toast.success('Tarea actualizada');
       } else {
         await tasksApi.create(payload);
@@ -363,11 +393,44 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
     }
   };
 
+  const saveCompletionReflection = async (reflectionType) => {
+    const content = completionReflection.trim();
+    if (!content || !task?.id) return true;
+
+    const isMissionReflection = reflectionType === 'mission';
+    const sourceTitle = isMissionReflection
+      ? (linkedMission?.title || formData.title || task.title)
+      : (formData.title || task.title);
+    const sourcePrompt = isMissionReflection
+      ? (linkedMission?.description || formData.description || task.description || null)
+      : (formData.description || task.description || null);
+
+    try {
+      const response = await reflectionsApi.create({
+        content,
+        reflection_type: reflectionType,
+        task_id: task.id,
+        mission_id: isMissionReflection ? (linkedMission?.id || task.linked_mission_id || null) : null,
+        source_item_title: sourceTitle,
+        source_prompt: sourcePrompt,
+      });
+      if (response.data?.id) {
+        setLinkedItemReflections((prev) => [response.data, ...prev]);
+      }
+      setCompletionReflection('');
+      return true;
+    } catch (error) {
+      toast.warning('La acción se completó, pero no se pudo guardar la reflexión');
+      return false;
+    }
+  };
+
   const handleMarkDone = async () => {
     setLoading(true);
     try {
       if (task?.task_kind === 'routine') {
         await tasksApi.markRoutineToday(task.id, {});
+        await saveCompletionReflection('task');
         toast.success('Rutina marcada para hoy');
         onSaved();
         return;
@@ -383,11 +446,14 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
       if (linkedMission) {
         try {
           await missionsApi.complete(linkedMission.id, { success: true, reflection: null });
+          await saveCompletionReflection('mission');
           toast.success('¡Tarea y misión completadas!');
         } catch (missionError) {
+          await saveCompletionReflection('mission');
           toast.warning('Tarea completada, pero error al completar misión');
         }
       } else {
+        await saveCompletionReflection('task');
         toast.success('¡Tarea completada!');
       }
       
@@ -404,6 +470,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
     setMissionActionLoading(true);
     try {
       await missionsApi.complete(linkedMission.id, { success: true, reflection: null });
+      await saveCompletionReflection('mission');
       toast.success('¡Misión completada!');
       onSaved();
     } catch (error) {
@@ -412,6 +479,19 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
       setMissionActionLoading(false);
     }
   };
+
+  const routineCompletedToday = (task?.routine_completed_dates || []).includes(getDateKeyLocal(new Date()));
+  const taskWasAlreadyComplete = !!(task?.is_complete || task?.status === 'done');
+  const canMarkRoutineToday = isRoutine && isEditing && !routineCompletedToday;
+  const canAddTaskCompletionReflection = !isRoutine && isEditing && !taskWasAlreadyComplete && !linkedMission;
+  const canMarkTaskDone = canAddTaskCompletionReflection && !formData.is_complete;
+  const canCompleteLinkedMission = linkedMissionIsActive;
+  const showCompletionReflection = isEditing && (
+    canMarkRoutineToday
+    || canAddTaskCompletionReflection
+    || canCompleteLinkedMission
+    || !!completionReflection.trim()
+  );
 
 
   return (
@@ -715,10 +795,57 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
             </>
           )}
 
+          {showCompletionReflection && (
+            <div className="space-y-2">
+              <Label htmlFor="completion-reflection" className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                Comentario o reflexión
+              </Label>
+              <Textarea
+                id="completion-reflection"
+                data-testid="task-completion-reflection-input"
+                value={completionReflection}
+                onChange={(e) => setCompletionReflection(e.target.value)}
+                placeholder="¿Qué observaste, aprendiste o sentiste al hacer esto?"
+                className="border-[#E4E4E7] min-h-[88px] resize-none"
+                disabled={loading || missionActionLoading}
+              />
+            </div>
+          )}
+
+          {linkedItemReflections.length > 0 && (
+            <div className="space-y-3 rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                  Reflexiones guardadas
+                </Label>
+                <Badge variant="outline" className="text-xs">
+                  {linkedItemReflections.length}
+                </Badge>
+              </div>
+              <div className="space-y-3 max-h-44 overflow-y-auto">
+                {linkedItemReflections.map((reflection) => (
+                  <div key={reflection.id} className="rounded-md border border-[#E4E4E7] bg-white p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs text-[#71717A]">
+                        {formatDeadline(reflection.created_at) || 'Sin fecha'}
+                      </span>
+                      <Badge variant="outline" className="text-xs bg-orange-50 border-orange-300 text-orange-700">
+                        {reflection.reflection_type === 'mission' ? 'Misión' : 'Tarea'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-[#3F3F46] whitespace-pre-wrap">
+                      {reflection.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <DialogFooter className="flex gap-2 pt-4">
                 {isEditing && (
               <>
-                {linkedMissionIsActive && (
+                {canCompleteLinkedMission && (
                   <Button
                     type="button"
                     variant="outline"
@@ -745,7 +872,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                   {deleteConfirm ? '¿Confirmar?' : 'Eliminar'}
                 </Button>
                 
-                {((isRoutine && isEditing && !(task?.routine_completed_dates || []).includes(getDateKeyLocal(new Date()))) || (!isRoutine && !formData.is_complete && !linkedMission)) && (
+                {(canMarkRoutineToday || canMarkTaskDone) && (
                   <Button
                     type="button"
                     variant="outline"

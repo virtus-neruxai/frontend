@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { missionsApi, statsApi, tasksApi } from '../../lib/api';
+import { missionsApi, statsApi, tasksApi, reflectionsApi } from '../../lib/api';
 import { toast } from 'sonner';
 
 const sortMissionsByCreatedAt = (items = []) => [...items].sort((a, b) => {
@@ -217,9 +217,30 @@ export const useMissions = () => {
    * @param {string} reason - Optional reason for failure
    * @returns {Object} Updated character stats
    */
-  const completeMission = useCallback(async (missionId, success, reflection = null, reason = null) => {
+  const completeMission = useCallback(async (
+    missionId,
+    success,
+    reflection = null,
+    reason = null,
+    missionContext = {}
+  ) => {
     try {
       const response = await missionsApi.complete(missionId, { success });
+      const reflectionContent = typeof reflection === 'string' ? reflection.trim() : '';
+      if (reflectionContent) {
+        try {
+          await reflectionsApi.create({
+            content: reflectionContent,
+            reflection_type: 'mission',
+            mission_id: missionId,
+            task_id: missionContext.linked_task_id || null,
+            source_item_title: missionContext.title || null,
+            source_prompt: missionContext.description || null,
+          });
+        } catch (reflectionError) {
+          toast.warning('La misión se registró, pero no se pudo guardar la reflexión');
+        }
+      }
 
       if (success) {
         toast.success('¡Misión completada!');

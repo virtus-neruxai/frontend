@@ -123,8 +123,10 @@ export default function CharacterPageRefactored() {
   const [tasks, setTasks] = useState([]);
   const [selectedMission, setSelectedMission] = useState(null);
   const [reflectionText, setReflectionText] = useState('');
+  const [missionReflectionText, setMissionReflectionText] = useState('');
   const [activeTab, setActiveTab] = useState('missions');
   const [selectedDate, setSelectedDate] = useState(''); // For reflection filter
+  const [reflectionHistoryMode, setReflectionHistoryMode] = useState('journal');
   const [aiResponse, setAiResponse] = useState(null); // AI mentor response
   const [statChanges, setStatChanges] = useState(null); // Character stat changes
   const [dailyReflectionsCount, setDailyReflectionsCount] = useState(0); // Today's reflection count
@@ -184,21 +186,34 @@ export default function CharacterPageRefactored() {
         fetchMissionEvolution({ fromDate: missionFromDate, toDate: missionToDate }),
       ]);
       
-      // Fetch reflections and tasks
-      const [reflectionsRes, tasksRes] = await Promise.all([
-        selectedDate ? reflectionsApi.getAll(selectedDate) : reflectionsApi.getAll(),
+      const reflectionDateParams = selectedDate ? { date: selectedDate } : {};
+      const [journalReflectionsRes, tasksRes] = await Promise.all([
+        reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'journal' }),
         tasksApi.getAll()
       ]);
-      setReflections(reflectionsRes.data);
+
+      let displayReflections = journalReflectionsRes.data;
+      if (reflectionHistoryMode === 'linked') {
+        const [taskReflectionsRes, missionReflectionsRes] = await Promise.all([
+          reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'task' }),
+          reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'mission' }),
+        ]);
+        displayReflections = [
+          ...(taskReflectionsRes.data || []),
+          ...(missionReflectionsRes.data || []),
+        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      }
+
+      setReflections(displayReflections);
       setTasks(tasksRes.data);
       
-      // Calculate reflection KPIs
-      calculateReflectionKPIs(reflectionsRes.data, activeStatsInfo || {});
+      // Calculate diary KPIs only from journal reflections.
+      calculateReflectionKPIs(journalReflectionsRes.data, activeStatsInfo || {});
       
       // Count today's reflections (without date filter)
       if (!selectedDate) {
         const today = new Date().toISOString().split('T')[0];
-        const todayReflections = reflectionsRes.data.filter(r => 
+        const todayReflections = journalReflectionsRes.data.filter(r =>
           r.created_at.split('T')[0] === today
         );
         setDailyReflectionsCount(todayReflections.length);
@@ -214,6 +229,7 @@ export default function CharacterPageRefactored() {
     fetchMissionEvolution,
     calculateReflectionKPIs,
     selectedDate,
+    reflectionHistoryMode,
     statsFromDate,
     statsToDate,
     missionFromDate,
@@ -233,8 +249,9 @@ export default function CharacterPageRefactored() {
       const response = await completeMission(
         missionSnapshot.id,
         success,
-        reflectionText || null,
-        reason
+        missionReflectionText || null,
+        reason,
+        missionSnapshot
       );
       
       if (response.new_stats) {
@@ -242,7 +259,7 @@ export default function CharacterPageRefactored() {
       }
       
       setSelectedMission(null);
-      setReflectionText('');
+      setMissionReflectionText('');
 
       await fetchAllData();
     } catch (error) {
@@ -468,7 +485,10 @@ export default function CharacterPageRefactored() {
               nightlyReviewLoading={nightlyReviewLoading}
               onGenerateMissions={generateMissions}
               onNightlyReview={performNightlyReview}
-              onSelectMission={setSelectedMission}
+              onSelectMission={(mission) => {
+                setMissionReflectionText('');
+                setSelectedMission(mission);
+              }}
               onScheduleMission={openScheduleModal}
               onDeleteMission={deleteMission}
               statsInfo={statsInfo}
@@ -617,6 +637,38 @@ export default function CharacterPageRefactored() {
 
                 {/* Date Filter */}
                 <div className="border-t pt-4">
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        Historial de Reflexiones
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {reflectionHistoryMode === 'journal'
+                          ? 'Entradas libres del diario'
+                          : 'Comentarios guardados desde tareas y misiones'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setReflectionHistoryMode('journal')}
+                        className={reflectionHistoryMode === 'journal' ? 'border-[#F97316] text-[#F97316] bg-[#FFF7ED]' : ''}
+                      >
+                        Diario
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setReflectionHistoryMode('linked')}
+                        className={reflectionHistoryMode === 'linked' ? 'border-[#F97316] text-[#F97316] bg-[#FFF7ED]' : ''}
+                      >
+                        Tareas y misiones
+                      </Button>
+                    </div>
+                  </div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Filtrar por fecha:
                   </label>
@@ -643,7 +695,7 @@ export default function CharacterPageRefactored() {
                 {reflections.length > 0 && (
                   <div className="border-t pt-6">
                     <h3 className="text-sm font-semibold text-gray-700 mb-4">
-                      Historial de Reflexiones ({reflections.length})
+                      {reflectionHistoryMode === 'journal' ? 'Entradas del diario' : 'Reflexiones de tareas y misiones'} ({reflections.length})
                       {selectedDate && <span className="text-gray-500 font-normal"> - {new Date(selectedDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
                     </h3>
                     <div className="space-y-4 max-h-[500px] overflow-y-auto">
@@ -662,21 +714,34 @@ export default function CharacterPageRefactored() {
                                 minute: '2-digit'
                               })}
                             </span>
-                            {reflection.emotion_snapshot && (
-                              <Badge
-                                variant="outline"
-                                className={`text-xs ml-2 ${
-                                  reflection.emotion_snapshot.polarity === 'positive'
-                                    ? 'bg-green-50 border-green-300 text-green-700'
-                                    : reflection.emotion_snapshot.polarity === 'negative'
-                                    ? 'bg-red-50 border-red-300 text-red-700'
-                                    : 'bg-blue-50 border-blue-300 text-blue-700'
-                                }`}
-                              >
-                                {reflection.emotion_snapshot.emotion} · {reflection.emotion_snapshot.intensity}/5
-                              </Badge>
-                            )}
+                            <div className="flex flex-wrap justify-end gap-2">
+                              {reflectionHistoryMode === 'linked' && (
+                                <Badge variant="outline" className="text-xs bg-orange-50 border-orange-300 text-orange-700">
+                                  {reflection.reflection_type === 'mission' ? 'Misión' : 'Tarea'}
+                                </Badge>
+                              )}
+                              {reflection.emotion_snapshot && (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    reflection.emotion_snapshot.polarity === 'positive'
+                                      ? 'bg-green-50 border-green-300 text-green-700'
+                                      : reflection.emotion_snapshot.polarity === 'negative'
+                                      ? 'bg-red-50 border-red-300 text-red-700'
+                                      : 'bg-blue-50 border-blue-300 text-blue-700'
+                                  }`}
+                                >
+                                  {reflection.emotion_snapshot.emotion} · {reflection.emotion_snapshot.intensity}/5
+                                </Badge>
+                              )}
+                            </div>
                           </div>
+
+                          {reflectionHistoryMode === 'linked' && reflection.source_item_title && (
+                            <p className="text-xs font-medium text-gray-500 mb-2">
+                              Origen: {reflection.source_item_title}
+                            </p>
+                          )}
                           
                           <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">
                             {reflection.content}
@@ -712,7 +777,11 @@ export default function CharacterPageRefactored() {
                 
                 {reflections.length === 0 && (
                   <p className="text-sm text-gray-500 text-center py-8">
-                    {selectedDate ? 'No hay reflexiones para esta fecha' : 'No hay reflexiones guardadas'}
+                    {selectedDate
+                      ? 'No hay reflexiones para esta fecha'
+                      : reflectionHistoryMode === 'journal'
+                      ? 'No hay reflexiones guardadas'
+                      : 'No hay reflexiones de tareas o misiones guardadas'}
                   </p>
                 )}
               </CardContent>
@@ -768,17 +837,28 @@ export default function CharacterPageRefactored() {
         </Tabs>
 
         {/* Mission Completion Dialog */}
-        <Dialog open={!!selectedMission} onOpenChange={(open) => !open && setSelectedMission(null)}>
+        <Dialog
+          open={!!selectedMission}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedMission(null);
+              setMissionReflectionText('');
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Completar Misión</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm">{selectedMission?.title}</p>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                Comentario o reflexión
+              </label>
               <Textarea
-                placeholder="Reflexión opcional..."
-                value={reflectionText}
-                onChange={(e) => setReflectionText(e.target.value)}
+                placeholder="¿Qué observaste, aprendiste o sentiste al hacer esto?"
+                value={missionReflectionText}
+                onChange={(e) => setMissionReflectionText(e.target.value)}
               />
             </div>
             <DialogFooter className="flex gap-2">

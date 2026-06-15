@@ -68,7 +68,10 @@ export const missionsApi = {
 
 // Reflections API
 export const reflectionsApi = {
-  getAll: (date) => api.get('/reflections', { params: date ? { date } : {} }),
+  getAll: (params = {}) => {
+    const normalizedParams = typeof params === 'string' ? { date: params } : params;
+    return api.get('/reflections', { params: normalizedParams || {} });
+  },
   getHistory: (limit = 100, date) => api.get('/reflections/history', { params: { limit, ...(date ? { date } : {}) } }),
   getStatsHistory: (days = 30) => api.get('/reflections/stats-history', { params: { days } }),
   create: (data) => api.post('/reflections', data),
