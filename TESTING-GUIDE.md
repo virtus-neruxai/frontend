@@ -268,20 +268,20 @@ Verify that the refactored CharacterPage (`CharacterPageRefactored.js`) works **
 - [ ] Shows note/description
 - [ ] Shows timestamp
 - [ ] Can edit note
-- [ ] "Confirmar" creates emotion in emotion-backend
+- [ ] "Confirmar" stores `emotion_snapshot` with the reflection
 - [ ] Success toast
 
 **Refactored:**
-- [ ] Modal displays correctly (using `EmotionDraftModal`)
+- [ ] Picker displays correctly inside the reflection flow
 - [ ] All fields display
 - [ ] Editable fields work
-- [ ] Confirmation creates emotion (using `confirmEmotionDraft`)
+- [ ] Confirmation persists the reflection with `emotion_snapshot`
 - [ ] Success toast works
 
 **Comparison:**
 - [ ] Modal identical
 - [ ] Emotion created correctly
-- [ ] Both versions call emotion-backend
+- [ ] Both versions call the reflection endpoint
 
 ---
 

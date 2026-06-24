@@ -140,7 +140,7 @@ const Toast = ({ notification, onDismiss }) => {
                 {payload.emotion || 'Emoción'}
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                {payload.message || 'Han pasado casi 24 horas desde tu registro emocional.'}
+                {payload.message || 'Han pasado casi 24 horas desde tu reflexión con emoción.'}
               </p>
             </>
           ) : isMissionReminder ? (
