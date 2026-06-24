@@ -40,7 +40,7 @@ import {
  * - useCharacter: Character state management
  * - useMissions: Missions state management
  * - useAgentChat: Agent chat interactions
- * - useDrafts: Draft confirmations (tasks + emotions)
+ * - useDrafts: Draft confirmations (tasks + missions)
  * - CharacterStats: Stats display component
  * - MissionsList: Missions display component
  * 

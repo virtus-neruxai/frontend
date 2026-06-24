@@ -217,19 +217,19 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
 
   // Only show if tab is hidden and LOW priority or above
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-    const isEmotion = notification.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H';
+    const isReflectionFollowup = notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
     const isMissionReminder = notification.type === 'MISSION_REMINDER';
 
     let title;
-    if (isEmotion) title = '🫶 Seguimiento emocional';
+    if (isReflectionFollowup) title = '🫶 Seguimiento de reflexión';
     else if (isMissionReminder) title = '🎯 Recordatorio de misión';
     else title = '⏰ Tarea por empezar';
 
     let body = '';
-    if (isEmotion) {
+    if (isReflectionFollowup) {
       body =
         payload.message ||
-        `Hace casi 24 horas registraste ${String(payload.emotion || 'una emoción').toLowerCase()}.`;
+        `Hace casi 24 horas escribiste una reflexión marcada como ${String(payload.emotion || 'señal emocional').toLowerCase()}.`;
     } else if (isMissionReminder) {
       body = payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`;
     } else {
@@ -239,8 +239,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       }
     }
 
-    const tag = isEmotion
-      ? `emotion-${payload.reflection_id || notification.id}`
+    const tag = isReflectionFollowup
+      ? `reflection-followup-${payload.reflection_id || notification.id}`
       : isMissionReminder
       ? `mission-${payload.mission_id || notification.id}`
       : payload.task_id;
@@ -265,7 +265,7 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
 
     n.onclick = () => {
       window.focus();
-      if (isEmotion) window.location.href = '/character';
+      if (isReflectionFollowup) window.location.href = '/character';
       else if (isMissionReminder) window.location.href = '/character';
       else window.location.href = '/calendar';
     };
@@ -275,22 +275,22 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
 function isSupportedNotificationType(type) {
   return (
     type === 'TASK_DUE_SOON' ||
-    type === 'EMOTION_NEGATIVE_FOLLOWUP_24H' ||
+    type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H' ||
     type === 'MISSION_REMINDER'
   );
 }
 
 function buildNotificationFromWsData(data) {
-  const isEmotion = data.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H';
+  const isReflectionFollowup = data.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
   const isMissionReminder = data.type === 'MISSION_REMINDER';
-  const baseId = isEmotion
+  const baseId = isReflectionFollowup
     ? data.reflection_id || data.notification_id
     : isMissionReminder
     ? data.mission_id || data.notification_id
     : data.task_id;
 
   let payload;
-  if (isEmotion) {
+  if (isReflectionFollowup) {
     payload = {
       reflection_id: data.reflection_id,
       emotion: data.emotion || 'Emoción',

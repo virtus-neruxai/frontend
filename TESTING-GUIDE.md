@@ -253,35 +253,20 @@ Verify that the refactored CharacterPage (`CharacterPageRefactored.js`) works **
 
 ---
 
-### 9. Emotion Draft Confirmation
+### 9. Reflection Emotion Snapshot
 
 **Test Flow:**
-1. Type in agent: "Me siento triste"
-2. Wait for response
-3. Emotion draft modal appears
-4. Review emotion details
-5. Confirm or reject
+1. Open Character/diary reflection flow.
+2. Write a reflection.
+3. Select an optional emotion snapshot.
+4. Save the reflection.
 
-**Original:**
-- [ ] Modal shows emotion name
-- [ ] Shows intensity (1-5)
-- [ ] Shows note/description
-- [ ] Shows timestamp
-- [ ] Can edit note
-- [ ] "Confirmar" stores `emotion_snapshot` with the reflection
-- [ ] Success toast
-
-**Refactored:**
+**Expected:**
 - [ ] Picker displays correctly inside the reflection flow
-- [ ] All fields display
-- [ ] Editable fields work
-- [ ] Confirmation persists the reflection with `emotion_snapshot`
+- [ ] Emotion, polarity, intensity and optional note are editable
+- [ ] Save persists the reflection with `emotion_snapshot`
 - [ ] Success toast works
-
-**Comparison:**
-- [ ] Modal identical
-- [ ] Emotion created correctly
-- [ ] Both versions call the reflection endpoint
+- [ ] No standalone emotion draft/modal appears from agent chat
 
 ---
 

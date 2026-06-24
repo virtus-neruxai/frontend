@@ -245,7 +245,7 @@ export const NotificationPanel = ({ onClose }) => {
                       task_progress: item.task_progress,
                       minutes_left: item.minutes_left,
                       priority:
-                        item.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H'
+                        item.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H'
                           ? 'low'
                           : item.priority,
                       suggestion_type: item.context?.suggestion_type,
@@ -278,7 +278,7 @@ export const NotificationPanel = ({ onClose }) => {
 const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const { payload, read } = notification;
   const [showTodayTasks, setShowTodayTasks] = useState(false);
-  const isEmotionNotification = notification.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H';
+  const isReflectionFollowup = notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
 
   // Priority colors
@@ -329,7 +329,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
     if (!read) {
       onMarkAsRead(notification.id);
     }
-    if (isEmotionNotification) window.location.href = '/character';
+    if (isReflectionFollowup) window.location.href = '/character';
     else if (isMissionReminder) window.location.href = '/character';
     else window.location.href = '/calendar';
   };
@@ -354,8 +354,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <p className="font-medium text-gray-900 dark:text-white text-sm leading-snug break-words">
-              {isEmotionNotification
-                ? `Seguimiento emocional: ${payload.emotion || 'Emoción'}`
+              {isReflectionFollowup
+                ? `Seguimiento de reflexión: ${payload.emotion || 'Emoción'}`
                 : isMissionReminder
                 ? `🎯 ${payload.mission_title || 'Recordatorio de misión'}`
                 : payload.task_title}
@@ -365,7 +365,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
             )}
           </div>
 
-          {isEmotionNotification ? (
+          {isReflectionFollowup ? (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap break-words">
               {payload.message || 'Recordatorio de seguimiento emocional a las 24 horas.'}
             </p>
@@ -379,20 +379,20 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
             </p>
           )}
 
-          {!isEmotionNotification && payload.task_progress !== undefined && (
+          {!isReflectionFollowup && payload.task_progress !== undefined && (
             <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
               Progreso: {payload.task_progress}%
             </p>
           )}
 
-          {!isEmotionNotification && payload.task_domain && (
+          {!isReflectionFollowup && payload.task_domain && (
             <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
               {payload.task_domain}
             </span>
           )}
 
           {/* Sprint 2.1: Show tasks today after current task */}
-          {!isEmotionNotification &&
+          {!isReflectionFollowup &&
             payload.context?.tasks_today_after &&
             payload.context.tasks_today_after.length > 0 && (
             <div className="mt-3">

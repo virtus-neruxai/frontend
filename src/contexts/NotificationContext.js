@@ -19,9 +19,9 @@ function getNotificationKey(notification) {
     if (payload.mission_id) return `mission:${payload.mission_id}`;
   }
 
-  if (notification.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H') {
-    if (payload.reflection_id) return `emotion:${payload.reflection_id}`;
-    if (notification.user_id && payload.occurred_at) return `emotion-fallback:${notification.user_id}:${payload.occurred_at}`;
+  if (notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H') {
+    if (payload.reflection_id) return `reflection-followup:${payload.reflection_id}`;
+    if (notification.user_id && payload.occurred_at) return `reflection-followup-fallback:${notification.user_id}:${payload.occurred_at}`;
   }
 
   if (payload.task_id) return `task:${payload.task_id}:${notification.type}`;

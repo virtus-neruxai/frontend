@@ -78,15 +78,15 @@ src/
 
 ### Comparison: Before vs After
 
-| Metric | CharacterPage | ArenaPage | EmotionsPage | DashboardPage | CalendarPage |
-|--------|---------------|-----------|--------------|---------------|--------------|
-| **Original lines** | 1,474 | 805 | 778 | 514 | 349 |
-| **Refactored lines** | 312 | 250 | 180 | 156 | 93 |
-| **Reduction** | -79% | -69% | -77% | -70% | -73% |
-| **Number of files** | 1 → 8 | 1 → 9 | 1 → 8 | 1 → 7 | 1 → 6 |
-| **Lines per file (avg)** | 1,474 → 95 | 805 → 90 | 778 → 110 | 514 → 90 | 349 → 75 |
-| **Testability** | ❌ → ✅ | ❌ → ✅ | ❌ → ✅ | ❌ → ✅ | ❌ → ✅ |
-| **Mobile portability** | 0% → 60-70% | 0% → 60-70% | 0% → 60-70% | 0% → 60-70% | 0% → 60-70% |
+| Metric | CharacterPage | ArenaPage | DashboardPage | CalendarPage |
+|--------|---------------|-----------|---------------|--------------|
+| **Original lines** | 1,474 | 805 | 514 | 349 |
+| **Refactored lines** | 312 | 250 | 156 | 93 |
+| **Reduction** | -79% | -69% | -70% | -73% |
+| **Number of files** | 1 → 8 | 1 → 9 | 1 → 7 | 1 → 6 |
+| **Lines per file (avg)** | 1,474 → 95 | 805 → 90 | 514 → 90 | 349 → 75 |
+| **Testability** | ❌ → ✅ | ❌ → ✅ | ❌ → ✅ | ❌ → ✅ |
+| **Mobile portability** | 0% → 60-70% | 0% → 60-70% | 0% → 60-70% | 0% → 60-70% |
 
 **Total impact:**
 - **3,920 lines → 991 lines** (-75% reduction)

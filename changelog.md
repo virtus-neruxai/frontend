@@ -8,7 +8,7 @@
 Dashboard now includes a dedicated `Mentor` tab backed directly by `proactive-orchestrator-service`. The tab shows the active mentor profile, mentor KPIs, objective cards, coverage/progress charts, recent proposal episodes, and manual controls to pause, hide, restore, reprioritize, or mark objectives/items as achieved.
 
 Important source-of-truth note:
-- The mentor tab intentionally reads from `/proactive-api/v1/mentor/*`, not from `graph-query-service`, to avoid stale graph projections and ensure the UI always reflects the latest regenerated mentor profile.
+- The mentor tab intentionally reads from `/proactive-api/v1/mentor/*`, avoiding stale projections and ensuring the UI reflects the latest regenerated mentor profile.
 
 ---
 
@@ -152,7 +152,7 @@ Patch examples:
   - objective cards with item list
   - recent episodes feed
   - manual controls for hide/pause/achieved/priority
-- Do not use `graph-query-service` as the source of truth for the mentor tab unless a future product decision explicitly switches back to a graph-projected view.
+- Do not introduce a separate projected analytics service as the source of truth for the mentor tab unless a future product decision explicitly changes the architecture.
 
 ---
 
@@ -317,79 +317,16 @@ Contract note:
  
 ---
 
-## [Sprint-3] Explicit Emotion-to-Task Linking — 2026-03-07
+## [Sprint-3] Reflection Emotion Snapshot Migration — 2026-03-07
 
-### Summary
-Emotion logging now supports an explicit task link chosen by the user. When the link option is enabled, the emotion modal loads only the tasks scheduled for that same day and lets the user pick one. No automatic hour-based linking was added.
+Standalone emotion pages and modals were removed. Emotional labels now live only
+as optional `emotion_snapshot` data inside diary/reflection entries on
+`CharacterPage`.
 
----
-
-### New files
-
-| File | Description |
-|------|-------------|
-| `frontend/src/presentation/components/emotions/EmotionTaskLinkSection.js` | Shared UI block used by Add/Edit emotion modals. Handles the explicit link toggle, loads same-day tasks via `tasksApi.getAll`, and renders the selectable task list. |
-| `frontend/src/__tests__/EmotionTaskLinkModals.test.js` | Focused UI tests for the explicit task-link flow in Add/Edit emotion modals. |
-
----
-
-### Frontend modified files
-
-#### `frontend/src/presentation/components/emotions/AddEmotionModal.js`
-- Added local state for `linkToTask` and `selectedTaskId`.
-- The modal now renders `EmotionTaskLinkSection` after the date/time step.
-- Submit payload now includes:
-  - `task_related: boolean`
-  - `related_task_id: string | null`
-- Save button requires a task selection when explicit linking is enabled.
-
-#### `frontend/src/presentation/components/emotions/EditEmotionModal.js`
-- Preloads `task_related` and `related_task_id` from the existing emotion entry.
-- Reuses `EmotionTaskLinkSection` so the user can change or remove the link.
-- Update payload now sends `task_related` and `related_task_id`.
-
-#### `frontend/src/__tests__/EmotionsPage.test.js`
-- Added `tasksApi.getAll` mock so page/modal tests remain isolated once the emotion modals start loading same-day tasks.
-
----
-
-### Backend/API dependency for mobile
-
-No new frontend-only endpoint was added. The flow reuses the existing task list endpoint:
-
-- `GET /api/v1/tasks?from_date=<iso>&to_date=<iso>`
-  - used to load tasks for the selected emotion day
-
-Emotion payloads now support two additional fields:
-
-```json
-{
-  "task_related": true,
-  "related_task_id": "task-id"
-}
-```
-
-Contract notes:
-- If `task_related=true`, `related_task_id` is required.
-- The backend validates that the linked task belongs to the same user.
-- The backend validates that the linked task is scheduled on the same day as the emotion.
-- If the user removes the link, the frontend sends:
-
-```json
-{
-  "task_related": false,
-  "related_task_id": null
-}
-```
-
----
-
-### Mobile migration notes
-
-- Add an explicit toggle in the emotion create/edit flow: `Link to task? Yes / No`
-- When enabled, load only tasks from the same day as the selected emotion timestamp
-- Require a task selection before saving if the link is enabled
-- Do not infer links automatically by hour or temporal proximity
+Valid frontend pieces:
+- `EmotionPicker` inside the reflection form.
+- Reflection history rendering of `reflection.emotion_snapshot`.
+- Follow-up notifications sourced from `reflection_id`.
 
 ## [Sprint-2] Profile-Aware Stats & Mission Engine — 2026-03-06
 

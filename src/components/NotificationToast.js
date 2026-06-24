@@ -45,7 +45,7 @@ export const NotificationToast = () => {
 
 const Toast = ({ notification, onDismiss }) => {
   const { payload } = notification;
-  const isEmotionNotification = notification.type === 'EMOTION_NEGATIVE_FOLLOWUP_24H';
+  const isReflectionFollowup = notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isRoutine = !isMissionReminder && payload?.task_kind === 'routine';
 
@@ -126,15 +126,15 @@ const Toast = ({ notification, onDismiss }) => {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900 dark:text-white text-sm">
-            {isEmotionNotification
-              ? '🫶 Seguimiento emocional'
+            {isReflectionFollowup
+              ? '🫶 Seguimiento de reflexión'
               : isMissionReminder
               ? '🎯 Recordatorio de misión'
               : isRoutine
               ? '⏰ Rutina a punto de vencer'
               : '⏰ Tarea por empezar'}
           </p>
-          {isEmotionNotification ? (
+          {isReflectionFollowup ? (
             <>
               <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 truncate">
                 {payload.emotion || 'Emoción'}
@@ -166,7 +166,7 @@ const Toast = ({ notification, onDismiss }) => {
             </>
           )}
 
-          {!isEmotionNotification && !isMissionReminder && !isRoutine && payload.task_progress !== undefined && (
+          {!isReflectionFollowup && !isMissionReminder && !isRoutine && payload.task_progress !== undefined && (
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
                 <span>Progreso</span>
@@ -182,7 +182,7 @@ const Toast = ({ notification, onDismiss }) => {
           )}
 
           {/* Sprint 2.1: Show next task */}
-          {!isEmotionNotification && !isMissionReminder && payload.context?.next_task && (
+          {!isReflectionFollowup && !isMissionReminder && payload.context?.next_task && (
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 flex items-center gap-1">
               <span className="font-medium">Siguiente:</span>
               <span className="truncate">{payload.context.next_task.title}</span>
@@ -190,7 +190,7 @@ const Toast = ({ notification, onDismiss }) => {
             </p>
           )}
 
-          {!isEmotionNotification && !isMissionReminder && payload.task_domain && (
+          {!isReflectionFollowup && !isMissionReminder && payload.task_domain && (
             <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
               {payload.task_domain}
             </span>
