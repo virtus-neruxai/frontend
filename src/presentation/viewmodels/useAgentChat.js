@@ -8,7 +8,7 @@ import { toast } from 'sonner';
  * This hook encapsulates all agent-related business logic including:
  * - Sending messages to the agent
  * - Handling agent responses
- * - Managing draft confirmations (tasks and emotions)
+ * - Managing draft confirmations (tasks and missions)
  * - UI action handling
  * - Session management (conversation continuity)
  * 
@@ -75,9 +75,7 @@ export const useAgentChat = () => {
         if (onDraftReceived) {
           // Determine draft type based on UI action
           let draftType = 'task'; // default
-          if (response.data.ui_action.action === 'SHOW_EMOTION_CONFIRMATION_MODAL') {
-            draftType = 'emotion';
-          } else if (response.data.ui_action.action === 'SHOW_MISSION_CONFIRMATION_MODAL') {
+          if (response.data.ui_action.action === 'SHOW_MISSION_CONFIRMATION_MODAL') {
             draftType = 'mission';
           } else if (response.data.ui_action.action === 'SHOW_TASK_CONFIRMATION_MODAL') {
             draftType = 'task';

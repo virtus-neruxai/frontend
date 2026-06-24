@@ -135,13 +135,13 @@ const {
 ```
 
 ### useDrafts
-Manages draft confirmations (tasks + emotions):
+Manages draft confirmations (tasks + missions):
 ```javascript
 const {
   showTaskDraftModal,
-  showEmotionDraftModal,
+  showMissionDraftModal,
   confirmTaskDraft,
-  confirmEmotionDraft,
+  confirmMissionDraft,
   ...
 } = useDrafts();
 ```
@@ -893,4 +893,3 @@ The frontend now uses a premium-serious stoic visual system with global tokens i
 2. Restart frontend (`yarn --cwd frontend start`) if it is already running.
 3. `VirtusBrand` will load that file automatically and show it next to `Disciplina • Claridad • Virtud`.
 4. If the file is missing or broken, the component falls back to the built-in SVG glyph.
-

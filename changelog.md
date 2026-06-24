@@ -675,7 +675,6 @@ All changes below were implemented to support this feature. Mobile only needs th
 - `agent-service/graph/nodes/state_builder.py` — fetches profile once per session, stores in state
 - `agent-service/graph/subgraphs/task_agent.py` — dynamic prompt loading per call
 - `agent-service/graph/subgraphs/review_agent.py` — dynamic prompt loading per call
-- `agent-service/graph/subgraphs/emotion_agent.py` — dynamic prompt loading per call
 - `agent-service/graph/subgraphs/mission_agent.py` — dynamic prompt loading per call
 
 #### Prompt file structure (new)
@@ -741,9 +740,6 @@ localStorage.setItem('prompt_profile', promptProfile);
   - `Modificación de Tarea Propuesta por el Mentor ${profileName}`
   - `Rutina Propuesta por el Mentor ${profileName}`
   - `Modificación de Rutina Propuesta por el Mentor ${profileName}`
-
-#### `frontend/src/components/EmotionDraftModal.js`
-- Dialog title: `Emoción Detectada por el Mentor ${profileName}`
 
 #### `frontend/src/components/MissionDraftModal.js`
 - Dialog title: `Misión Propuesta por el Mentor ${profileName}`
