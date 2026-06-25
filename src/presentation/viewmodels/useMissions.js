@@ -63,6 +63,7 @@ const buildMissionConfirmPayload = (mission) => ({
  */
 export const useMissions = () => {
   const [missions, setMissions] = useState([]);
+  const [completedMissions, setCompletedMissions] = useState([]);
   const [generatingMissions, setGeneratingMissions] = useState(false);
   const [nightlyReviewLoading, setNightlyReviewLoading] = useState(false);
   const [nightlyReviewResult, setNightlyReviewResult] = useState(null);
@@ -90,6 +91,21 @@ export const useMissions = () => {
       return activeMissions;
     } catch (error) {
       toast.error('Error al cargar misiones');
+      throw error;
+    }
+  }, []);
+
+  /**
+   * Fetches completed (finished) missions for the history view.
+   */
+  const fetchCompletedMissions = useCallback(async () => {
+    try {
+      const response = await missionsApi.getAll({ status: 'done' });
+      const done = Array.isArray(response.data) ? response.data : [];
+      setCompletedMissions(sortMissionsByCreatedAt(done));
+      return done;
+    } catch (error) {
+      toast.error('Error al cargar el historial de misiones');
       throw error;
     }
   }, []);
@@ -248,13 +264,13 @@ export const useMissions = () => {
         toast.error('Misión fallida. Sigue adelante.');
       }
 
-      await fetchMissions();
+      await Promise.all([fetchMissions(), fetchCompletedMissions()]);
       return response.data;
     } catch (error) {
       toast.error('Error al completar misión');
       throw error;
     }
-  }, [fetchMissions]);
+  }, [fetchMissions, fetchCompletedMissions]);
 
   /**
    * Deletes a mission
@@ -362,6 +378,7 @@ export const useMissions = () => {
   return {
     // State
     missions,
+    completedMissions,
     generatingMissions,
     nightlyReviewLoading,
     nightlyReviewResult,
@@ -375,6 +392,7 @@ export const useMissions = () => {
     
     // Actions
     fetchMissions,
+    fetchCompletedMissions,
     generateMissions,
     performNightlyReview,
     confirmMissions,

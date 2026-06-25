@@ -12,6 +12,8 @@ import { MissionsList } from '../presentation/components/character/MissionsList'
 import { StatsHistoryChart } from '../presentation/components/character/StatsHistoryChart';
 import { ReflectionKPIs } from '../presentation/components/character/ReflectionKPIs';
 import { MissionEvolutionChart } from '../presentation/components/character/MissionEvolutionChart';
+import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
+import { FinishedList } from '../presentation/components/character/FinishedList';
 import { useCharacter } from '../presentation/viewmodels/useCharacter';
 import { useMissions } from '../presentation/viewmodels/useMissions';
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
@@ -23,9 +25,9 @@ import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
-import { 
+import {
   Target, Scroll, MessageCircle, Send,
-  XCircle, CheckCircle2, AlertTriangle, Clock
+  XCircle, CheckCircle2, AlertTriangle, Clock, Repeat
 } from 'lucide-react';
 
 /**
@@ -66,6 +68,7 @@ export default function CharacterPageRefactored() {
   } = useCharacter();
   const {
     missions,
+    completedMissions,
     generatingMissions,
     nightlyReviewLoading,
     nightlyReviewResult,
@@ -76,6 +79,7 @@ export default function CharacterPageRefactored() {
     missionStatsHistory,
     missionStatsLoading,
     fetchMissions,
+    fetchCompletedMissions,
     generateMissions,
     performNightlyReview,
     confirmMissions,
@@ -182,6 +186,7 @@ export default function CharacterPageRefactored() {
         fetchCharacter(),
         fetchStatsInfo(),
         fetchMissions(),
+        fetchCompletedMissions(),
         fetchStatsHistory({ fromDate: statsFromDate, toDate: statsToDate }),
         fetchMissionEvolution({ fromDate: missionFromDate, toDate: missionToDate }),
       ]);
@@ -225,6 +230,7 @@ export default function CharacterPageRefactored() {
     fetchCharacter,
     fetchStatsInfo,
     fetchMissions,
+    fetchCompletedMissions,
     fetchStatsHistory,
     fetchMissionEvolution,
     calculateReflectionKPIs,
@@ -453,6 +459,10 @@ export default function CharacterPageRefactored() {
               <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Misiones
             </TabsTrigger>
+            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-white">
+              <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Desafíos
+            </TabsTrigger>
             <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-white">
               <Scroll className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Diario
@@ -477,22 +487,52 @@ export default function CharacterPageRefactored() {
               loading={missionStatsLoading}
               statsInfo={statsInfo}
             />
-            
-            {/* Missions List */}
-            <MissionsList
-              missions={missions}
-              generatingMissions={generatingMissions}
-              nightlyReviewLoading={nightlyReviewLoading}
-              onGenerateMissions={generateMissions}
-              onNightlyReview={performNightlyReview}
-              onSelectMission={(mission) => {
-                setMissionReflectionText('');
-                setSelectedMission(mission);
-              }}
-              onScheduleMission={openScheduleModal}
-              onDeleteMission={deleteMission}
-              statsInfo={statsInfo}
-            />
+
+            {/* Active / History sub-tabs */}
+            <Tabs defaultValue="active" className="space-y-4">
+              <TabsList className="bg-[#F4F4F5] p-1 rounded-full">
+                <TabsTrigger value="active" className="rounded-full data-[state=active]:bg-white">
+                  Activas
+                </TabsTrigger>
+                <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-white">
+                  Historial {completedMissions.length > 0 && `(${completedMissions.length})`}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="active" className="space-y-4">
+                <MissionsList
+                  missions={missions}
+                  generatingMissions={generatingMissions}
+                  nightlyReviewLoading={nightlyReviewLoading}
+                  onGenerateMissions={generateMissions}
+                  onNightlyReview={performNightlyReview}
+                  onSelectMission={(mission) => {
+                    setMissionReflectionText('');
+                    setSelectedMission(mission);
+                  }}
+                  onScheduleMission={openScheduleModal}
+                  onDeleteMission={deleteMission}
+                  statsInfo={statsInfo}
+                />
+              </TabsContent>
+
+              <TabsContent value="history" className="space-y-4">
+                <FinishedList
+                  items={completedMissions.map((m) => ({
+                    id: m.id,
+                    title: m.title,
+                    subtitle: m.description || null,
+                    completed_at: m.completed_at || m.updated_at,
+                  }))}
+                  emptyText="Aún no has completado ninguna misión."
+                />
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          {/* Challenges Tab */}
+          <TabsContent value="challenges" className="space-y-4">
+            <ChallengesTab />
           </TabsContent>
 
           {/* Reflection Tab */}

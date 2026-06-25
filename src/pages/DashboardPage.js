@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { CheckCircle2, Clock, Target, ListTodo } from 'lucide-react';
 import { useDashboard } from '../presentation/viewmodels/useDashboard';
 import { KPICard } from '../presentation/components/dashboard/KPICard';
-import { NorthStarCard } from '../presentation/components/dashboard/NorthStarCard';
+import { ChallengesCard } from '../presentation/components/dashboard/ChallengesCard';
 import { StatusDistributionChart } from '../presentation/components/dashboard/StatusDistributionChart';
 import { StatusBarChart } from '../presentation/components/dashboard/StatusBarChart';
 import { TimeseriesChart } from '../presentation/components/dashboard/TimeseriesChart';
@@ -58,8 +58,8 @@ export default function DashboardPageRefactored() {
           </Select>
         </div>
 
-        {/* North Star — direction at a glance */}
-        <NorthStarCard />
+        {/* Challenges — seguimiento de cumplimiento de desafíos */}
+        <ChallengesCard />
 
         {loading ? (
           <div className="h-96 flex items-center justify-center">

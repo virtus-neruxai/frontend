@@ -19,6 +19,7 @@ export default function CalendarPageRefactored() {
     modalOpen,
     selectedTask,
     selectedDate,
+    occurrenceDate,
     handlePrev,
     handleNext,
     handleToday,
@@ -99,6 +100,7 @@ export default function CalendarPageRefactored() {
           onClose={handleModalClose}
           task={selectedTask}
           initialDate={selectedDate}
+          occurrenceDate={occurrenceDate}
           onSaved={handleTaskSaved}
           onDeleted={handleTaskDeleted}
           mode={createMode}

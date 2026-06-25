@@ -34,7 +34,20 @@ export const tasksApi = {
   patch: (id, data) => api.patch(`/items/${id}`, data),
   delete: (id) => api.delete(`/items/${id}`),
   retry: (id) => api.patch(`/items/${id}`, { status: 'todo', is_complete: false }),
-  markRoutineToday: (id, data = {}) => api.patch(`/items/${id}`, data),
+  // Mark a routine occurrence (a specific date) as completed. Defaults to today.
+  markRoutineToday: (id, data = {}) => api.post(`/items/${id}/complete-occurrence`, data),
+  completeOccurrence: (id, date = null) =>
+    api.post(`/items/${id}/complete-occurrence`, date ? { date } : {}),
+};
+
+// Challenges API — desafíos programados como rutinas recurrentes
+export const challengesApi = {
+  getAll: (params = {}) => api.get('/challenges', { params }),
+  dashboard: () => api.get('/challenges/dashboard'),
+  generate: (data) => api.post('/challenges/generate', data),
+  confirm: (data) => api.post('/challenges/confirm', data),
+  complete: (id) => api.post(`/challenges/${id}/complete`),
+  remove: (id) => api.delete(`/challenges/${id}`),
 };
 
 

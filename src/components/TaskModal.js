@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   DialogOverlay,
 } from './ui/dialog';
@@ -56,7 +57,7 @@ const WEEKDAY_OPTIONS = [
 ];
 
 
-export default function TaskModal({ open, onClose, task, initialDate, onSaved, onDeleted, mode = 'task' }) {
+export default function TaskModal({ open, onClose, task, initialDate, occurrenceDate, onSaved, onDeleted, mode = 'task' }) {
   const isEditing = !!task;
   const isRoutineMode = mode === 'routine';
 
@@ -81,6 +82,8 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
   const [linkedMission, setLinkedMission] = useState(null);
   const [missionActionLoading, setMissionActionLoading] = useState(false);
   const [completionReflection, setCompletionReflection] = useState('');
+  const [routineCompletionAt, setRoutineCompletionAt] = useState('');
+  const [showRoutineCompleteDialog, setShowRoutineCompleteDialog] = useState(false);
   const [linkedItemReflections, setLinkedItemReflections] = useState([]);
   const [domainError, setDomainError] = useState('');
   const [dateError, setDateError] = useState('');
@@ -192,6 +195,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
 
 
   const isRoutine = (formData.task_kind || mode) === 'routine';
+
   const linkedMissionIsActive = linkedMission?.status === 'active';
   const formatDeadline = (dateValue) => {
     if (!dateValue) return null;
@@ -425,17 +429,40 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
     }
   };
 
-  const handleMarkDone = async () => {
+  // For routines, open a small dialog to confirm/edit the completion datetime.
+  const openRoutineCompleteDialog = () => {
+    setRoutineCompletionAt(formatDateTimeLocal(occurrenceDate ? new Date(occurrenceDate) : new Date()));
+    setShowRoutineCompleteDialog(true);
+  };
+
+  const confirmRoutineCompletion = async () => {
+    if (!task) return;
     setLoading(true);
     try {
-      if (task?.task_kind === 'routine') {
-        await tasksApi.markRoutineToday(task.id, {});
-        await saveCompletionReflection('task');
-        toast.success('Rutina marcada para hoy');
-        onSaved();
-        return;
-      }
+      const completionDate = routineCompletionAt ? new Date(routineCompletionAt) : new Date();
+      await tasksApi.markRoutineToday(task.id, {
+        date: getDateKeyLocal(completionDate),
+        completed_at: completionDate.toISOString(),
+      });
+      await saveCompletionReflection('task');
+      toast.success('Rutina marcada como hecha');
+      setShowRoutineCompleteDialog(false);
+      onSaved();
+    } catch (error) {
+      toast.error('Error al completar');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleMarkDone = async () => {
+    if (task?.task_kind === 'routine') {
+      openRoutineCompleteDialog();
+      return;
+    }
+
+    setLoading(true);
+    try {
       await tasksApi.patch(task.id, {
         is_complete: true,
         progress_percent: 100,
@@ -480,9 +507,15 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
     }
   };
 
-  const routineCompletedToday = (task?.routine_completed_dates || []).includes(getDateKeyLocal(new Date()));
+  // Button visibility depends on the OPENED occurrence (clicked day, or today).
+  const occurrenceKey = getDateKeyLocal(occurrenceDate ? new Date(occurrenceDate) : new Date());
+  const occurrenceCompleted = (task?.routine_completed_dates || []).includes(occurrenceKey);
+  // Dialog warning/confirm depends on the date currently PICKED in the dialog.
+  const selectedCompletionKey = routineCompletionAt ? getDateKeyLocal(new Date(routineCompletionAt)) : occurrenceKey;
+  const selectedDateCompleted = (task?.routine_completed_dates || []).includes(selectedCompletionKey);
   const taskWasAlreadyComplete = !!(task?.is_complete || task?.status === 'done');
-  const canMarkRoutineToday = isRoutine && isEditing && !routineCompletedToday;
+  // Hide the button when the opened occurrence is already marked done.
+  const canMarkRoutineToday = isRoutine && isEditing && !occurrenceCompleted;
   const canAddTaskCompletionReflection = !isRoutine && isEditing && !taskWasAlreadyComplete && !linkedMission;
   const canMarkTaskDone = canAddTaskCompletionReflection && !formData.is_complete;
   const canCompleteLinkedMission = linkedMissionIsActive;
@@ -495,6 +528,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
 
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg z-50 max-h-[90dvh] overflow-y-auto" data-testid="task-modal">
         <DialogHeader>
@@ -882,7 +916,7 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
                     data-testid="task-mark-done-btn"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
-                    {isRoutine ? 'Marcar hoy' : 'Completar'}
+                    {isRoutine ? 'Marcar hecho' : 'Completar'}
                   </Button>
                 )}
               </>
@@ -900,5 +934,61 @@ export default function TaskModal({ open, onClose, task, initialDate, onSaved, o
         </form>
       </DialogContent>
     </Dialog>
+
+    {/* Routine completion: confirm or edit the completion datetime */}
+    <Dialog open={showRoutineCompleteDialog} onOpenChange={setShowRoutineCompleteDialog}>
+      <DialogContent className="sm:max-w-md z-50" data-testid="routine-complete-dialog">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-[#22C55E]" />
+            Marcar rutina como hecha
+          </DialogTitle>
+          <DialogDescription>
+            Por defecto se marca con la fecha y hora de ahora. Si la completaste antes, edítala (p. ej. ayer a las 22:00).
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2 py-2">
+          <Label htmlFor="routine-completion-at" className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+            Fecha y hora del cumplimiento
+          </Label>
+          <Input
+            id="routine-completion-at"
+            type="datetime-local"
+            value={routineCompletionAt}
+            max={formatDateTimeLocal(new Date())}
+            onChange={(e) => setRoutineCompletionAt(e.target.value)}
+            disabled={loading}
+            className="border-[#E4E4E7]"
+            data-testid="routine-completion-at-input"
+          />
+          {selectedDateCompleted && (
+            <p className="text-xs text-[#F97316]">Ya está marcada para esa fecha.</p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowRoutineCompleteDialog(false)}
+            disabled={loading}
+            className="rounded-full"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={confirmRoutineCompletion}
+            disabled={loading || !routineCompletionAt || selectedDateCompleted}
+            className="bg-[#22C55E] hover:bg-[#16A34A] text-white rounded-full"
+            data-testid="routine-complete-confirm-btn"
+          >
+            {loading ? 'Guardando...' : 'Confirmar'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

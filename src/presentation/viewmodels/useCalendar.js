@@ -135,6 +135,29 @@ const expandRecurringTask = (task, rangeStart, rangeEnd) => {
     }
   }
 
+  if (rule.type === 'monthly') {
+    const intervalMonths = Math.max(1, Number(rule.interval || 1));
+    const anchorDay = sourceStart.getDate();
+    // Walk month-by-month from the source month until we pass the range end.
+    let cursor = new Date(sourceStart.getFullYear(), sourceStart.getMonth(), 1);
+    let monthOffset = 0;
+    while (cursor < rangeEnd) {
+      if (monthOffset % intervalMonths === 0) {
+        const year = cursor.getFullYear();
+        const month = cursor.getMonth();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const day = Math.min(anchorDay, lastDay);
+        const occurrence = new Date(year, month, day,
+          sourceStart.getHours(), sourceStart.getMinutes(), sourceStart.getSeconds(), 0);
+        if (occurrence >= sourceStart) {
+          pushOccurrence(occurrence, index++);
+        }
+      }
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      monthOffset += 1;
+    }
+  }
+
 
   return occurrences;
 };
@@ -149,6 +172,7 @@ export function useCalendar() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [occurrenceDate, setOccurrenceDate] = useState(null);
   const [currentTitle, setCurrentTitle] = useState('');
   const [createMode, setCreateMode] = useState('task');
   const [visibleRange, setVisibleRange] = useState({
@@ -197,6 +221,11 @@ export function useCalendar() {
       setCreateMode(task.task_kind || "task");
       setSelectedTask(task);
       setSelectedDate(null);
+      // For routines, remember which occurrence was clicked so it can be
+      // completed for that exact date (not just "today").
+      setOccurrenceDate(
+        task.task_kind === "routine" && info.event.start ? info.event.start : null
+      );
       setModalOpen(true);
     }
   }, [tasks]);
@@ -278,6 +307,7 @@ export function useCalendar() {
     setModalOpen(false);
     setSelectedTask(null);
     setSelectedDate(null);
+    setOccurrenceDate(null);
   }, []);
 
   const handleTaskSaved = useCallback(() => {
@@ -347,6 +377,7 @@ export function useCalendar() {
     modalOpen,
     selectedTask,
     selectedDate,
+    occurrenceDate,
     handlePrev,
     handleNext,
     handleToday,
