@@ -8,6 +8,7 @@ import { StatusDistributionChart } from '../presentation/components/dashboard/St
 import { StatusBarChart } from '../presentation/components/dashboard/StatusBarChart';
 import { TimeseriesChart } from '../presentation/components/dashboard/TimeseriesChart';
 import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/TotalStatsEvolutionChart';
+import { KPI_TOKENS } from '../theme/semanticTokens';
 
 export default function DashboardPageRefactored() {
   const {
@@ -29,23 +30,23 @@ export default function DashboardPageRefactored() {
   } = useDashboard();
 
   return (
-    <Layout>
+    <Layout ambient>
       <div className="space-y-6" data-testid="dashboard-page">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1
-              className="text-2xl font-bold text-[#18181B] dark:text-white"
+              className="text-2xl font-bold text-foreground"
               style={{ fontFamily: 'Manrope, sans-serif' }}
               data-testid="dashboard-title"
             >
               Dashboard
             </h1>
-            <p className="text-[#71717A] mt-1">Visualiza el progreso de tus tareas</p>
+            <p className="text-muted-foreground mt-1">Visualiza el progreso de tus tareas</p>
           </div>
 
           <Select value={range} onValueChange={setRange}>
-            <SelectTrigger className="w-48 rounded-full border-[#E4E4E7]" data-testid="range-selector">
+            <SelectTrigger className="w-48 rounded-full" data-testid="range-selector">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -63,7 +64,7 @@ export default function DashboardPageRefactored() {
 
         {loading ? (
           <div className="h-96 flex items-center justify-center">
-            <div className="animate-pulse text-[#71717A]">Cargando estadísticas...</div>
+            <div className="animate-pulse text-muted-foreground">Cargando estadísticas...</div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -73,8 +74,8 @@ export default function DashboardPageRefactored() {
                 title="Total Tareas"
                 value={summary?.total || 0}
                 icon={ListTodo}
-                iconColor="#71717A"
-                iconBg="#F4F4F5"
+                iconColor={KPI_TOKENS.total.color}
+                iconBg={KPI_TOKENS.total.background}
                 testId="kpi-total"
               />
               <KPICard
@@ -82,16 +83,16 @@ export default function DashboardPageRefactored() {
                 value={summary?.completed || 0}
                 subtitle={`${summary?.completion_rate || 0}% del total`}
                 icon={CheckCircle2}
-                iconColor="#22C55E"
-                iconBg="#DCFCE7"
+                iconColor={KPI_TOKENS.completed.color}
+                iconBg={KPI_TOKENS.completed.background}
                 testId="kpi-completed"
               />
               <KPICard
                 title="En Progreso"
                 value={summary?.in_progress || 0}
                 icon={Clock}
-                iconColor="#3B82F6"
-                iconBg="#DBEAFE"
+                iconColor={KPI_TOKENS.inProgress.color}
+                iconBg={KPI_TOKENS.inProgress.background}
                 testId="kpi-in-progress"
               />
               <KPICard
@@ -99,8 +100,8 @@ export default function DashboardPageRefactored() {
                 value={summary?.overdue || 0}
                 subtitle="Tareas con fecha pasada"
                 icon={Target}
-                iconColor="#F97316"
-                iconBg="#FFF7ED"
+                iconColor={KPI_TOKENS.overdue.color}
+                iconBg={KPI_TOKENS.overdue.background}
                 testId="kpi-overdue"
               />
             </div>

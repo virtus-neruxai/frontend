@@ -6,32 +6,32 @@
 
 @layer base {
   :root {
-    --bg: #F4F1EC;
-    --card-surface: #FFFFFF;
-    --text: #1E1E1E;
-    --muted: #6B6B6B;
-    --gold: #C6A75E;
-    --gold-hover: #B8973D;
-
-    --background: 36 24% 94%;
+    --background: 36 24% 95%;
     --foreground: 0 0% 12%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 12%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 12%;
-    --primary: 42 47% 57%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 34 24% 90%;
+    --primary: var(--virtus-primary);
+    --primary-foreground: var(--virtus-primary-foreground);
+    --secondary: var(--virtus-secondary-surface);
     --secondary-foreground: 0 0% 12%;
-    --muted: 0 0% 42%;
-    --muted-foreground: 0 0% 42%;
-    --accent: 39 36% 90%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 45%;
+    --accent: var(--virtus-accent);
     --accent-foreground: 0 0% 12%;
     --destructive: 0 74% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 40 18% 84%;
-    --input: 40 18% 84%;
-    --ring: 42 47% 57%;
+    --destructive-soft: 0 86% 97%;
+    --success: 142 71% 38%;
+    --success-soft: 142 76% 94%;
+    --warning: 24 86% 48%;
+    --warning-soft: 33 100% 96%;
+    --info: 217 91% 52%;
+    --info-soft: 214 100% 96%;
+    --border: var(--virtus-border);
+    --input: var(--virtus-border);
+    --ring: var(--virtus-primary);
     --radius: 0.5rem;
 
     --status-todo: 240 4% 46%;
@@ -40,40 +40,156 @@
     --status-blocked: 0 84% 60%;
     --status-failed: 0 73% 51%;
 
-    --chart-1: 42 47% 57%;
-    --chart-2: 0 0% 42%;
-    --chart-3: 120 26% 35%;
-    --chart-4: 0 56% 45%;
-    --chart-5: 33 29% 44%;
+    --chart-1: var(--virtus-chart-1);
+    --chart-2: var(--virtus-chart-2);
+    --chart-3: var(--virtus-chart-3);
+    --chart-4: var(--virtus-chart-4);
+    --chart-5: var(--virtus-chart-5);
+
+    --virtus-primary: 42 47% 57%;
+    --virtus-primary-foreground: 0 0% 9%;
+    --virtus-secondary: 9 63% 33%;
+    --virtus-secondary-surface: 42 45% 91%;
+    --virtus-accent: 42 46% 92%;
+    --virtus-border: 42 26% 82%;
+    --virtus-soft: 42 47% 57%;
+    --virtus-chart-1: 42 47% 57%;
+    --virtus-chart-2: 9 63% 33%;
+    --virtus-chart-3: 120 26% 35%;
+    --virtus-chart-4: 217 42% 48%;
+    --virtus-chart-5: 33 29% 44%;
   }
 
   .dark {
-    --bg: #0F0F0F;
-    --card-surface: #1A1A1A;
-    --text: #EAEAEA;
-    --muted: #A0A0A0;
-    --gold: #D4AF37;
-    --gold-hover: #C6A75E;
-
     --background: 0 0% 6%;
     --foreground: 0 0% 92%;
     --card: 0 0% 10%;
     --card-foreground: 0 0% 92%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 92%;
-    --primary: 46 65% 52%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14%;
     --secondary-foreground: 0 0% 92%;
-    --muted: 0 0% 63%;
+    --muted: 0 0% 14%;
     --muted-foreground: 0 0% 63%;
-    --accent: 0 0% 14%;
     --accent-foreground: 0 0% 92%;
     --destructive: 0 66% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 21%;
-    --input: 0 0% 21%;
-    --ring: 46 65% 52%;
+    --destructive-soft: 0 63% 18%;
+    --success: 142 66% 48%;
+    --success-soft: 142 45% 16%;
+    --warning: 28 90% 58%;
+    --warning-soft: 28 60% 16%;
+    --info: 213 94% 68%;
+    --info-soft: 213 45% 18%;
+  }
+
+  :root[data-profile-theme="stoic"] {
+    --virtus-primary: 42 47% 57%;
+    --virtus-primary-foreground: 0 0% 9%;
+    --virtus-secondary: 9 63% 33%;
+    --virtus-secondary-surface: 42 45% 91%;
+    --virtus-accent: 42 46% 92%;
+    --virtus-border: 42 26% 82%;
+    --virtus-soft: 42 47% 57%;
+    --virtus-chart-1: 42 47% 57%;
+    --virtus-chart-2: 9 63% 33%;
+    --virtus-chart-3: 120 26% 35%;
+    --virtus-chart-4: 217 42% 48%;
+    --virtus-chart-5: 33 29% 44%;
+  }
+
+  :root[data-profile-theme="calm"] {
+    --virtus-primary: 214 84% 56%;
+    --virtus-primary-foreground: 0 0% 100%;
+    --virtus-secondary: 209 69% 29%;
+    --virtus-secondary-surface: 213 84% 94%;
+    --virtus-accent: 213 72% 93%;
+    --virtus-border: 213 44% 82%;
+    --virtus-soft: 214 84% 56%;
+    --virtus-chart-1: 214 84% 56%;
+    --virtus-chart-2: 209 69% 29%;
+    --virtus-chart-3: 188 62% 43%;
+    --virtus-chart-4: 221 48% 50%;
+    --virtus-chart-5: 169 43% 44%;
+  }
+
+  :root[data-profile-theme="spiritual"] {
+    --virtus-primary: 152 39% 30%;
+    --virtus-primary-foreground: 0 0% 100%;
+    --virtus-secondary: 88 26% 53%;
+    --virtus-secondary-surface: 137 32% 92%;
+    --virtus-accent: 128 28% 91%;
+    --virtus-border: 136 22% 78%;
+    --virtus-soft: 152 39% 30%;
+    --virtus-chart-1: 152 39% 30%;
+    --virtus-chart-2: 88 26% 53%;
+    --virtus-chart-3: 176 32% 40%;
+    --virtus-chart-4: 42 37% 50%;
+    --virtus-chart-5: 118 28% 38%;
+  }
+
+  :root[data-profile-theme="performance"] {
+    --virtus-primary: 22 74% 53%;
+    --virtus-primary-foreground: 0 0% 9%;
+    --virtus-secondary: 16 70% 36%;
+    --virtus-secondary-surface: 24 91% 93%;
+    --virtus-accent: 24 87% 92%;
+    --virtus-border: 24 48% 80%;
+    --virtus-soft: 22 74% 53%;
+    --virtus-chart-1: 22 74% 53%;
+    --virtus-chart-2: 16 70% 36%;
+    --virtus-chart-3: 39 82% 48%;
+    --virtus-chart-4: 0 66% 50%;
+    --virtus-chart-5: 217 42% 48%;
+  }
+
+  :root[data-profile-theme="student"] {
+    --virtus-primary: 40 58% 64%;
+    --virtus-primary-foreground: 0 0% 9%;
+    --virtus-secondary: 218 28% 51%;
+    --virtus-secondary-surface: 43 57% 93%;
+    --virtus-accent: 44 64% 92%;
+    --virtus-border: 42 35% 80%;
+    --virtus-soft: 40 58% 64%;
+    --virtus-chart-1: 40 58% 64%;
+    --virtus-chart-2: 218 28% 51%;
+    --virtus-chart-3: 207 39% 48%;
+    --virtus-chart-4: 168 34% 40%;
+    --virtus-chart-5: 29 43% 48%;
+  }
+
+  .dark[data-profile-theme="stoic"] {
+    --virtus-primary: 46 65% 52%;
+    --virtus-secondary-surface: 40 21% 14%;
+    --virtus-accent: 39 26% 15%;
+    --virtus-border: 38 16% 25%;
+  }
+
+  .dark[data-profile-theme="calm"] {
+    --virtus-primary: 213 94% 68%;
+    --virtus-secondary-surface: 214 33% 15%;
+    --virtus-accent: 213 36% 16%;
+    --virtus-border: 213 22% 27%;
+  }
+
+  .dark[data-profile-theme="spiritual"] {
+    --virtus-primary: 144 39% 57%;
+    --virtus-secondary-surface: 142 26% 14%;
+    --virtus-accent: 142 28% 15%;
+    --virtus-border: 143 17% 26%;
+  }
+
+  .dark[data-profile-theme="performance"] {
+    --virtus-primary: 24 90% 61%;
+    --virtus-secondary-surface: 22 34% 15%;
+    --virtus-accent: 22 38% 16%;
+    --virtus-border: 22 22% 27%;
+  }
+
+  .dark[data-profile-theme="student"] {
+    --virtus-primary: 41 68% 68%;
+    --virtus-secondary-surface: 42 27% 14%;
+    --virtus-accent: 42 29% 15%;
+    --virtus-border: 42 18% 26%;
   }
 
   * {
@@ -111,6 +227,44 @@
 
 .animate-fade-in {
   animation: fadeIn 200ms ease-out forwards;
+}
+
+.profile-theme-background {
+  background:
+    radial-gradient(circle at 10% 0%, hsl(var(--virtus-soft) / 0.12), transparent 34rem),
+    radial-gradient(circle at 88% 12%, hsl(var(--virtus-secondary) / 0.08), transparent 30rem),
+    linear-gradient(180deg, hsl(var(--background)) 0%, transparent 38%);
+}
+
+.profile-theme-background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(135deg, hsl(var(--virtus-soft) / 0.08) 0 1px, transparent 1px),
+    linear-gradient(45deg, hsl(var(--foreground) / 0.025) 0 1px, transparent 1px);
+  background-size: 42px 42px, 28px 28px;
+  mask-image: linear-gradient(180deg, black 0%, transparent 72%);
+}
+
+[data-profile-theme="calm"] .profile-theme-background::after {
+  background-image:
+    radial-gradient(ellipse at center, transparent 45%, hsl(var(--virtus-soft) / 0.12) 46%, transparent 49%);
+  background-size: 92px 34px;
+}
+
+[data-profile-theme="spiritual"] .profile-theme-background::after {
+  background-image:
+    linear-gradient(120deg, transparent 0 46%, hsl(var(--virtus-soft) / 0.09) 46% 48%, transparent 48% 100%);
+  background-size: 74px 42px;
+}
+
+[data-profile-theme="student"] .profile-theme-background::after {
+  background-image:
+    linear-gradient(0deg, hsl(var(--virtus-soft) / 0.08) 0 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--virtus-secondary) / 0.05) 0 1px, transparent 1px);
+  background-size: 34px 34px;
 }
 
 /* FullCalendar Premium Theme */
@@ -262,12 +416,12 @@
   height: 2rem;
 }
 
-/* Keep weekday/day labels black for readability over white calendar cells */
+/* Keep weekday/day labels readable over calendar cells */
 .fc .fc-col-header-cell-cushion,
 .fc .fc-daygrid-day-number,
 .fc .fc-timegrid-axis-cushion,
 .fc .fc-timegrid-slot-label-cushion {
-  color: #18181B !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 /* Bigger month cells to fit more tasks */

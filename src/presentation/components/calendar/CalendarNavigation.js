@@ -5,7 +5,7 @@ export function CalendarNavigation({ currentTitle, onPrev, onNext, onToday }) {
   return (
     <div className="flex items-center gap-4">
       <h1 
-        className="text-2xl font-bold text-[#18181B] dark:text-white" 
+        className="text-2xl font-bold text-foreground" 
         style={{ fontFamily: 'Manrope, sans-serif' }}
         data-testid="calendar-title"
       >
@@ -16,7 +16,7 @@ export function CalendarNavigation({ currentTitle, onPrev, onNext, onToday }) {
           variant="outline" 
           size="icon" 
           onClick={onPrev}
-          className="rounded-full border-[#E4E4E7] hover:bg-[#F4F4F5]"
+          className="rounded-full"
           data-testid="calendar-prev-btn"
         >
           <ChevronLeft className="w-4 h-4" strokeWidth={1.5} />
@@ -24,7 +24,7 @@ export function CalendarNavigation({ currentTitle, onPrev, onNext, onToday }) {
         <Button 
           variant="outline" 
           onClick={onToday}
-          className="rounded-full border-[#E4E4E7] hover:bg-[#F4F4F5] px-4"
+          className="rounded-full px-4"
           data-testid="calendar-today-btn"
         >
           Hoy
@@ -33,7 +33,7 @@ export function CalendarNavigation({ currentTitle, onPrev, onNext, onToday }) {
           variant="outline" 
           size="icon" 
           onClick={onNext}
-          className="rounded-full border-[#E4E4E7] hover:bg-[#F4F4F5]"
+          className="rounded-full"
           data-testid="calendar-next-btn"
         >
           <ChevronRight className="w-4 h-4" strokeWidth={1.5} />

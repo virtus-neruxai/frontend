@@ -9,6 +9,7 @@ import { Badge } from './ui/badge';
 import { Target, Clock, Brain, TrendingUp, Calendar, Star } from 'lucide-react';
 import { getProfileName } from '../lib/profileUtils';
 import { formatStatLabel } from '../lib/statUtils';
+import { useProfileTheme } from '../theme/useProfileTheme';
 
 const MISSION_TYPE_LABELS = {
   daily: 'Diaria',
@@ -17,9 +18,9 @@ const MISSION_TYPE_LABELS = {
 };
 
 const MISSION_TYPE_COLORS = {
-  daily: 'bg-blue-500',
-  weekly: 'bg-purple-500',
-  long_term: 'bg-indigo-500'
+  daily: 'bg-[hsl(var(--info))]',
+  weekly: 'bg-primary',
+  long_term: 'bg-[hsl(var(--virtus-secondary))]'
 };
 
 const DIFFICULTY_LABELS = {
@@ -39,9 +40,10 @@ const STAT_ICONS = {
 };
 
 export default function MissionDraftModal({ isOpen, onClose, draftData, onConfirm, onReject }) {
+  const { profileId } = useProfileTheme();
   const [editedData, setEditedData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const profileName = getProfileName(localStorage.getItem('prompt_profile') || 'stoic');
+  const profileName = getProfileName(profileId);
 
   useEffect(() => {
     if (draftData?.data) {
@@ -125,7 +127,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-[#C1502E]" />
+            <Target className="w-5 h-5 text-primary" />
             Misión Propuesta por el Mentor {profileName}
           </DialogTitle>
           <DialogDescription>
@@ -136,12 +138,12 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
         <div className="space-y-4 py-4">
           {/* Agent Reasoning */}
           {metadata.agent_reasoning && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-3 bg-[hsl(var(--warning-soft))] border border-[hsl(var(--warning))] rounded-lg">
               <div className="flex items-start gap-2">
-                <Brain className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <Brain className="w-5 h-5 text-[hsl(var(--warning))] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-amber-900">Razonamiento del Mentor</p>
-                  <p className="text-sm text-amber-700 mt-1">{metadata.agent_reasoning}</p>
+                  <p className="text-sm font-medium text-foreground">Razonamiento del Mentor</p>
+                  <p className="text-sm text-muted-foreground mt-1">{metadata.agent_reasoning}</p>
                 </div>
               </div>
             </div>
@@ -149,9 +151,9 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
 
           {/* Context: Related To */}
           {relatedTo.summary && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs font-medium text-blue-900 mb-1">Contexto</p>
-              <p className="text-sm text-blue-700">{relatedTo.summary}</p>
+            <div className="p-3 bg-[hsl(var(--info-soft))] border border-[hsl(var(--info))] rounded-lg">
+              <p className="text-xs font-medium text-foreground mb-1">Contexto</p>
+              <p className="text-sm text-muted-foreground">{relatedTo.summary}</p>
             </div>
           )}
 
@@ -260,8 +262,8 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
                   <div className="flex-1">
                     <p className="text-sm font-medium">{formatStatLabel(stat)}</p>
                     <div className="flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 text-green-600" />
-                      <span className="text-xs text-green-600 font-semibold">+{reward}</span>
+                      <TrendingUp className="w-3 h-3 text-[hsl(var(--success))]" />
+                      <span className="text-xs text-[hsl(var(--success))] font-semibold">+{reward}</span>
                     </div>
                   </div>
                 </div>
@@ -275,7 +277,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
               type="checkbox"
               checked={!!editedData.addToCalendar}
               onChange={(e) => setEditedData({ ...editedData, addToCalendar: e.target.checked })}
-              className="h-4 w-4 accent-[#C1502E]"
+              className="h-4 w-4 accent-[hsl(var(--primary))]"
             />
             Añadir al calendario
           </label>
@@ -327,7 +329,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
           <Button
             onClick={handleConfirm}
             disabled={isSubmitting || !editedData.title || (editedData.addToCalendar && !editedData.start_date)}
-            className="bg-[#C1502E] hover:bg-[#A13E23]"
+            className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary)/0.9)]"
           >
             {isSubmitting ? 'Confirmando...' : 'Aceptar Misión'}
           </Button>

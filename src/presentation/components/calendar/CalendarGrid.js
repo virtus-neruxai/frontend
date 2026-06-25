@@ -38,7 +38,7 @@ export function CalendarGrid({
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="animate-pulse text-[#71717A]">Cargando calendario...</div>
+        <div className="animate-pulse text-muted-foreground">Cargando calendario...</div>
       </div>
     );
   }

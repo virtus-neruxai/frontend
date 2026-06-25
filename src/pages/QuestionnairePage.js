@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import { profileApi } from '../lib/api';
 import { getProfileName, getProfileEmoji } from '../lib/profileUtils';
+import { useProfileTheme } from '../theme/useProfileTheme';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Textarea } from '../components/ui/textarea';
@@ -29,13 +30,13 @@ const QUESTION_TYPE_LABELS = {
 const buildLikertOptions = () => [1, 2, 3, 4, 5, 6, 7];
 
 export default function QuestionnairePage() {
+  const { profileId: activeProfile } = useProfileTheme();
   const [template, setTemplate] = useState(null);
   const [answers, setAnswers] = useState({});
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const activeProfile = localStorage.getItem('prompt_profile') || 'stoic';
   const profileName = getProfileName(activeProfile);
   const profileEmoji = getProfileEmoji(activeProfile);
 
@@ -204,7 +205,6 @@ export default function QuestionnairePage() {
             value={value || ''}
             onChange={(e) => updateAnswer(question.id, e.target.value)}
             placeholder="Escribe tu respuesta..."
-            className="bg-white text-black placeholder:text-gray-500 dark:bg-white dark:text-black"
           />
         );
       case 'likert_1_7':
@@ -225,7 +225,7 @@ export default function QuestionnairePage() {
               ))}
             </RadioGroup>
             {question.anchors && (
-              <div className="grid grid-cols-3 gap-2 text-xs text-[#71717A]">
+              <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                 <span>1 · {question.anchors['1']}</span>
                 <span className="text-center">4 · {question.anchors['4']}</span>
                 <span className="text-right">7 · {question.anchors['7']}</span>
@@ -238,12 +238,12 @@ export default function QuestionnairePage() {
           <div className="space-y-3">
             {question.ranking_items?.map((item) => (
               <div key={item} className="flex flex-col gap-2">
-                <Label className="text-sm font-medium text-[#18181B] dark:text-white">{item}</Label>
+                <Label className="text-sm font-medium text-foreground">{item}</Label>
                 <Select
                   value={value?.[item]?.toString() || ''}
                   onValueChange={(val) => updateRanking(question.id, item, Number(val))}
                 >
-                  <SelectTrigger className="w-full bg-white text-black dark:bg-white dark:text-black">
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecciona orden" />
                   </SelectTrigger>
                   <SelectContent>
@@ -262,7 +262,7 @@ export default function QuestionnairePage() {
         return (
           <div className="grid gap-3 sm:grid-cols-2">
             {question.options?.map((option) => (
-              <label key={option} className="flex items-center gap-2 text-sm text-[#18181B] dark:text-white">
+              <label key={option} className="flex items-center gap-2 text-sm text-foreground">
                 <Checkbox
                   checked={Array.isArray(value) ? value.includes(option) : false}
                   disabled={
@@ -286,7 +286,7 @@ export default function QuestionnairePage() {
             className="grid gap-2"
           >
             {question.options?.map((option) => (
-              <label key={option} className="flex items-center gap-2 text-sm text-[#18181B] dark:text-white">
+              <label key={option} className="flex items-center gap-2 text-sm text-foreground">
                 <RadioGroupItem value={option} id={`${question.id}-${option}`} />
                 <Label htmlFor={`${question.id}-${option}`}>{option}</Label>
               </label>
@@ -300,30 +300,30 @@ export default function QuestionnairePage() {
 
   const renderSections = (sections) =>
     sections.map((section) => (
-      <Card key={section.id} className="border border-[#E4E4E7]">
+      <Card key={section.id}>
         <CardHeader>
-          <CardTitle className="text-lg text-[#18181B] dark:text-white">{section.title}</CardTitle>
+          <CardTitle className="text-lg text-foreground">{section.title}</CardTitle>
           {section.description && (
-            <p className="text-sm text-[#71717A]">{section.description}</p>
+            <p className="text-sm text-muted-foreground">{section.description}</p>
           )}
         </CardHeader>
         <CardContent className="space-y-6">
           {section.questions.map((question) => (
             <div key={question.id} className="space-y-3">
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-[#18181B] dark:text-white">{question.prompt}</p>
+                <p className="text-sm font-semibold text-foreground">{question.prompt}</p>
                 {question.microcopy && (
-                  <p className="text-xs text-[#71717A]">{question.microcopy}</p>
+                  <p className="text-xs text-muted-foreground">{question.microcopy}</p>
                 )}
-                <div className="flex flex-wrap gap-2 text-xs text-[#71717A]">
-                  <span className="rounded-full bg-[#F4F4F5] px-2 py-1">
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full bg-muted px-2 py-1">
                     {QUESTION_TYPE_LABELS[question.answer_type] || question.answer_type}
                   </span>
-                  <span className="rounded-full bg-[#F4F4F5] px-2 py-1">
+                  <span className="rounded-full bg-muted px-2 py-1">
                     Objetivo: {question.objective}
                   </span>
                   {question.validation?.hint && (
-                    <span className="rounded-full bg-[#F4F4F5] px-2 py-1">
+                    <span className="rounded-full bg-muted px-2 py-1">
                       Formato: {question.validation.hint}
                     </span>
                   )}
@@ -331,7 +331,7 @@ export default function QuestionnairePage() {
               </div>
               {renderQuestionInput(question)}
               {errors[question.id] && (
-                <p className="text-xs font-medium text-red-600">{errors[question.id]}</p>
+                <p className="text-xs font-medium text-destructive">{errors[question.id]}</p>
               )}
             </div>
           ))}
@@ -341,7 +341,7 @@ export default function QuestionnairePage() {
 
   if (loading) {
     return (
-      <Layout>
+      <Layout ambient>
         <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">
           Cargando cuestionario...
         </div>
@@ -350,22 +350,22 @@ export default function QuestionnairePage() {
   }
 
   return (
-    <Layout>
+    <Layout ambient>
       <div className="space-y-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold text-[#18181B] dark:text-white">Enunciado de misión</h1>
-          <p className="text-sm text-[#71717A]">
+          <h1 className="text-2xl font-bold text-foreground">Enunciado de misión</h1>
+          <p className="text-sm text-muted-foreground">
             Responde para perfilar valores, fricciones y activar recomendaciones del agente.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="mission">
-            <TabsList className="mb-4 bg-[#F4F4F5] p-1 rounded-full">
-              <TabsTrigger value="mission" className="rounded-full data-[state=active]:bg-white">
+            <TabsList className="mb-4 bg-muted p-1 rounded-full">
+              <TabsTrigger value="mission" className="rounded-full data-[state=active]:bg-card">
                 Misión
               </TabsTrigger>
-              <TabsTrigger value="context" className="rounded-full data-[state=active]:bg-white">
+              <TabsTrigger value="context" className="rounded-full data-[state=active]:bg-card">
                 {profileEmoji} Contexto · {profileName}
               </TabsTrigger>
             </TabsList>
@@ -376,7 +376,7 @@ export default function QuestionnairePage() {
 
             <TabsContent value="context" className="space-y-6">
               {contextSections.length === 0 ? (
-                <p className="text-sm text-[#71717A]">No hay preguntas de contexto para este perfil todavía.</p>
+                <p className="text-sm text-muted-foreground">No hay preguntas de contexto para este perfil todavía.</p>
               ) : (
                 renderSections(contextSections)
               )}
@@ -384,10 +384,10 @@ export default function QuestionnairePage() {
           </Tabs>
 
           <div className="flex items-center justify-between">
-            <p className="text-xs text-[#71717A]">
+            <p className="text-xs text-muted-foreground">
               Total preguntas: {flattenedQuestions.length}
             </p>
-            <Button type="submit" disabled={saving} className="bg-[#F97316] hover:bg-[#FB923C]">
+            <Button type="submit" disabled={saving}>
               {saving ? 'Guardando...' : 'Guardar perfil'}
             </Button>
           </div>

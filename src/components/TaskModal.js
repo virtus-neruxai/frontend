@@ -20,12 +20,13 @@ import { Checkbox } from './ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { Trash2, CheckCircle2, Target, AlertTriangle, RotateCcw } from 'lucide-react';
+import { TASK_STATUS_COLORS } from '../theme/semanticTokens';
 
 const STATUS_OPTIONS = [
-  { value: 'todo', label: 'Pendiente', color: '#71717A' },
-  { value: 'in_progress', label: 'En Progreso', color: '#3B82F6' },
-  { value: 'done', label: 'Completada', color: '#22C55E' },
-  { value: 'blocked', label: 'Bloqueada', color: '#EF4444' }
+  { value: 'todo', label: 'Pendiente', color: TASK_STATUS_COLORS.todo },
+  { value: 'in_progress', label: 'En Progreso', color: TASK_STATUS_COLORS.in_progress },
+  { value: 'done', label: 'Completada', color: TASK_STATUS_COLORS.done },
+  { value: 'blocked', label: 'Bloqueada', color: TASK_STATUS_COLORS.blocked }
   // 'failed' se establece automáticamente (revisión nocturna o misión agotada)
 ];
 
@@ -181,7 +182,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     };
     
     loadData();
-  }, [task, initialDate, open, mode]);
+  }, [task, initialDate, open, mode, isRoutineMode]);
 
   const formatDateTimeLocal = (date) => {
     const d = new Date(date);
@@ -544,23 +545,23 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Linked Mission Info */}
           {linkedMissionIsActive && (
-            <div className="p-3 bg-[#FFF7ED] border border-[#FFEDD5] rounded-lg">
+            <div className="p-3 bg-primary/10 border border-primary/25 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Target className="w-4 h-4 text-[#F97316]" strokeWidth={1.5} />
-                <span className="text-sm font-medium text-[#F97316]">Misión Estoica Vinculada</span>
+                <Target className="w-4 h-4 text-primary" strokeWidth={1.5} />
+                <span className="text-sm font-medium text-primary">Misión vinculada</span>
               </div>
-              <p className="text-xs text-[#71717A] mt-2">
-                Puedes completar la misión directamente aquí para registrar tu progreso estoico.
+              <p className="text-xs text-muted-foreground mt-2">
+                Puedes completar la misión directamente aquí para registrar tu progreso.
               </p>
-              <p className="text-xs text-[#71717A] mt-1">
-                Fecha límite de la misión: <span className="font-semibold text-[#18181B]">{formatDeadline(linkedMission?.expires_at || task?.date_end) || 'Sin definir'}</span>.
+              <p className="text-xs text-muted-foreground mt-1">
+                Fecha límite de la misión: <span className="font-semibold text-foreground">{formatDeadline(linkedMission?.expires_at || task?.date_end) || 'Sin definir'}</span>.
               </p>
             </div>
           )}
 
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+            <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Título *
             </Label>
             <Input
@@ -569,7 +570,6 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
               value={formData.title}
               onChange={(e) => handleChange('title', e.target.value)}
               placeholder="Nombre de la tarea"
-              className="border-[#E4E4E7]"
               required
               disabled={!!linkedMission}
             />
@@ -577,7 +577,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+            <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Descripción
             </Label>
             <Textarea
@@ -586,14 +586,14 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               placeholder="Detalles de la tarea..."
-              className="border-[#E4E4E7] min-h-[80px] resize-none"
+              className="min-h-[80px] resize-none"
 
             />
           </div>
 
           {/* Domain */}
           <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Dominio {!isEditing ? '*' : ''}
             </Label>
             <Select 
@@ -601,7 +601,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
               onValueChange={(v) => handleChange('domain', v)}
 
             >
-              <SelectTrigger className="border-[#E4E4E7]" data-testid="task-domain-select">
+              <SelectTrigger data-testid="task-domain-select">
                 <SelectValue placeholder="Selecciona un dominio" />
               </SelectTrigger>
               <SelectContent>
@@ -613,14 +613,14 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
               </SelectContent>
             </Select>
             {domainError && (
-              <p className="text-xs text-[#EF4444]" data-testid="task-domain-error">
+              <p className="text-xs text-destructive" data-testid="task-domain-error">
                 {domainError}
               </p>
             )}
           </div>
 
           <div className="flex items-center justify-between py-2">
-            <Label htmlFor="all_day" className="text-sm font-medium text-[#71717A]">
+            <Label htmlFor="all_day" className="text-sm font-medium text-muted-foreground">
               Seleccionar todo el día
             </Label>
             <Switch
@@ -636,7 +636,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           {!linkedMission && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="date_start" className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                <Label htmlFor="date_start" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Fecha Inicio *
                 </Label>
                 <Input
@@ -645,13 +645,12 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                   type="datetime-local"
                   value={formData.date_start}
                   onChange={(e) => handleChange('date_start', e.target.value)}
-                  className="border-[#E4E4E7]"
                   required
     
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="date_end" className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                <Label htmlFor="date_end" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Fecha Fin
                 </Label>
                 <Input
@@ -660,11 +659,10 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                   type="datetime-local"
                   value={formData.date_end}
                   onChange={(e) => handleChange('date_end', e.target.value)}
-                  className="border-[#E4E4E7]"
     
                 />
                 {formData.date_start && formData.date_end && (
-                  <p className="text-xs text-[#71717A] mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Duración del bloque: {Math.max(0, Math.round((new Date(formData.date_end) - new Date(formData.date_start)) / (1000 * 60)))} min
                   </p>
                 )}
@@ -674,7 +672,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
 
           {!linkedMission && isRoutine && (
             <div className="space-y-3">
-              <Label className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Recurrencia
               </Label>
               <Select
@@ -682,7 +680,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                 onValueChange={(v) => handleChange('recurrence_type', v)}
   
               >
-                <SelectTrigger className="border-[#E4E4E7]" data-testid="task-recurrence-type-select">
+                <SelectTrigger data-testid="task-recurrence-type-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -693,12 +691,11 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
 
               {formData.recurrence_type === 'daily' && (
                 <div className="space-y-2">
-                  <p className="text-xs text-[#71717A]">Se repetirá cada día hasta.</p>
+                  <p className="text-xs text-muted-foreground">Se repetirá cada día hasta.</p>
                   <Input
                     type="datetime-local"
                     value={formData.recurrence_until}
                     onChange={(e) => handleChange('recurrence_until', e.target.value)}
-                    className="border-[#E4E4E7]"
                     placeholder="Fin de recurrencia (opcional)"
                   />
                 </div>
@@ -707,17 +704,16 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
               {formData.recurrence_type === 'custom' && (
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label className="text-xs text-[#71717A]">Repetir cada __ semanas</Label>
+                    <Label className="text-xs text-muted-foreground">Repetir cada __ semanas</Label>
                     <Input
                       type="number"
                       min={1}
                       value={formData.recurrence_interval}
                       onChange={(e) => handleChange('recurrence_interval', Number(e.target.value || 1))}
-                      className="border-[#E4E4E7]"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs text-[#71717A]">Repetir en</Label>
+                    <Label className="text-xs text-muted-foreground">Repetir en</Label>
                     <div className="grid grid-cols-2 gap-2">
                       {WEEKDAY_OPTIONS.map((day) => {
                         const checked = formData.recurrence_weekdays.includes(day.value);
@@ -732,19 +728,18 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                                 handleChange('recurrence_weekdays', weekdays.sort((a, b) => a - b));
                               }}
                             />
-                            <Label className="text-sm text-[#71717A]">{day.label}</Label>
+                            <Label className="text-sm text-muted-foreground">{day.label}</Label>
                           </div>
                         );
                       })}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs text-[#71717A]">Hasta (fin de recurrencia)</Label>
+                    <Label className="text-xs text-muted-foreground">Hasta (fin de recurrencia)</Label>
                     <Input
                       type="datetime-local"
                       value={formData.recurrence_until}
                       onChange={(e) => handleChange('recurrence_until', e.target.value)}
-                      className="border-[#E4E4E7]"
                     />
                   </div>
                 </div>
@@ -754,7 +749,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           
           {/* Date validation error */}
           {dateError && (
-            <p className="text-xs text-[#EF4444]" data-testid="task-date-error">
+            <p className="text-xs text-destructive" data-testid="task-date-error">
               {dateError}
             </p>
           )}
@@ -763,7 +758,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
             <>
               {/* Status */}
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Estado
                 </Label>
                 <Select 
@@ -771,7 +766,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                   onValueChange={(v) => handleChange('status', v)}
     
                 >
-                  <SelectTrigger className="border-[#E4E4E7]" data-testid="task-status-select">
+                  <SelectTrigger data-testid="task-status-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -795,10 +790,10 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
               {/* Progress */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Progreso
                   </Label>
-                  <span className="text-sm font-medium text-[#71717A]">{formData.progress_percent}%</span>
+                  <span className="text-sm font-medium text-muted-foreground">{formData.progress_percent}%</span>
                 </div>
                 <Slider
                   data-testid="task-progress-slider"
@@ -806,14 +801,14 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                   onValueChange={([v]) => handleChange('progress_percent', v)}
                   max={100}
                   step={5}
-                  className="[&_[role=slider]]:bg-[#F97316]"
+                  className="[&_[role=slider]]:bg-primary"
     
                 />
               </div>
 
               {/* Is Complete */}
               <div className="flex items-center justify-between py-2">
-                <Label htmlFor="is_complete" className="text-sm font-medium text-[#71717A]">
+                <Label htmlFor="is_complete" className="text-sm font-medium text-muted-foreground">
                   Marcar como completada
                 </Label>
                 <Switch
@@ -822,7 +817,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                   checked={formData.is_complete}
                   onCheckedChange={(v) => handleChange('is_complete', v)}
     
-                  className="data-[state=checked]:bg-[#F97316] data-[state=unchecked]:bg-zinc-300 dark:data-[state=unchecked]:bg-zinc-700"
+                  className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted"
                 />
               </div>
 
@@ -831,7 +826,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
 
           {showCompletionReflection && (
             <div className="space-y-2">
-              <Label htmlFor="completion-reflection" className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+              <Label htmlFor="completion-reflection" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Comentario o reflexión
               </Label>
               <Textarea
@@ -840,16 +835,16 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                 value={completionReflection}
                 onChange={(e) => setCompletionReflection(e.target.value)}
                 placeholder="¿Qué observaste, aprendiste o sentiste al hacer esto?"
-                className="border-[#E4E4E7] min-h-[88px] resize-none"
+                className="min-h-[88px] resize-none"
                 disabled={loading || missionActionLoading}
               />
             </div>
           )}
 
           {linkedItemReflections.length > 0 && (
-            <div className="space-y-3 rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] p-3">
+            <div className="space-y-3 rounded-lg border bg-muted/50 p-3">
               <div className="flex items-center justify-between gap-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Reflexiones guardadas
                 </Label>
                 <Badge variant="outline" className="text-xs">
@@ -858,16 +853,16 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
               </div>
               <div className="space-y-3 max-h-44 overflow-y-auto">
                 {linkedItemReflections.map((reflection) => (
-                  <div key={reflection.id} className="rounded-md border border-[#E4E4E7] bg-white p-3">
+                  <div key={reflection.id} className="rounded-md border bg-card p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs text-[#71717A]">
+                      <span className="text-xs text-muted-foreground">
                         {formatDeadline(reflection.created_at) || 'Sin fecha'}
                       </span>
-                      <Badge variant="outline" className="text-xs bg-orange-50 border-orange-300 text-orange-700">
+                      <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
                         {reflection.reflection_type === 'mission' ? 'Misión' : 'Tarea'}
                       </Badge>
                     </div>
-                    <p className="text-sm text-[#3F3F46] whitespace-pre-wrap">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
                       {reflection.content}
                     </p>
                   </div>
@@ -885,7 +880,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                     variant="outline"
                     onClick={handleCompleteLinkedMission}
                     disabled={loading || missionActionLoading}
-                    className="rounded-full border-[#22C55E] text-[#22C55E] hover:bg-[#DCFCE7]"
+                    className="rounded-full border-[hsl(var(--success))] text-[hsl(var(--success))] hover:bg-[hsl(var(--success-soft))]"
                     data-testid="task-complete-mission-btn"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
@@ -899,7 +894,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                   variant="outline"
                   onClick={handleDelete}
                   disabled={loading || missionActionLoading}
-                  className={`rounded-full ${deleteConfirm ? 'border-[#EF4444] text-[#EF4444] hover:bg-[#FEF2F2]' : 'border-[#E4E4E7]'}`}
+                  className={`rounded-full ${deleteConfirm ? 'border-destructive text-destructive hover:bg-[hsl(var(--destructive-soft))]' : 'border-input'}`}
                   data-testid="task-delete-btn"
                 >
                   <Trash2 className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
@@ -912,7 +907,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                     variant="outline"
                     onClick={handleMarkDone}
                     disabled={loading || missionActionLoading}
-                    className="rounded-full border-[#22C55E] text-[#22C55E] hover:bg-[#DCFCE7]"
+                    className="rounded-full border-[hsl(var(--success))] text-[hsl(var(--success))] hover:bg-[hsl(var(--success-soft))]"
                     data-testid="task-mark-done-btn"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
@@ -925,7 +920,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
             <Button
               type="submit"
               disabled={loading || (!isEditing && !formData.domain)}
-              className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full font-medium ml-auto"
+              className="rounded-full font-medium ml-auto"
               data-testid="task-save-btn"
             >
               {loading ? 'Guardando...' : isEditing ? 'Guardar cambios' : isRoutine ? 'Crear rutina' : 'Crear tarea'}
@@ -940,7 +935,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
       <DialogContent className="sm:max-w-md z-50" data-testid="routine-complete-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-[#22C55E]" />
+            <CheckCircle2 className="w-5 h-5 text-[hsl(var(--success))]" />
             Marcar rutina como hecha
           </DialogTitle>
           <DialogDescription>
@@ -949,7 +944,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
         </DialogHeader>
 
         <div className="space-y-2 py-2">
-          <Label htmlFor="routine-completion-at" className="text-xs font-bold uppercase tracking-wider text-[#71717A]">
+          <Label htmlFor="routine-completion-at" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Fecha y hora del cumplimiento
           </Label>
           <Input
@@ -959,11 +954,10 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
             max={formatDateTimeLocal(new Date())}
             onChange={(e) => setRoutineCompletionAt(e.target.value)}
             disabled={loading}
-            className="border-[#E4E4E7]"
             data-testid="routine-completion-at-input"
           />
           {selectedDateCompleted && (
-            <p className="text-xs text-[#F97316]">Ya está marcada para esa fecha.</p>
+            <p className="text-xs text-primary">Ya está marcada para esa fecha.</p>
           )}
         </div>
 
@@ -981,7 +975,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
             type="button"
             onClick={confirmRoutineCompletion}
             disabled={loading || !routineCompletionAt || selectedDateCompleted}
-            className="bg-[#22C55E] hover:bg-[#16A34A] text-white rounded-full"
+            className="bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.9)] rounded-full"
             data-testid="routine-complete-confirm-btn"
           >
             {loading ? 'Guardando...' : 'Confirmar'}

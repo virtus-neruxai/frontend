@@ -2,11 +2,11 @@ import { Card, CardContent } from '../../../components/ui/card';
 
 export function KPICard({ title, value, subtitle, icon: Icon, iconColor, iconBg, testId }) {
   return (
-    <Card className="border-[#E4E4E7] hover:shadow-sm transition-shadow" data-testid={testId}>
+    <Card className="hover:shadow-sm transition-shadow" data-testid={testId}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#71717A] mb-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
               {title}
             </p>
             <p 
@@ -19,7 +19,7 @@ export function KPICard({ title, value, subtitle, icon: Icon, iconColor, iconBg,
               {value}
             </p>
             {subtitle && (
-              <p className="text-sm text-[#71717A] mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {subtitle}
               </p>
             )}

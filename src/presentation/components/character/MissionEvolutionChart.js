@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatStatLabel, getStatColor } from '../../../lib/statUtils';
 import { StatsDateRangeControls } from '../stats/StatsDateRangeControls';
+import { CHART_SURFACE } from '../../../theme/semanticTokens';
 
 export function getMissionEvolutionStatKeys(history = [], statsInfo = {}) {
   const discoveredStatKeys = Array.from(
@@ -81,7 +82,7 @@ export function MissionEvolutionChart({
   const chartData = processMissionEventsData(data, statKeys);
 
   return (
-    <Card className="border-[#E4E4E7]">
+    <Card>
       <CardHeader className="pb-2">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
@@ -101,11 +102,11 @@ export function MissionEvolutionChart({
       <CardContent>
         {loading ? (
           <div className="h-64 flex items-center justify-center">
-            <p className="text-sm text-[#71717A]">Cargando datos...</p>
+            <p className="text-sm text-muted-foreground">Cargando datos...</p>
           </div>
         ) : chartData.length === 0 ? (
           <div className="h-64 flex items-center justify-center">
-            <p className="text-sm text-[#71717A]">
+            <p className="text-sm text-muted-foreground">
               No hay datos de misiones disponibles en este rango
             </p>
           </div>
@@ -113,23 +114,23 @@ export function MissionEvolutionChart({
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_SURFACE.grid} />
                 <XAxis 
                   dataKey="date" 
-                  stroke="#71717A"
+                  stroke={CHART_SURFACE.tick}
                   style={{ fontSize: '10px', fontFamily: 'Manrope, sans-serif' }}
                   angle={-45}
                   textAnchor="end"
                   height={60}
                 />
                 <YAxis 
-                  stroke="#71717A"
+                  stroke={CHART_SURFACE.tick}
                   style={{ fontSize: '12px', fontFamily: 'Manrope, sans-serif' }}
                 />
                 <Tooltip 
                   contentStyle={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #E4E4E7',
+                    backgroundColor: CHART_SURFACE.tooltipBackground,
+                    border: `1px solid ${CHART_SURFACE.tooltipBorder}`,
                     borderRadius: '8px',
                     fontSize: '12px',
                     fontFamily: 'Manrope, sans-serif'

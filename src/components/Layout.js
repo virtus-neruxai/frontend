@@ -14,8 +14,9 @@ import { NotificationBell } from './NotificationBell';
 import { NotificationPermissionBanner } from './NotificationPermissionBanner';
 import { ThemeToggle } from './ThemeToggle';
 import { VirtusBrand } from './VirtusBrand';
+import { ProfileThemeBackground } from '../presentation/components/profile-theme/ProfileThemeBackground';
 
-export default function Layout({ children }) {
+export default function Layout({ children, ambient = false }) {
   const { user, logout } = useAuth();
   const location = useLocation();
 
@@ -46,7 +47,7 @@ export default function Layout({ children }) {
                     key={item.path}
                     to={item.path}
                     className={`inline-flex items-center gap-2 rounded-[6px] px-3 py-2 text-sm ${
-                      isActive ? 'bg-primary/15 text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      isActive ? 'bg-primary/15 text-foreground shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -87,7 +88,8 @@ export default function Layout({ children }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-screen-2xl p-6">
+      <main className="relative mx-auto max-w-screen-2xl p-6">
+        {ambient && <ProfileThemeBackground />}
         <div className="animate-fade-in">{children}</div>
       </main>
 

@@ -5,6 +5,7 @@ import {
   Flame, Trophy, Sparkles, CheckCircle2, XCircle 
 } from 'lucide-react';
 import { formatStatLabel, getStatColor } from '../../../lib/statUtils';
+import { SEMANTIC_COLORS } from '../../../theme/semanticTokens';
 
 const STAT_ICONS = {
   autodominio: Shield,
@@ -31,13 +32,13 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
   if (!character) return null;
 
   return (
-    <Card className="border-[#E4E4E7] shadow-sm">
+    <Card className="shadow-sm">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-bold text-[#18181B] dark:text-white">Estadísticas</CardTitle>
+          <CardTitle className="text-lg font-bold text-foreground">Estadísticas</CardTitle>
           <Badge 
             variant="outline" 
-            className="bg-gradient-to-r from-[#F97316] to-[#EA580C] text-white border-0"
+            className="border-0 bg-primary text-primary-foreground"
           >
             <Trophy className="w-3 h-3 mr-1" />
             Nivel {character.level}
@@ -46,10 +47,10 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Level Title */}
-        <div className="text-center p-4 bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A] rounded-lg border border-[#FCD34D]">
-          <Sparkles className="w-5 h-5 mx-auto mb-2 text-[#D97706]" />
-          <p className="text-sm text-[#92400E] font-medium">Título Actual</p>
-          <p className="text-xl font-bold text-[#B45309]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+        <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/25">
+          <Sparkles className="w-5 h-5 mx-auto mb-2 text-primary" />
+          <p className="text-sm text-muted-foreground font-medium">Título Actual</p>
+          <p className="text-xl font-bold text-primary" style={{ fontFamily: 'Manrope, sans-serif' }}>
             {character.level_title}
           </p>
         </div>
@@ -76,7 +77,7 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
                         strokeWidth={1.5} 
                       />
                     </div>
-                    <span className="text-sm font-medium text-[#18181B] dark:text-white">
+                    <span className="text-sm font-medium text-foreground">
                       {label}
                     </span>
                   </div>
@@ -102,32 +103,32 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
         </div>
 
         {/* Stats Summary */}
-        <div className="pt-2 border-t border-[#E4E4E7]">
+        <div className="pt-2 border-t border-border">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-[#71717A]">Total Stats</span>
-            <span className="font-bold text-[#F97316]">
+            <span className="text-muted-foreground">Total Stats</span>
+            <span className="font-bold text-primary">
               {Object.values(character.stats || {}).reduce((sum, val) => sum + val, 0)}/500
             </span>
           </div>
         </div>
 
         {/* Missions Stats */}
-        <div className="pt-2 border-t border-[#E4E4E7] space-y-2">
+        <div className="pt-2 border-t border-border space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-[#71717A]">
-              <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CheckCircle2 className="w-4 h-4" style={{ color: SEMANTIC_COLORS.success }} />
               <span>Misiones Completadas</span>
             </div>
-            <span className="font-bold text-[#22C55E]">
+            <span className="font-bold" style={{ color: SEMANTIC_COLORS.success }}>
               {character.missions_completed || 0}
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-[#71717A]">
-              <XCircle className="w-4 h-4 text-[#EF4444]" />
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <XCircle className="w-4 h-4" style={{ color: SEMANTIC_COLORS.destructive }} />
               <span>Misiones Falladas</span>
             </div>
-            <span className="font-bold text-[#EF4444]">
+            <span className="font-bold" style={{ color: SEMANTIC_COLORS.destructive }}>
               {character.missions_failed || 0}
             </span>
           </div>

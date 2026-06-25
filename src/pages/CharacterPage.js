@@ -25,6 +25,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { SEMANTIC_COLORS } from '../theme/semanticTokens';
 import {
   Target, Scroll, MessageCircle, Send,
   XCircle, CheckCircle2, AlertTriangle, Clock, Repeat
@@ -401,29 +402,29 @@ export default function CharacterPageRefactored() {
 
   if (loading) {
     return (
-      <Layout>
+      <Layout ambient>
         <div className="h-96 flex items-center justify-center">
-          <div className="animate-pulse text-[#71717A]">Cargando tu personaje...</div>
+          <div className="animate-pulse text-muted-foreground">Cargando tu personaje...</div>
         </div>
       </Layout>
     );
   }
 
   return (
-    <Layout>
+    <Layout ambient>
       <div className="space-y-6" data-testid="character-page">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#18181B] dark:text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'Manrope, sans-serif' }}>
               Tu Carácter
             </h1>
-            <p className="text-[#71717A] mt-1">Desarrolla tu virtud a través de la acción coherente</p>
+            <p className="text-muted-foreground mt-1">Desarrolla tu virtud a través de la acción coherente</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm text-[#71717A]">Nivel {character?.level}</p>
-              <p className="font-bold text-[#F97316]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              <p className="text-sm text-muted-foreground">Nivel {character?.level}</p>
+              <p className="font-bold text-primary" style={{ fontFamily: 'Manrope, sans-serif' }}>
                 {character?.level_title}
               </p>
             </div>
@@ -435,15 +436,15 @@ export default function CharacterPageRefactored() {
 
         {/* Nightly Review Result (if exists) */}
         {nightlyReviewResult && (
-          <Card className="border-[#8B5CF6] bg-gradient-to-br from-[#F5F3FF] to-white">
+          <Card className="border-primary/30 bg-primary/10">
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="font-semibold text-[#8B5CF6] mb-2">📊 Revisión Nocturna</p>
-                  <p className="text-sm text-[#52525B] mb-2">{nightlyReviewResult.analysis}</p>
+                  <p className="font-semibold text-primary mb-2">Revisión Nocturna</p>
+                  <p className="text-sm text-foreground mb-2">{nightlyReviewResult.analysis}</p>
                   <div className="flex gap-4 text-sm">
-                    <span className="text-[#22C55E]">✓ {nightlyReviewResult.tasks_completed} completadas</span>
-                    <span className="text-[#EF4444]">✗ {nightlyReviewResult.tasks_failed} fallidas</span>
+                    <span style={{ color: SEMANTIC_COLORS.success }}>✓ {nightlyReviewResult.tasks_completed} completadas</span>
+                    <span style={{ color: SEMANTIC_COLORS.destructive }}>✗ {nightlyReviewResult.tasks_failed} fallidas</span>
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowConfirmModal(false)}>✕</Button>
@@ -454,20 +455,20 @@ export default function CharacterPageRefactored() {
 
         {/* Tabs */}
         <Tabs defaultValue="missions" className="space-y-4" onValueChange={setActiveTab}>
-          <TabsList className="bg-[#F4F4F5] p-1 rounded-full">
-            <TabsTrigger value="missions" className="rounded-full data-[state=active]:bg-white">
+          <TabsList className="bg-muted p-1 rounded-full">
+            <TabsTrigger value="missions" className="rounded-full data-[state=active]:bg-card">
               <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Misiones
             </TabsTrigger>
-            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-white">
+            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-card">
               <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Desafíos
             </TabsTrigger>
-            <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-white">
+            <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-card">
               <Scroll className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Diario
             </TabsTrigger>
-            <TabsTrigger value="agent" className="rounded-full data-[state=active]:bg-white">
+            <TabsTrigger value="agent" className="rounded-full data-[state=active]:bg-card">
               <MessageCircle className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Mentor {profileName}
             </TabsTrigger>
@@ -490,11 +491,11 @@ export default function CharacterPageRefactored() {
 
             {/* Active / History sub-tabs */}
             <Tabs defaultValue="active" className="space-y-4">
-              <TabsList className="bg-[#F4F4F5] p-1 rounded-full">
-                <TabsTrigger value="active" className="rounded-full data-[state=active]:bg-white">
+              <TabsList className="bg-muted p-1 rounded-full">
+                <TabsTrigger value="active" className="rounded-full data-[state=active]:bg-card">
                   Activas
                 </TabsTrigger>
-                <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-white">
+                <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-card">
                   Historial {completedMissions.length > 0 && `(${completedMissions.length})`}
                 </TabsTrigger>
               </TabsList>
@@ -560,26 +561,26 @@ export default function CharacterPageRefactored() {
             />
             
             {/* Reflection Input Card */}
-            <Card className="border-[#E4E4E7]">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Diario</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* AI Mentor Response (if exists) */}
                 {aiResponse && (
-                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                    <p className="text-sm font-semibold text-purple-900 mb-2">📜 Respuesta del Mentor:</p>
-                    <p className="text-sm text-purple-800">{aiResponse}</p>
+                  <div className="p-4 bg-primary/10 border border-primary/25 rounded-lg">
+                    <p className="text-sm font-semibold text-primary mb-2">Respuesta del Mentor:</p>
+                    <p className="text-sm text-foreground">{aiResponse}</p>
                     
                     {statChanges && (
-                      <div className="mt-3 pt-3 border-t border-purple-200">
-                        <p className="text-xs font-semibold text-purple-700 mb-2">Cambios de Carácter:</p>
+                      <div className="mt-3 pt-3 border-t border-primary/20">
+                        <p className="text-xs font-semibold text-primary mb-2">Cambios de Carácter:</p>
                         <div className="flex flex-wrap gap-2">
                           {Object.entries(statChanges).map(([stat, value]) => (
                             value !== 0 && (
                               <Badge 
                                 key={stat}
-                                className={value > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                                className={value > 0 ? 'bg-[hsl(var(--success-soft))] text-[hsl(var(--success))]' : 'bg-[hsl(var(--destructive-soft))] text-destructive'}
                               >
                                 {stat}: {value > 0 ? '+' : ''}{value}
                               </Badge>
@@ -591,7 +592,7 @@ export default function CharacterPageRefactored() {
                     
                     <button
                       onClick={() => { setAiResponse(null); setStatChanges(null); }}
-                      className="mt-3 text-xs text-purple-600 hover:text-purple-800"
+                      className="mt-3 text-xs text-primary hover:opacity-80"
                     >
                       Cerrar
                     </button>
@@ -601,10 +602,10 @@ export default function CharacterPageRefactored() {
                 {/* New Reflection */}
                 <div>
                   <div className="mb-2 flex items-center justify-between">
-                    <label className="text-sm font-medium text-gray-700">Nueva Reflexión</label>
+                    <label className="text-sm font-medium text-foreground">Nueva Reflexión</label>
                     <Badge
                       variant="outline"
-                      className="bg-blue-50 border-blue-300 text-blue-700"
+                      className="bg-[hsl(var(--info-soft))] border-[hsl(var(--info))] text-[hsl(var(--info))]"
                     >
                       {dailyReflectionsCount} reflexiones hoy
                     </Badge>
@@ -622,29 +623,29 @@ export default function CharacterPageRefactored() {
                   <Button
                     onClick={handleSubmitReflection}
                     disabled={!reflectionText.trim() || isSubmittingReflection}
-                    className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmittingReflection ? 'Enviando...' : 'Guardar Entrada'}
                   </Button>
                 </div>
 
                 {pendingReflectionDraft && (
-                  <div className="p-4 border border-amber-300 bg-amber-50 rounded-lg">
+                  <div className="p-4 border border-[hsl(var(--warning))] bg-[hsl(var(--warning-soft))] rounded-lg">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-amber-900">
+                        <p className="text-sm font-semibold text-foreground">
                           Tu mentor te propone una {formatPendingDraftType(pendingReflectionDraft.type)}
                         </p>
                         {pendingReflectionDraft.sourceReflectionPreview && (
-                          <p className="text-xs text-amber-800 mt-1 italic">
+                          <p className="text-xs text-muted-foreground mt-1 italic">
                             Basado en: "{pendingReflectionDraft.sourceReflectionPreview}"
                           </p>
                         )}
-                        <p className="text-xs text-amber-700 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Puedes abrirla, editarla y confirmarla cuando quieras dentro del TTL.
                         </p>
                       </div>
-                      <Badge variant="outline" className="text-amber-700 border-amber-300 bg-white">
+                      <Badge variant="outline" className="text-foreground border-[hsl(var(--warning))] bg-background">
                         <Clock className="w-3 h-3 mr-1" />
                         {getPendingDraftTimeLabel()}
                       </Badge>
@@ -652,7 +653,7 @@ export default function CharacterPageRefactored() {
                     <div className="mt-3 flex gap-2">
                       <Button
                         size="sm"
-                        className="bg-[#F97316] hover:bg-[#EA580C] text-white"
+                        className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary)/0.9)]"
                         onClick={() => {
                           openDraftModal({
                             draftId: pendingReflectionDraft.draftId,
@@ -679,10 +680,10 @@ export default function CharacterPageRefactored() {
                 <div className="border-t pt-4">
                   <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-700">
+                      <h3 className="text-sm font-semibold text-foreground">
                         Historial de Reflexiones
                       </h3>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {reflectionHistoryMode === 'journal'
                           ? 'Entradas libres del diario'
                           : 'Comentarios guardados desde tareas y misiones'}
@@ -694,7 +695,7 @@ export default function CharacterPageRefactored() {
                         size="sm"
                         variant="outline"
                         onClick={() => setReflectionHistoryMode('journal')}
-                        className={reflectionHistoryMode === 'journal' ? 'border-[#F97316] text-[#F97316] bg-[#FFF7ED]' : ''}
+                        className={reflectionHistoryMode === 'journal' ? 'border-primary text-primary bg-primary/10' : ''}
                       >
                         Diario
                       </Button>
@@ -703,13 +704,13 @@ export default function CharacterPageRefactored() {
                         size="sm"
                         variant="outline"
                         onClick={() => setReflectionHistoryMode('linked')}
-                        className={reflectionHistoryMode === 'linked' ? 'border-[#F97316] text-[#F97316] bg-[#FFF7ED]' : ''}
+                        className={reflectionHistoryMode === 'linked' ? 'border-primary text-primary bg-primary/10' : ''}
                       >
                         Tareas y misiones
                       </Button>
                     </div>
                   </div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Filtrar por fecha:
                   </label>
                   <div className="flex gap-2">
@@ -717,7 +718,7 @@ export default function CharacterPageRefactored() {
                       type="date"
                       value={selectedDate}
                       onChange={(e) => setSelectedDate(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="flex-1 px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                     {selectedDate && (
                       <Button
@@ -734,18 +735,18 @@ export default function CharacterPageRefactored() {
                 {/* Reflections History */}
                 {reflections.length > 0 && (
                   <div className="border-t pt-6">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-4">
                       {reflectionHistoryMode === 'journal' ? 'Entradas del diario' : 'Reflexiones de tareas y misiones'} ({reflections.length})
-                      {selectedDate && <span className="text-gray-500 font-normal"> - {new Date(selectedDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
+                      {selectedDate && <span className="text-muted-foreground font-normal"> - {new Date(selectedDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
                     </h3>
                     <div className="space-y-4 max-h-[500px] overflow-y-auto">
                       {reflections.map((reflection) => (
                         <div
                           key={reflection.id}
-                          className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                          className="p-4 bg-muted/50 rounded-lg border"
                         >
                           <div className="flex items-start justify-between mb-2">
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               {new Date(reflection.created_at).toLocaleDateString('es-ES', {
                                 year: 'numeric',
                                 month: 'long',
@@ -756,7 +757,7 @@ export default function CharacterPageRefactored() {
                             </span>
                             <div className="flex flex-wrap justify-end gap-2">
                               {reflectionHistoryMode === 'linked' && (
-                                <Badge variant="outline" className="text-xs bg-orange-50 border-orange-300 text-orange-700">
+                                <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
                                   {reflection.reflection_type === 'mission' ? 'Misión' : 'Tarea'}
                                 </Badge>
                               )}
@@ -765,10 +766,10 @@ export default function CharacterPageRefactored() {
                                   variant="outline"
                                   className={`text-xs ${
                                     reflection.emotion_snapshot.polarity === 'positive'
-                                      ? 'bg-green-50 border-green-300 text-green-700'
+                                      ? 'bg-[hsl(var(--success-soft))] border-[hsl(var(--success))] text-[hsl(var(--success))]'
                                       : reflection.emotion_snapshot.polarity === 'negative'
-                                      ? 'bg-red-50 border-red-300 text-red-700'
-                                      : 'bg-blue-50 border-blue-300 text-blue-700'
+                                      ? 'bg-[hsl(var(--destructive-soft))] border-destructive text-destructive'
+                                      : 'bg-[hsl(var(--info-soft))] border-[hsl(var(--info))] text-[hsl(var(--info))]'
                                   }`}
                                 >
                                   {reflection.emotion_snapshot.emotion} · {reflection.emotion_snapshot.intensity}/5
@@ -778,19 +779,19 @@ export default function CharacterPageRefactored() {
                           </div>
 
                           {reflectionHistoryMode === 'linked' && reflection.source_item_title && (
-                            <p className="text-xs font-medium text-gray-500 mb-2">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">
                               Origen: {reflection.source_item_title}
                             </p>
                           )}
                           
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">
+                          <p className="text-sm text-foreground whitespace-pre-wrap mb-3">
                             {reflection.content}
                           </p>
                           
                           {reflection.ai_response && (
-                            <div className="mt-3 p-3 bg-purple-50 border-l-4 border-purple-400 rounded">
-                              <p className="text-xs font-semibold text-purple-900 mb-1">Mentor:</p>
-                              <p className="text-xs text-purple-800">{reflection.ai_response}</p>
+                            <div className="mt-3 p-3 bg-primary/10 border-l-4 border-primary rounded">
+                              <p className="text-xs font-semibold text-primary mb-1">Mentor:</p>
+                              <p className="text-xs text-foreground">{reflection.ai_response}</p>
                             </div>
                           )}
                           
@@ -801,7 +802,7 @@ export default function CharacterPageRefactored() {
                                   <Badge 
                                     key={stat}
                                     variant="outline"
-                                    className={`text-xs ${value > 0 ? 'bg-green-50 border-green-300 text-green-700' : 'bg-red-50 border-red-300 text-red-700'}`}
+                                    className={`text-xs ${value > 0 ? 'bg-[hsl(var(--success-soft))] border-[hsl(var(--success))] text-[hsl(var(--success))]' : 'bg-[hsl(var(--destructive-soft))] border-destructive text-destructive'}`}
                                   >
                                     {stat}: {value > 0 ? '+' : ''}{value}
                                   </Badge>
@@ -816,7 +817,7 @@ export default function CharacterPageRefactored() {
                 )}
                 
                 {reflections.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-8">
+                  <p className="text-sm text-muted-foreground text-center py-8">
                     {selectedDate
                       ? 'No hay reflexiones para esta fecha'
                       : reflectionHistoryMode === 'journal'
@@ -830,7 +831,7 @@ export default function CharacterPageRefactored() {
 
           {/* Agent Chat Tab */}
           <TabsContent value="agent">
-            <Card className="border-[#E4E4E7]">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">Mentor {profileName}</CardTitle>
                 <Button
@@ -845,8 +846,8 @@ export default function CharacterPageRefactored() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {chatResponse && (
-                  <div className="p-4 bg-[#F4F4F5] rounded-lg">
-                    <p className="text-sm text-[#18181B] whitespace-pre-wrap">{chatResponse}</p>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{chatResponse}</p>
                   </div>
                 )}
                 <div className="flex gap-2">
@@ -860,7 +861,7 @@ export default function CharacterPageRefactored() {
                 <Button
                   onClick={handleChat}
                   disabled={!chatMessage.trim() || chatLoading}
-                  className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full w-full"
+                  className="rounded-full w-full"
                 >
                   <Send className="w-4 h-4 mr-2" />
                   {chatLoading ? 'Pensando...' : 'Enviar'}
@@ -892,7 +893,7 @@ export default function CharacterPageRefactored() {
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm">{selectedMission?.title}</p>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#71717A]">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Comentario o reflexión
               </label>
               <Textarea
@@ -912,7 +913,7 @@ export default function CharacterPageRefactored() {
               </Button>
               <Button
                 onClick={() => handleCompleteMission(true)}
-                className="flex-1 bg-[#22C55E] hover:bg-[#16A34A]"
+                className="flex-1 bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.9)]"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Completada
@@ -934,7 +935,7 @@ export default function CharacterPageRefactored() {
                   type="datetime-local"
                   value={scheduleDateTime}
                   onChange={(e) => setScheduleDateTime(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full mt-1 px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
             </div>
@@ -947,7 +948,7 @@ export default function CharacterPageRefactored() {
               </Button>
               <Button
                 onClick={handleScheduleMission}
-                className="bg-[#F97316] hover:bg-[#EA580C]"
+                className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary)/0.9)]"
               >
                 Programar
               </Button>

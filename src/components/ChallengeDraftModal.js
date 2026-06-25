@@ -15,9 +15,9 @@ const CHALLENGE_TYPE_LABELS = {
 };
 
 const CHALLENGE_TYPE_COLORS = {
-  daily: 'bg-blue-500',
-  weekly: 'bg-purple-500',
-  monthly: 'bg-indigo-500',
+  daily: 'bg-[hsl(var(--info))]',
+  weekly: 'bg-primary',
+  monthly: 'bg-[hsl(var(--virtus-secondary))]',
 };
 
 // 0 = domingo ... 6 = sábado (JS getDay convention)
@@ -88,7 +88,7 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Repeat className="w-5 h-5 text-[#C1502E]" />
+            <Repeat className="w-5 h-5 text-primary" />
             Propuesta de rutina para tu desafío
           </DialogTitle>
           <DialogDescription>
@@ -105,12 +105,12 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
           </div>
 
           {reasoning && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-3 bg-[hsl(var(--warning-soft))] border border-[hsl(var(--warning))] rounded-lg">
               <div className="flex items-start gap-2">
-                <Brain className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <Brain className="w-5 h-5 text-[hsl(var(--warning))] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-amber-900">Por qué esta rutina</p>
-                  <p className="text-sm text-amber-700 mt-1">{reasoning}</p>
+                  <p className="text-sm font-medium text-foreground">Por qué esta rutina</p>
+                  <p className="text-sm text-muted-foreground mt-1">{reasoning}</p>
                 </div>
               </div>
             </div>
@@ -152,8 +152,8 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
                       onClick={() => toggleWeekday(day.value)}
                       className={`w-9 h-9 rounded-full text-sm font-medium border transition-colors ${
                         active
-                          ? 'bg-[#C1502E] text-white border-[#C1502E]'
-                          : 'bg-white text-[#71717A] border-[#E4E4E7]'
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-muted-foreground border-input'
                       }`}
                     >
                       {day.label}
@@ -162,7 +162,7 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
                 })}
               </div>
               {weekdaysInvalid && (
-                <p className="text-xs text-red-500">Selecciona al menos un día.</p>
+                <p className="text-xs text-destructive">Selecciona al menos un día.</p>
               )}
             </div>
           )}
@@ -201,8 +201,8 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
                 {Object.entries(editedData.stat_rewards).map(([stat, reward]) => (
                   <div key={stat} className="flex items-center gap-1 p-2 bg-secondary rounded-lg">
                     <span className="text-sm font-medium">{formatStatLabel(stat)}</span>
-                    <TrendingUp className="w-3 h-3 text-green-600" />
-                    <span className="text-xs text-green-600 font-semibold">+{reward}</span>
+                    <TrendingUp className="w-3 h-3 text-[hsl(var(--success))]" />
+                    <span className="text-xs text-[hsl(var(--success))] font-semibold">+{reward}</span>
                   </div>
                 ))}
               </div>
@@ -224,7 +224,7 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
           <Button
             onClick={handleConfirm}
             disabled={confirming || !editedData.title || weekdaysInvalid}
-            className="bg-[#C1502E] hover:bg-[#A13E23]"
+            className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary)/0.9)]"
           >
             {confirming ? 'Creando...' : 'Programar desafío'}
           </Button>

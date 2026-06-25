@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { AlertCircle, Calendar, Clock, Brain } from 'lucide-react';
 import { getProfileName } from '../lib/profileUtils';
+import { useProfileTheme } from '../theme/useProfileTheme';
 
 const DOMAIN_OPTIONS = [
   'Personal', 'Propósito', 'Mental', 'Hábitos', 'Salud',
@@ -35,11 +36,11 @@ const DIFFICULTY_LABELS = {
 };
 
 const DIFFICULTY_COLORS = {
-  1: 'bg-green-500',
-  2: 'bg-blue-500',
-  3: 'bg-yellow-500',
-  4: 'bg-orange-500',
-  5: 'bg-red-500'
+  1: 'bg-[hsl(var(--success))]',
+  2: 'bg-[hsl(var(--info))]',
+  3: 'bg-[hsl(var(--warning))]',
+  4: 'bg-primary',
+  5: 'bg-destructive'
 };
 
 const inferDifficulty = (value, durationMinutes) => {
@@ -54,9 +55,10 @@ const inferDifficulty = (value, durationMinutes) => {
 };
 
 export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, onReject }) {
+  const { profileId } = useProfileTheme();
   const [editedData, setEditedData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const profileName = getProfileName(localStorage.getItem('prompt_profile') || 'stoic');
+  const profileName = getProfileName(profileId);
 
   useEffect(() => {
     if (draftData?.data) {
@@ -234,7 +236,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#C1502E]" />
+            <Calendar className="w-5 h-5 text-primary" />
             {modalTitle}
           </DialogTitle>
           <DialogDescription>
@@ -247,12 +249,12 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
         <div className="space-y-4 py-4">
           {/* Agent Reasoning */}
           {metadata.agent_reasoning && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-3 bg-[hsl(var(--warning-soft))] border border-[hsl(var(--warning))] rounded-lg">
               <div className="flex items-start gap-2">
-                <Brain className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <Brain className="w-5 h-5 text-[hsl(var(--warning))] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-amber-900">Razonamiento del Mentor</p>
-                  <p className="text-sm text-amber-700 mt-1">{metadata.agent_reasoning}</p>
+                  <p className="text-sm font-medium text-foreground">Razonamiento del Mentor</p>
+                  <p className="text-sm text-muted-foreground mt-1">{metadata.agent_reasoning}</p>
                 </div>
               </div>
             </div>
@@ -283,7 +285,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
               placeholder="Ej: Meditar 10 minutos"
               maxLength={60}
             />
-            <p className="text-xs text-gray-500">{editedData.title?.length || 0}/60 caracteres</p>
+            <p className="text-xs text-muted-foreground">{editedData.title?.length || 0}/60 caracteres</p>
           </div>
 
           {/* Description */}
@@ -321,7 +323,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
           </div>
 
           {isRoutine && (
-            <div className="space-y-3 p-3 border rounded-lg bg-gray-50">
+            <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
               <Label className="font-medium">Recurrencia de la Rutina</Label>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -362,7 +364,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
                         <button
                           key={day.value}
                           type="button"
-                          className={`px-3 py-1 rounded-md border text-sm ${selected ? 'bg-[#C1502E] text-white border-[#C1502E]' : 'bg-white border-gray-300'}`}
+                          className={`px-3 py-1 rounded-md border text-sm ${selected ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-input'}`}
                           onClick={() => {
                             const current = editedData.recurrence_weekdays || [];
                             const next = selected
@@ -433,8 +435,8 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
                   onClick={() => setEditedData({ ...editedData, difficulty: level })}
                   className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all ${
                     editedData.difficulty === level
-                      ? `${DIFFICULTY_COLORS[level]} border-gray-700 text-white`
-                      : 'border-gray-300 hover:border-gray-400 bg-white'
+                      ? `${DIFFICULTY_COLORS[level]} border-foreground/30 text-white`
+                      : 'border-input hover:border-primary/50 bg-background'
                   }`}
                 >
                   <div className="text-sm font-medium">{level}</div>
@@ -468,7 +470,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
           <Button
             onClick={handleConfirm}
             disabled={isSubmitting || !editedData.title || !editedData.date_start || !editedData.domain || (isRoutine && !editedData.date_end)}
-            className="bg-[#C1502E] hover:bg-[#9A3F24]"
+            className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary)/0.9)]"
           >
             {isSubmitting ? submittingLabel : confirmLabel}
           </Button>

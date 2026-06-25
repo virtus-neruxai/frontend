@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import NotificationSettings from '../components/NotificationSettings';
 import PromptProfileSettings from '../components/PromptProfileSettings';
 import ProactiveSettings from '../components/ProactiveSettings';
 import { notificationsApi, userSettingsApi } from '../lib/api';
+import { useProfileTheme } from '../theme/useProfileTheme';
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -23,15 +24,33 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function SettingsPage() {
+  const {
+    profileId,
+    previewProfile,
+    persistProfile,
+    syncPersistedProfile,
+  } = useProfileTheme();
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [promptProfile, setPromptProfile] = useState('stoic');
+  const [promptProfile, setPromptProfile] = useState(profileId);
+  const [persistedPromptProfile, setPersistedPromptProfile] = useState(profileId);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
   const [autoApplyProactiveChanges, setAutoApplyProactiveChanges] = useState(false);
   const [proactiveSaving, setProactiveSaving] = useState(false);
+  const persistedPromptProfileRef = useRef(profileId);
+
+  useEffect(() => {
+    persistedPromptProfileRef.current = persistedPromptProfile;
+  }, [persistedPromptProfile]);
+
+  useEffect(() => {
+    return () => {
+      previewProfile(persistedPromptProfileRef.current);
+    };
+  }, [previewProfile]);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -63,10 +82,13 @@ export default function SettingsPage() {
         const resolved = response?.data?.resolved_prompt_profile || response?.data?.prompt_profile || 'stoic';
         const autoApply = Boolean(response?.data?.auto_apply_proactive_changes);
         setPromptProfile(resolved);
+        setPersistedPromptProfile(resolved);
+        syncPersistedProfile(resolved);
         setAutoApplyProactiveChanges(autoApply);
-        localStorage.setItem('prompt_profile', resolved);
       } catch (error) {
-        // silently fallback to stoic
+        const fallbackProfile = persistedPromptProfileRef.current;
+        setPromptProfile(fallbackProfile);
+        setPersistedPromptProfile(fallbackProfile);
       } finally {
         setProfileLoading(false);
       }
@@ -74,7 +96,7 @@ export default function SettingsPage() {
 
     loadSettings();
     loadPromptProfile();
-  }, []);
+  }, [syncPersistedProfile]);
 
   const updateNested = (path, value) => {
     setSettings((prev) => {
@@ -161,13 +183,23 @@ export default function SettingsPage() {
     }
   };
 
+  const handlePromptProfileSelect = (nextProfile) => {
+    setPromptProfile(nextProfile);
+    previewProfile(nextProfile);
+  };
+
   const savePromptProfile = async () => {
     setProfileSaving(true);
     try {
-      await userSettingsApi.saveSettings({ prompt_profile: promptProfile });
-      localStorage.setItem('prompt_profile', promptProfile);
+      const response = await userSettingsApi.saveSettings({ prompt_profile: promptProfile });
+      const resolved = response?.data?.resolved_prompt_profile || response?.data?.prompt_profile || promptProfile;
+      setPromptProfile(resolved);
+      setPersistedPromptProfile(resolved);
+      persistProfile(resolved);
       toast.success('Perfil del mentor guardado');
     } catch (error) {
+      setPromptProfile(persistedPromptProfile);
+      previewProfile(persistedPromptProfile);
       toast.error('Error al guardar el perfil del mentor');
     } finally {
       setProfileSaving(false);
@@ -189,20 +221,20 @@ export default function SettingsPage() {
   };
 
   return (
-    <Layout>
+    <Layout ambient>
       <div className="space-y-6" data-testid="settings-page">
         <div>
-          <h1 className="text-2xl font-bold text-[#18181B] dark:text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Ajustes
           </h1>
-          <p className="text-[#71717A] mt-1">Personaliza tu experiencia con el agente y las notificaciones.</p>
+          <p className="text-muted-foreground mt-1">Personaliza tu experiencia con el agente y las notificaciones.</p>
         </div>
 
         <PromptProfileSettings
           currentProfile={promptProfile}
           loading={profileLoading}
           saving={profileSaving}
-          onSelect={setPromptProfile}
+          onSelect={handlePromptProfileSelect}
           onSave={savePromptProfile}
         />
 
