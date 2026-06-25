@@ -30,7 +30,7 @@ export function StatusDistributionChart({ summary }) {
   return (
     <Card data-testid="status-pie-chart">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
           Distribución por Estado
         </CardTitle>
       </CardHeader>

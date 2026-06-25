@@ -6,7 +6,7 @@ export function CalendarNavigation({ currentTitle, onPrev, onNext, onToday }) {
     <div className="flex items-center gap-4">
       <h1 
         className="text-2xl font-bold text-foreground" 
-        style={{ fontFamily: 'Manrope, sans-serif' }}
+        style={{ fontFamily: 'var(--font-heading)' }}
         data-testid="calendar-title"
       >
         {currentTitle}

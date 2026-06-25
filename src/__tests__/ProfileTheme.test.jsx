@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SettingsPage from '../pages/SettingsPage';
 import { ProfileEmptyState } from '../presentation/components/profile-theme/ProfileEmptyState';
-import { ProfileIndicator } from '../presentation/components/profile-theme/ProfileIndicator';
 import { ProfileThemeProvider } from '../presentation/components/profile-theme/ProfileThemeProvider';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { normalizeProfileId } from '../theme/profileThemeUtils';
+import { VirtusBrand } from '../components/VirtusBrand';
 import { notificationsApi, userSettingsApi } from '../lib/api';
 
 jest.mock('sonner', () => ({
@@ -168,16 +168,16 @@ describe('profile theme', () => {
     expect(document.documentElement.dataset.profileTheme).toBe('performance');
   });
 
-  test('profile indicator makes the active profile visible globally', () => {
+  test('brand tagline changes with the active profile', () => {
     window.localStorage.setItem('prompt_profile', 'student');
 
     render(
       <ProfileThemeProvider>
-        <ProfileIndicator />
+        <VirtusBrand />
       </ProfileThemeProvider>
     );
 
-    expect(screen.getByTestId('profile-indicator')).toHaveTextContent('Estudiante');
+    expect(screen.getByText('Lectura • Metodo • Futuro')).toBeInTheDocument();
     expect(document.documentElement.dataset.profileTheme).toBe('student');
   });
 });

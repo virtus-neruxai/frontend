@@ -227,7 +227,7 @@ export default function SettingsPage() {
     <Layout ambient>
       <div className="space-y-6" data-testid="settings-page">
         <div>
-          <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'var(--font-heading)' }}>
             Ajustes
           </h1>
           <p className="text-muted-foreground mt-1">Personaliza tu experiencia con el agente y las notificaciones.</p>

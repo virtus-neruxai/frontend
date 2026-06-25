@@ -28,7 +28,7 @@ export function TimeseriesChart({ timeseries }) {
   return (
     <Card data-testid="timeseries-chart">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
           Actividad en el Tiempo
         </CardTitle>
       </CardHeader>

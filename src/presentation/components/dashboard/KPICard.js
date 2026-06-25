@@ -12,7 +12,7 @@ export function KPICard({ title, value, subtitle, icon: Icon, iconColor, iconBg,
             <p 
               className="text-3xl font-bold" 
               style={{ 
-                fontFamily: 'Manrope, sans-serif',
+                fontFamily: 'var(--font-heading)',
                 color: iconColor 
               }}
             >

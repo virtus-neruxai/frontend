@@ -50,7 +50,7 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
         <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/25">
           <Sparkles className="w-5 h-5 mx-auto mb-2 text-primary" />
           <p className="text-sm text-muted-foreground font-medium">Título Actual</p>
-          <p className="text-xl font-bold text-primary" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <p className="text-xl font-bold text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
             {character.level_title}
           </p>
         </div>

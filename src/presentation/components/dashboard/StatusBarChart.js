@@ -29,7 +29,7 @@ export function StatusBarChart({ summary }) {
   return (
     <Card data-testid="status-bar-chart">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
           Tareas por Estado
         </CardTitle>
       </CardHeader>

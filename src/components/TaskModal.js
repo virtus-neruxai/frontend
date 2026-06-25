@@ -535,7 +535,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
         <DialogHeader>
           <DialogTitle 
             className="text-xl" 
-            style={{ fontFamily: 'Manrope, sans-serif' }}
+            style={{ fontFamily: 'var(--font-heading)' }}
             data-testid="task-modal-title"
           >
             {isEditing ? (isRoutine ? 'Editar rutina' : 'Editar Tarea') : isRoutine ? 'Nueva rutina' : 'Nueva Tarea'}

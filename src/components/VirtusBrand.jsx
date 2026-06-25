@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useProfileTheme } from '../theme/useProfileTheme';
 
 function VirtusGlyph() {
   return (
@@ -17,9 +18,10 @@ function VirtusGlyph() {
 
 export function VirtusBrand({ compact = false, logoSrc = `${process.env.PUBLIC_URL || ''}/assets/virtus-logo.png` }) {
   const [useFallbackGlyph, setUseFallbackGlyph] = useState(false);
+  const { theme } = useProfileTheme();
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="virtus-brand flex items-center gap-3">
       {useFallbackGlyph ? (
         <VirtusGlyph />
       ) : (
@@ -31,9 +33,13 @@ export function VirtusBrand({ compact = false, logoSrc = `${process.env.PUBLIC_U
         />
       )}
       {!compact && (
-        <div className="flex items-center gap-2">
-          <p className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-base font-medium leading-none tracking-[0.22em] text-transparent">VIRTUS</p>
-          <p className="text-xs text-muted-foreground">Disciplina • Claridad • Virtud</p>
+        <div className="flex items-baseline gap-2">
+          <p className="virtus-brand-word bg-gradient-to-r from-primary to-[hsl(var(--virtus-secondary))] bg-clip-text text-base font-semibold leading-none text-transparent">
+            VIRTUS
+          </p>
+          <p className="virtus-brand-tagline text-xs">
+            {theme.brandTagline || 'Disciplina • Claridad • Virtud'}
+          </p>
         </div>
       )}
     </div>

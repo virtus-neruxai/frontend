@@ -423,7 +423,7 @@ export default function CharacterPageRefactored() {
           action={
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Nivel {character?.level}</p>
-              <p className="font-bold text-primary" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              <p className="font-bold text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
                 {character?.level_title}
               </p>
             </div>

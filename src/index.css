@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Nunito+Sans:wght@400;600;700&family=Playfair+Display:wght@600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -58,6 +58,12 @@
     --virtus-chart-3: 120 26% 35%;
     --virtus-chart-4: 217 42% 48%;
     --virtus-chart-5: 33 29% 44%;
+    --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Cinzel', 'Playfair Display', Georgia, serif;
+    --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-brand: 'Cinzel', 'Playfair Display', Georgia, serif;
+    --virtus-brand-letter-spacing: 0.22em;
+    --virtus-nav-letter-spacing: 0.02em;
   }
 
   .dark {
@@ -95,6 +101,12 @@
     --virtus-chart-3: 120 26% 35%;
     --virtus-chart-4: 217 42% 48%;
     --virtus-chart-5: 33 29% 44%;
+    --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Cinzel', 'Playfair Display', Georgia, serif;
+    --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-brand: 'Cinzel', 'Playfair Display', Georgia, serif;
+    --virtus-brand-letter-spacing: 0.22em;
+    --virtus-nav-letter-spacing: 0.02em;
   }
 
   :root[data-profile-theme="calm"] {
@@ -110,6 +122,12 @@
     --virtus-chart-3: 188 62% 43%;
     --virtus-chart-4: 221 48% 50%;
     --virtus-chart-5: 169 43% 44%;
+    --font-body: 'Nunito Sans', 'Inter', system-ui, sans-serif;
+    --font-heading: 'Nunito Sans', 'Inter', system-ui, sans-serif;
+    --font-ui: 'Nunito Sans', 'Inter', system-ui, sans-serif;
+    --font-brand: 'Nunito Sans', 'Inter', system-ui, sans-serif;
+    --virtus-brand-letter-spacing: 0.08em;
+    --virtus-nav-letter-spacing: 0;
   }
 
   :root[data-profile-theme="spiritual"] {
@@ -125,6 +143,12 @@
     --virtus-chart-3: 176 32% 40%;
     --virtus-chart-4: 42 37% 50%;
     --virtus-chart-5: 118 28% 38%;
+    --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Cormorant Garamond', Georgia, serif;
+    --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-brand: 'Cormorant Garamond', Georgia, serif;
+    --virtus-brand-letter-spacing: 0.06em;
+    --virtus-nav-letter-spacing: 0.01em;
   }
 
   :root[data-profile-theme="performance"] {
@@ -140,6 +164,12 @@
     --virtus-chart-3: 39 82% 48%;
     --virtus-chart-4: 0 66% 50%;
     --virtus-chart-5: 217 42% 48%;
+    --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+    --font-ui: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+    --font-brand: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+    --virtus-brand-letter-spacing: 0.12em;
+    --virtus-nav-letter-spacing: 0.05em;
   }
 
   :root[data-profile-theme="student"] {
@@ -155,6 +185,12 @@
     --virtus-chart-3: 207 39% 48%;
     --virtus-chart-4: 168 34% 40%;
     --virtus-chart-5: 29 43% 48%;
+    --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Merriweather', Georgia, serif;
+    --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-brand: 'Merriweather', Georgia, serif;
+    --virtus-brand-letter-spacing: 0.08em;
+    --virtus-nav-letter-spacing: 0.01em;
   }
 
   .dark[data-profile-theme="stoic"] {
@@ -198,15 +234,16 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body);
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, serif;
-    letter-spacing: -0.01em;
+    font-family: var(--font-heading);
+    letter-spacing: 0;
   }
 
   button, a, [role='button'] {
+    font-family: var(--font-ui);
     transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
   }
 
@@ -227,6 +264,109 @@
 
 .animate-fade-in {
   animation: fadeIn 200ms ease-out forwards;
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at 8% 0%, hsl(var(--virtus-soft) / 0.16), transparent 26rem),
+    radial-gradient(circle at 94% 6%, hsl(var(--virtus-secondary) / 0.1), transparent 24rem),
+    linear-gradient(180deg, hsl(var(--background)) 0%, color-mix(in srgb, hsl(var(--virtus-soft)) 9%, hsl(var(--background))) 100%);
+}
+
+[data-profile-theme="stoic"] .app-shell {
+  background:
+    linear-gradient(90deg, hsl(var(--virtus-secondary) / 0.035) 0 1px, transparent 1px),
+    radial-gradient(circle at 8% 0%, hsl(var(--virtus-soft) / 0.16), transparent 26rem),
+    linear-gradient(180deg, hsl(var(--background)) 0%, color-mix(in srgb, hsl(var(--virtus-soft)) 10%, hsl(var(--background))) 100%);
+  background-size: 96px 100%, auto, auto;
+}
+
+[data-profile-theme="calm"] .app-shell {
+  background:
+    radial-gradient(ellipse at 12% 6%, hsl(var(--virtus-soft) / 0.18), transparent 28rem),
+    radial-gradient(ellipse at 86% 0%, hsl(var(--virtus-secondary) / 0.12), transparent 24rem),
+    linear-gradient(180deg, hsl(var(--background)) 0%, color-mix(in srgb, hsl(var(--virtus-soft)) 8%, hsl(var(--background))) 100%);
+}
+
+[data-profile-theme="spiritual"] .app-shell {
+  background:
+    linear-gradient(120deg, transparent 0 48%, hsl(var(--virtus-soft) / 0.055) 48% 49%, transparent 49% 100%),
+    radial-gradient(circle at 10% 0%, hsl(var(--virtus-soft) / 0.18), transparent 27rem),
+    linear-gradient(180deg, hsl(var(--background)) 0%, color-mix(in srgb, hsl(var(--virtus-soft)) 11%, hsl(var(--background))) 100%);
+  background-size: 96px 56px, auto, auto;
+}
+
+[data-profile-theme="performance"] .app-shell {
+  background:
+    linear-gradient(110deg, transparent 0 44%, hsl(var(--virtus-soft) / 0.08) 44% 46%, transparent 46% 100%),
+    radial-gradient(circle at 10% 0%, hsl(var(--virtus-soft) / 0.2), transparent 22rem),
+    linear-gradient(180deg, hsl(var(--background)) 0%, color-mix(in srgb, hsl(var(--virtus-soft)) 10%, hsl(var(--background))) 100%);
+  background-size: 82px 46px, auto, auto;
+}
+
+[data-profile-theme="student"] .app-shell {
+  background:
+    linear-gradient(0deg, hsl(var(--virtus-soft) / 0.055) 0 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--virtus-secondary) / 0.035) 0 1px, transparent 1px),
+    radial-gradient(circle at 8% 0%, hsl(var(--virtus-soft) / 0.15), transparent 26rem),
+    linear-gradient(180deg, hsl(var(--background)) 0%, color-mix(in srgb, hsl(var(--virtus-soft)) 8%, hsl(var(--background))) 100%);
+  background-size: 32px 32px, 32px 32px, auto, auto;
+}
+
+.app-shell-header {
+  border-color: hsl(var(--primary) / 0.32);
+  background:
+    linear-gradient(90deg, hsl(var(--virtus-soft) / 0.14), transparent 38%),
+    color-mix(in srgb, hsl(var(--card)) 92%, hsl(var(--virtus-soft)) 8%);
+  box-shadow: 0 1px 0 hsl(var(--primary) / 0.14);
+}
+
+.app-nav-link {
+  position: relative;
+  border: 1px solid transparent;
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+  letter-spacing: var(--virtus-nav-letter-spacing);
+  text-transform: none;
+}
+
+[data-profile-theme="performance"] .app-nav-link,
+[data-profile-theme="stoic"] .app-nav-link {
+  text-transform: uppercase;
+}
+
+.app-nav-link:hover {
+  border-color: hsl(var(--primary) / 0.24);
+  background: hsl(var(--accent) / 0.78);
+  color: hsl(var(--foreground));
+}
+
+.app-nav-link.is-active {
+  border-color: hsl(var(--primary) / 0.46);
+  background:
+    linear-gradient(180deg, hsl(var(--primary) / 0.18), hsl(var(--virtus-soft) / 0.11)),
+    hsl(var(--card) / 0.74);
+  color: hsl(var(--foreground));
+  box-shadow:
+    inset 0 -2px 0 hsl(var(--primary)),
+    0 8px 24px hsl(var(--virtus-soft) / 0.14);
+}
+
+.app-nav-link.is-active svg {
+  color: hsl(var(--primary));
+}
+
+.virtus-brand-word {
+  font-family: var(--font-brand);
+  letter-spacing: var(--virtus-brand-letter-spacing);
+}
+
+.virtus-brand-tagline {
+  color: hsl(var(--virtus-secondary));
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: var(--virtus-nav-letter-spacing);
+  opacity: 0.92;
 }
 
 .profile-theme-background {

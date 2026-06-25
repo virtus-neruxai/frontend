@@ -87,7 +87,7 @@ export function MissionEvolutionChart({
     <Card>
       <CardHeader className="pb-2">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
             Evolución de Cambios Acumulados (Misiones)
           </CardTitle>
           <StatsDateRangeControls
@@ -122,14 +122,14 @@ export function MissionEvolutionChart({
                 <XAxis 
                   dataKey="date" 
                   stroke={CHART_SURFACE.tick}
-                  style={{ fontSize: '10px', fontFamily: 'Manrope, sans-serif' }}
+                  style={{ fontSize: '10px', fontFamily: 'var(--font-ui)' }}
                   angle={-45}
                   textAnchor="end"
                   height={60}
                 />
                 <YAxis 
                   stroke={CHART_SURFACE.tick}
-                  style={{ fontSize: '12px', fontFamily: 'Manrope, sans-serif' }}
+                  style={{ fontSize: '12px', fontFamily: 'var(--font-ui)' }}
                 />
                 <Tooltip 
                   contentStyle={{
@@ -137,13 +137,13 @@ export function MissionEvolutionChart({
                     border: `1px solid ${CHART_SURFACE.tooltipBorder}`,
                     borderRadius: '8px',
                     fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
+                    fontFamily: 'var(--font-ui)'
                   }}
                 />
                 <Legend 
                   wrapperStyle={{
                     fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
+                    fontFamily: 'var(--font-ui)'
                   }}
                 />
                 {statKeys.map((statKey) => {

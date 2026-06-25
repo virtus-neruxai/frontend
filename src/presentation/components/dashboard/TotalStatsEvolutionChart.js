@@ -74,7 +74,7 @@ export function TotalStatsEvolutionChart({
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
             Evolución Total de Stats (Misiones + Reflexiones)
           </CardTitle>
           <StatsDateRangeControls
@@ -109,11 +109,11 @@ export function TotalStatsEvolutionChart({
                 <XAxis 
                   dataKey="date" 
                   stroke={CHART_SURFACE.tick}
-                  style={{ fontSize: '12px', fontFamily: 'Manrope, sans-serif' }}
+                  style={{ fontSize: '12px', fontFamily: 'var(--font-ui)' }}
                 />
                 <YAxis 
                   stroke={CHART_SURFACE.tick}
-                  style={{ fontSize: '12px', fontFamily: 'Manrope, sans-serif' }}
+                  style={{ fontSize: '12px', fontFamily: 'var(--font-ui)' }}
                 />
                 <Tooltip 
                   contentStyle={{
@@ -121,13 +121,13 @@ export function TotalStatsEvolutionChart({
                     border: `1px solid ${CHART_SURFACE.tooltipBorder}`,
                     borderRadius: '8px',
                     fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
+                    fontFamily: 'var(--font-ui)'
                   }}
                 />
                 <Legend
                   wrapperStyle={{
                     fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
+                    fontFamily: 'var(--font-ui)'
                   }}
                 />
                 {statKeys.map((key, i) => {
