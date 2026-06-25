@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart } from 'lucide-react';
 import { StatsDateRangeControls } from '../stats/StatsDateRangeControls';
 import { CHART_COLORS, CHART_SURFACE } from '../../../theme/semanticTokens';
+import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 /**
  * StatsHistoryChart Component
@@ -75,9 +77,13 @@ export function StatsHistoryChart({
             <p className="text-sm text-muted-foreground">Cargando datos...</p>
           </div>
         ) : chartData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
-          </div>
+          <ProfileEmptyState
+            icon={LineChart}
+            title="No hay datos disponibles"
+            description="Tus reflexiones irán mostrando cambios acumulados en esta gráfica."
+            compact
+            className="h-64"
+          />
         ) : (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">

@@ -8,9 +8,12 @@ import { StatusDistributionChart } from '../presentation/components/dashboard/St
 import { StatusBarChart } from '../presentation/components/dashboard/StatusBarChart';
 import { TimeseriesChart } from '../presentation/components/dashboard/TimeseriesChart';
 import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/TotalStatsEvolutionChart';
+import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
+import { useProfileTheme } from '../theme/useProfileTheme';
 
 export default function DashboardPageRefactored() {
+  const { theme } = useProfileTheme();
   const {
     summary,
     timeseries,
@@ -32,32 +35,26 @@ export default function DashboardPageRefactored() {
   return (
     <Layout ambient>
       <div className="space-y-6" data-testid="dashboard-page">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1
-              className="text-2xl font-bold text-foreground"
-              style={{ fontFamily: 'Manrope, sans-serif' }}
-              data-testid="dashboard-title"
-            >
-              Dashboard
-            </h1>
-            <p className="text-muted-foreground mt-1">Visualiza el progreso de tus tareas</p>
-          </div>
-
-          <Select value={range} onValueChange={setRange}>
-            <SelectTrigger className="w-48 rounded-full" data-testid="range-selector">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {rangeOptions.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <ProfileHeroCard
+          title="Dashboard"
+          titleAs="h1"
+          titleTestId="dashboard-title"
+          description={`Visualiza el progreso de tus tareas con el perfil ${theme.name}.`}
+          action={
+            <Select value={range} onValueChange={setRange}>
+              <SelectTrigger className="w-full rounded-full sm:w-48" data-testid="range-selector">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {rangeOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
 
         {/* Challenges — seguimiento de cumplimiento de desafíos */}
         <ChallengesCard />

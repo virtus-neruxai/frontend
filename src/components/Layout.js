@@ -15,6 +15,7 @@ import { NotificationPermissionBanner } from './NotificationPermissionBanner';
 import { ThemeToggle } from './ThemeToggle';
 import { VirtusBrand } from './VirtusBrand';
 import { ProfileThemeBackground } from '../presentation/components/profile-theme/ProfileThemeBackground';
+import { ProfileIndicator } from '../presentation/components/profile-theme/ProfileIndicator';
 
 export default function Layout({ children, ambient = false }) {
   const { user, logout } = useAuth();
@@ -30,7 +31,7 @@ export default function Layout({ children, ambient = false }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-primary/25 bg-card/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-6">
           <div className="flex items-center gap-8">
             <NavLink to="/dashboard">
@@ -59,6 +60,7 @@ export default function Layout({ children, ambient = false }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <ProfileIndicator />
             <ThemeToggle />
             <NotificationBell />
             <DropdownMenu>

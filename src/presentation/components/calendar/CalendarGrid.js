@@ -12,7 +12,7 @@ const renderEventContent = (eventInfo) => {
         {eventInfo.event.title}
       </span>
       {taskKind === 'routine' && completedToday && (
-        <span className="text-[11px] text-emerald-600 shrink-0">✓</span>
+        <span className="text-[11px] text-[hsl(var(--success))] shrink-0">✓</span>
       )}
       {taskKind !== 'routine' && progress > 0 && progress < 100 && (
         <span className="text-[10px] opacity-70 shrink-0">{progress}%</span>

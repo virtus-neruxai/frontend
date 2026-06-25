@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart as PieChartIcon } from 'lucide-react';
 import { TASK_STATUS_COLORS } from '../../../theme/semanticTokens';
+import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
@@ -60,9 +62,13 @@ export function StatusDistributionChart({ summary }) {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-64 flex items-center justify-center text-muted-foreground">
-            No hay datos disponibles
-          </div>
+          <ProfileEmptyState
+            icon={PieChartIcon}
+            title="No hay datos disponibles"
+            description="Completa tareas para ver la distribución por estado."
+            compact
+            className="h-64"
+          />
         )}
       </CardContent>
     </Card>

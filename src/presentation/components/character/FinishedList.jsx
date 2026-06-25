@@ -1,6 +1,7 @@
 import { Card, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { CheckCircle2, CalendarCheck, Flame } from 'lucide-react';
+import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -19,7 +20,13 @@ const formatDate = (value) => {
  */
 export function FinishedList({ items, emptyText = 'Aún no hay elementos finalizados.' }) {
   if (!items || items.length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyText}</p>;
+    return (
+      <ProfileEmptyState
+        icon={CheckCircle2}
+        title={emptyText}
+        compact
+      />
+    );
   }
 
   return (

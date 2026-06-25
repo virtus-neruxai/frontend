@@ -5,6 +5,8 @@ import NotificationSettings from '../components/NotificationSettings';
 import PromptProfileSettings from '../components/PromptProfileSettings';
 import ProactiveSettings from '../components/ProactiveSettings';
 import { notificationsApi, userSettingsApi } from '../lib/api';
+import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
+import { getProfileTheme } from '../theme/profileThemeUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
 
 const DEFAULT_SETTINGS = {
@@ -41,6 +43,7 @@ export default function SettingsPage() {
   const [autoApplyProactiveChanges, setAutoApplyProactiveChanges] = useState(false);
   const [proactiveSaving, setProactiveSaving] = useState(false);
   const persistedPromptProfileRef = useRef(profileId);
+  const selectedProfileTheme = getProfileTheme(promptProfile);
 
   useEffect(() => {
     persistedPromptProfileRef.current = persistedPromptProfile;
@@ -229,6 +232,11 @@ export default function SettingsPage() {
           </h1>
           <p className="text-muted-foreground mt-1">Personaliza tu experiencia con el agente y las notificaciones.</p>
         </div>
+
+        <ProfileHeroCard
+          title={`Perfil activo: ${selectedProfileTheme.name}`}
+          description={selectedProfileTheme.tagline}
+        />
 
         <PromptProfileSettings
           currentProfile={promptProfile}

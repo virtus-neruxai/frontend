@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SettingsPage from '../pages/SettingsPage';
+import { ProfileEmptyState } from '../presentation/components/profile-theme/ProfileEmptyState';
+import { ProfileIndicator } from '../presentation/components/profile-theme/ProfileIndicator';
 import { ProfileThemeProvider } from '../presentation/components/profile-theme/ProfileThemeProvider';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { normalizeProfileId } from '../theme/profileThemeUtils';
@@ -146,5 +148,36 @@ describe('profile theme', () => {
       expect(document.documentElement.dataset.profileTheme).toBe('stoic');
     });
     expect(window.localStorage.getItem('prompt_profile')).toBe('stoic');
+  });
+
+  test('profile empty state renders with the active profile context', () => {
+    window.localStorage.setItem('prompt_profile', 'performance');
+
+    render(
+      <ProfileThemeProvider>
+        <ProfileEmptyState
+          title="No hay actividad todavía"
+          description="Crea o completa tareas para ver movimiento."
+          testId="profile-empty-state"
+        />
+      </ProfileThemeProvider>
+    );
+
+    expect(screen.getByTestId('profile-empty-state')).toBeInTheDocument();
+    expect(screen.getByText('No hay actividad todavía')).toBeInTheDocument();
+    expect(document.documentElement.dataset.profileTheme).toBe('performance');
+  });
+
+  test('profile indicator makes the active profile visible globally', () => {
+    window.localStorage.setItem('prompt_profile', 'student');
+
+    render(
+      <ProfileThemeProvider>
+        <ProfileIndicator />
+      </ProfileThemeProvider>
+    );
+
+    expect(screen.getByTestId('profile-indicator')).toHaveTextContent('Estudiante');
+    expect(document.documentElement.dataset.profileTheme).toBe('student');
   });
 });

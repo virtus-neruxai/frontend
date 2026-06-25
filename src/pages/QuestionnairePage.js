@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import { profileApi } from '../lib/api';
 import { getProfileName, getProfileEmoji } from '../lib/profileUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
+import { ProfileEmptyState } from '../presentation/components/profile-theme/ProfileEmptyState';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Textarea } from '../components/ui/textarea';
@@ -18,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '../components/ui/select';
+import { FileQuestion } from 'lucide-react';
 
 const QUESTION_TYPE_LABELS = {
   text: 'Texto',
@@ -376,7 +378,12 @@ export default function QuestionnairePage() {
 
             <TabsContent value="context" className="space-y-6">
               {contextSections.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No hay preguntas de contexto para este perfil todavía.</p>
+                <ProfileEmptyState
+                  icon={FileQuestion}
+                  title="No hay preguntas de contexto para este perfil todavía"
+                  description="El perfil visual sigue activo; cuando haya contexto específico aparecerá aquí."
+                  compact
+                />
               ) : (
                 renderSections(contextSections)
               )}

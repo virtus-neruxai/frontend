@@ -8,6 +8,7 @@ import {
 import { getProfileName, getProfileEmoji } from '../../../lib/profileUtils';
 import { formatStatLabel } from '../../../lib/statUtils';
 import { SEMANTIC_COLORS } from '../../../theme/semanticTokens';
+import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 const MISSION_TYPE_LABELS = {
   daily: 'Diaria',
@@ -183,13 +184,12 @@ export const MissionsList = ({
 
       {/* Missions List */}
       {missions.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="p-8 text-center">
-            <Target className="w-12 h-12 mx-auto text-muted-foreground mb-4" strokeWidth={1} />
-            <p className="text-muted-foreground">No tienes misiones activas</p>
-            <p className="text-sm text-muted-foreground/80">Genera nuevas misiones para empezar</p>
-          </CardContent>
-        </Card>
+        <ProfileEmptyState
+          icon={Target}
+          title="No tienes misiones activas"
+          description="Genera nuevas misiones para empezar."
+          className="min-h-40"
+        />
       ) : (
         <div className="grid gap-4">
           {missions.map(mission => (

@@ -248,6 +248,13 @@
   mask-image: linear-gradient(180deg, black 0%, transparent 72%);
 }
 
+[data-profile-theme="stoic"] .profile-theme-background::after {
+  background-image:
+    linear-gradient(90deg, transparent 0 12%, hsl(var(--virtus-soft) / 0.09) 12% 13%, transparent 13% 25%),
+    linear-gradient(135deg, hsl(var(--foreground) / 0.025) 0 1px, transparent 1px);
+  background-size: 96px 96px, 34px 34px;
+}
+
 [data-profile-theme="calm"] .profile-theme-background::after {
   background-image:
     radial-gradient(ellipse at center, transparent 45%, hsl(var(--virtus-soft) / 0.12) 46%, transparent 49%);
@@ -260,11 +267,84 @@
   background-size: 74px 42px;
 }
 
+[data-profile-theme="performance"] .profile-theme-background::after {
+  background-image:
+    linear-gradient(110deg, transparent 0 42%, hsl(var(--virtus-soft) / 0.12) 42% 44%, transparent 44% 58%, hsl(var(--virtus-secondary) / 0.08) 58% 60%, transparent 60% 100%);
+  background-size: 88px 48px;
+}
+
 [data-profile-theme="student"] .profile-theme-background::after {
   background-image:
     linear-gradient(0deg, hsl(var(--virtus-soft) / 0.08) 0 1px, transparent 1px),
     linear-gradient(90deg, hsl(var(--virtus-secondary) / 0.05) 0 1px, transparent 1px);
   background-size: 34px 34px;
+}
+
+.profile-themed-surface {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 0% 0%, hsl(var(--virtus-soft) / 0.2), transparent 18rem),
+    linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--virtus-soft) / 0.15) 100%);
+}
+
+.profile-themed-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.56;
+  pointer-events: none;
+  mask-image: linear-gradient(90deg, black 0%, transparent 88%);
+}
+
+.profile-themed-surface::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  width: 4px;
+  background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--virtus-secondary)));
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.profile-themed-surface > * {
+  position: relative;
+  z-index: 2;
+}
+
+[data-profile-theme="stoic"] .profile-themed-surface::before {
+  background-image:
+    linear-gradient(90deg, transparent 0 13%, hsl(var(--virtus-primary) / 0.16) 13% 14%, transparent 14% 28%),
+    radial-gradient(circle at 92% 18%, hsl(var(--virtus-secondary) / 0.13), transparent 9rem);
+  background-size: 82px 100%, auto;
+}
+
+[data-profile-theme="calm"] .profile-themed-surface::before {
+  background-image:
+    radial-gradient(ellipse at center, transparent 44%, hsl(var(--virtus-primary) / 0.16) 45%, transparent 49%);
+  background-size: 92px 28px;
+}
+
+[data-profile-theme="spiritual"] .profile-themed-surface::before {
+  background-image:
+    linear-gradient(120deg, transparent 0 43%, hsl(var(--virtus-primary) / 0.12) 43% 45%, transparent 45% 100%),
+    linear-gradient(60deg, transparent 0 62%, hsl(var(--virtus-secondary) / 0.1) 62% 64%, transparent 64% 100%);
+  background-size: 84px 48px, 110px 64px;
+}
+
+[data-profile-theme="performance"] .profile-themed-surface::before {
+  background-image:
+    linear-gradient(110deg, transparent 0 30%, hsl(var(--virtus-primary) / 0.18) 30% 32%, transparent 32% 48%, hsl(var(--virtus-secondary) / 0.12) 48% 50%, transparent 50% 100%);
+  background-size: 76px 44px;
+}
+
+[data-profile-theme="student"] .profile-themed-surface::before {
+  background-image:
+    linear-gradient(0deg, hsl(var(--virtus-primary) / 0.12) 0 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--virtus-secondary) / 0.08) 0 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
 /* FullCalendar Premium Theme */

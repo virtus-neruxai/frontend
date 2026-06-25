@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Activity } from 'lucide-react';
 import { formatStatLabel, getStatColor } from '../../../lib/statUtils';
 import { StatsDateRangeControls } from '../stats/StatsDateRangeControls';
 import { CHART_SURFACE } from '../../../theme/semanticTokens';
+import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 export function getMissionEvolutionStatKeys(history = [], statsInfo = {}) {
   const discoveredStatKeys = Array.from(
@@ -105,11 +107,13 @@ export function MissionEvolutionChart({
             <p className="text-sm text-muted-foreground">Cargando datos...</p>
           </div>
         ) : chartData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">
-              No hay datos de misiones disponibles en este rango
-            </p>
-          </div>
+          <ProfileEmptyState
+            icon={Activity}
+            title="No hay datos de misiones en este rango"
+            description="Completa misiones para medir su impacto en tus stats."
+            compact
+            className="h-64"
+          />
         ) : (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">

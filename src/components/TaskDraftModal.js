@@ -54,6 +54,46 @@ const inferDifficulty = (value, durationMinutes) => {
   return 5;
 };
 
+function formatDateTimeLocal(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatDisplayDate(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function calculateDurationMinutes(startRaw, endRaw) {
+  if (!startRaw || !endRaw) return null;
+  const start = new Date(startRaw);
+  const end = new Date(endRaw);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return null;
+  return Math.round((end.getTime() - start.getTime()) / 60000);
+}
+
+function computeEndFromDuration(startRaw, durationMinutes) {
+  if (!startRaw || !durationMinutes) return '';
+  const start = new Date(startRaw);
+  if (Number.isNaN(start.getTime())) return '';
+  const end = new Date(start.getTime() + durationMinutes * 60000);
+  return formatDateTimeLocal(end.toISOString());
+}
+
 export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, onReject }) {
   const { profileId } = useProfileTheme();
   const [editedData, setEditedData] = useState({});
@@ -74,7 +114,9 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
         title: draftData.data.title || '',
         description: draftData.data.description || '',
         date_start: draftData.data.date_start ? formatDateTimeLocal(draftData.data.date_start) : '',
-        date_end: draftData.data.date_end ? formatDateTimeLocal(draftData.data.date_end) : '',
+        date_end: draftData.data.date_end
+          ? formatDateTimeLocal(draftData.data.date_end)
+          : computeEndFromDuration(draftData.data.date_start, draftData.data.estimated_duration_minutes),
         estimated_duration_minutes: draftData.data.estimated_duration_minutes || 30,
         difficulty: inferDifficulty(draftData.data.difficulty, draftData.data.estimated_duration_minutes),
         domain: draftData.data.domain || 'Personal',
@@ -87,22 +129,6 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
       });
     }
   }, [draftData]);
-
-  const calculateDurationMinutes = (startRaw, endRaw) => {
-    if (!startRaw || !endRaw) return null;
-    const start = new Date(startRaw);
-    const end = new Date(endRaw);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return null;
-    return Math.round((end.getTime() - start.getTime()) / 60000);
-  };
-
-  const computeEndFromDuration = (startRaw, durationMinutes) => {
-    if (!startRaw || !durationMinutes) return '';
-    const start = new Date(startRaw);
-    if (Number.isNaN(start.getTime())) return '';
-    const end = new Date(start.getTime() + durationMinutes * 60000);
-    return formatDateTimeLocal(end.toISOString());
-  };
 
   const handleDateStartChange = (value) => {
     setEditedData((prev) => {
@@ -135,30 +161,6 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
       estimated_duration_minutes: duration,
       date_end: computeEndFromDuration(prev.date_start, duration) || prev.date_end,
     }));
-  };
-
-  const formatDateTimeLocal = (isoString) => {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  const formatDisplayDate = (isoString) => {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const handleConfirm = async () => {

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { tasksApi, reflectionsApi } from '../lib/api';
-import { getProfileName } from '../lib/profileUtils';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import TaskDraftModal from '../components/TaskDraftModal';
@@ -14,6 +13,8 @@ import { ReflectionKPIs } from '../presentation/components/character/ReflectionK
 import { MissionEvolutionChart } from '../presentation/components/character/MissionEvolutionChart';
 import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
 import { FinishedList } from '../presentation/components/character/FinishedList';
+import { ProfileEmptyState } from '../presentation/components/profile-theme/ProfileEmptyState';
+import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { useCharacter } from '../presentation/viewmodels/useCharacter';
 import { useMissions } from '../presentation/viewmodels/useMissions';
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
@@ -26,6 +27,7 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { SEMANTIC_COLORS } from '../theme/semanticTokens';
+import { useProfileTheme } from '../theme/useProfileTheme';
 import {
   Target, Scroll, MessageCircle, Send,
   XCircle, CheckCircle2, AlertTriangle, Clock, Repeat
@@ -121,7 +123,8 @@ export default function CharacterPageRefactored() {
   // Ref for refreshing conversation history after sending messages
   const conversationHistoryRef = useRef();
 
-  const profileName = getProfileName(localStorage.getItem('prompt_profile') || 'stoic');
+  const { theme } = useProfileTheme();
+  const profileName = theme.name;
 
   // Local state for reflections and mission completion
   const [reflections, setReflections] = useState([]);
@@ -413,23 +416,19 @@ export default function CharacterPageRefactored() {
   return (
     <Layout ambient>
       <div className="space-y-6" data-testid="character-page">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Tu Carácter
-            </h1>
-            <p className="text-muted-foreground mt-1">Desarrolla tu virtud a través de la acción coherente</p>
-          </div>
-          <div className="flex items-center gap-3">
+        <ProfileHeroCard
+          title={`Carácter · ${profileName}`}
+          titleAs="h1"
+          description="Desarrolla tu virtud a través de la acción coherente."
+          action={
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Nivel {character?.level}</p>
               <p className="font-bold text-primary" style={{ fontFamily: 'Manrope, sans-serif' }}>
                 {character?.level_title}
               </p>
             </div>
-          </div>
-        </div>
+          }
+        />
 
         {/* Character Stats Component */}
         <CharacterStats character={character} statsInfo={statsInfo} />
@@ -817,13 +816,18 @@ export default function CharacterPageRefactored() {
                 )}
                 
                 {reflections.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    {selectedDate
-                      ? 'No hay reflexiones para esta fecha'
-                      : reflectionHistoryMode === 'journal'
-                      ? 'No hay reflexiones guardadas'
-                      : 'No hay reflexiones de tareas o misiones guardadas'}
-                  </p>
+                  <ProfileEmptyState
+                    icon={Scroll}
+                    title={
+                      selectedDate
+                        ? 'No hay reflexiones para esta fecha'
+                        : reflectionHistoryMode === 'journal'
+                        ? 'No hay reflexiones guardadas'
+                        : 'No hay reflexiones de tareas o misiones guardadas'
+                    }
+                    description="Cuando escribas o cierres tareas con reflexión, el historial aparecerá aquí."
+                    compact
+                  />
                 )}
               </CardContent>
             </Card>
