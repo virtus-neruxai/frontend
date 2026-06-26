@@ -411,7 +411,7 @@ export default function CharacterPageRefactored() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <p className="font-semibold text-primary mb-2">Revisión Nocturna</p>
-                  <p className="text-sm text-foreground mb-2">{nightlyReviewResult.analysis}</p>
+                  <p className="text-sm text-foreground mb-2">{nightlyReviewResult.review_text || nightlyReviewResult.analysis}</p>
                   <div className="flex gap-4 text-sm">
                     <span style={{ color: SEMANTIC_COLORS.success }}>✓ {nightlyReviewResult.tasks_completed} completadas</span>
                     <span style={{ color: SEMANTIC_COLORS.destructive }}>✗ {nightlyReviewResult.tasks_failed} fallidas</span>
