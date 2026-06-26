@@ -194,6 +194,14 @@ export default function CharacterPageRefactored() {
           ...(taskReflectionsRes.data || []),
           ...(missionReflectionsRes.data || []),
         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      } else if (reflectionHistoryMode === 'routine') {
+        const routineDateParams = selectedDate ? { routine_occurrence_date: selectedDate } : {};
+        const routineReflectionsRes = await reflectionsApi.getAll({
+          ...routineDateParams,
+          reflection_type: 'routine',
+        });
+        displayReflections = (routineReflectionsRes.data || [])
+          .sort((a, b) => String(b.routine_occurrence_date || b.created_at).localeCompare(String(a.routine_occurrence_date || a.created_at)));
       }
 
       setReflections(displayReflections);
@@ -373,6 +381,59 @@ export default function CharacterPageRefactored() {
       confidence: currentGeneratedMission.confidence,
     },
   } : null;
+
+  const getReflectionHistoryDescription = () => {
+    if (reflectionHistoryMode === 'journal') return 'Entradas libres del diario';
+    if (reflectionHistoryMode === 'routine') return 'Reflexiones diarias agrupadas por rutina';
+    return 'Comentarios guardados desde tareas y misiones';
+  };
+
+  const getReflectionHistoryTitle = () => {
+    if (reflectionHistoryMode === 'journal') return 'Entradas del diario';
+    if (reflectionHistoryMode === 'routine') return 'Reflexiones de rutinas';
+    return 'Reflexiones de tareas y misiones';
+  };
+
+  const getReflectionTypeLabel = (type) => {
+    if (type === 'mission') return 'Misión';
+    if (type === 'routine') return 'Rutina';
+    if (type === 'task') return 'Tarea';
+    return 'Diario';
+  };
+
+  const formatRoutineOccurrenceDate = (value) => {
+    if (!value) return 'Sin fecha de rutina';
+    return new Date(`${value}T00:00:00`).toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const routineReflectionGroups = reflectionHistoryMode === 'routine'
+    ? Object.values(reflections.reduce((acc, reflection) => {
+        const key = reflection.routine_id || reflection.source_item_title || 'rutina-sin-id';
+        if (!acc[key]) {
+          acc[key] = {
+            id: key,
+            title: reflection.source_item_title || 'Rutina sin título',
+            latest: reflection.routine_occurrence_date || reflection.created_at || '',
+            entries: [],
+          };
+        }
+        acc[key].entries.push(reflection);
+        const effectiveDate = reflection.routine_occurrence_date || reflection.created_at || '';
+        if (String(effectiveDate) > String(acc[key].latest || '')) {
+          acc[key].latest = effectiveDate;
+        }
+        return acc;
+      }, {}))
+        .map((group) => ({
+          ...group,
+          entries: group.entries.sort((a, b) => String(b.routine_occurrence_date || b.created_at).localeCompare(String(a.routine_occurrence_date || a.created_at))),
+        }))
+        .sort((a, b) => String(b.latest).localeCompare(String(a.latest)))
+    : [];
 
   if (loading) {
     return (
@@ -643,9 +704,7 @@ export default function CharacterPageRefactored() {
                         Historial de Reflexiones
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        {reflectionHistoryMode === 'journal'
-                          ? 'Entradas libres del diario'
-                          : 'Comentarios guardados desde tareas y misiones'}
+                        {getReflectionHistoryDescription()}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -666,6 +725,15 @@ export default function CharacterPageRefactored() {
                         className={reflectionHistoryMode === 'linked' ? 'border-primary text-primary bg-primary/10' : ''}
                       >
                         Tareas y misiones
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setReflectionHistoryMode('routine')}
+                        className={reflectionHistoryMode === 'routine' ? 'border-primary text-primary bg-primary/10' : ''}
+                      >
+                        Rutinas
                       </Button>
                     </div>
                   </div>
@@ -695,9 +763,72 @@ export default function CharacterPageRefactored() {
                 {reflections.length > 0 && (
                   <div className="border-t pt-6">
                     <h3 className="text-sm font-semibold text-foreground mb-4">
-                      {reflectionHistoryMode === 'journal' ? 'Entradas del diario' : 'Reflexiones de tareas y misiones'} ({reflections.length})
+                      {getReflectionHistoryTitle()} ({reflections.length})
                       {selectedDate && <span className="text-muted-foreground font-normal"> - {new Date(selectedDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
                     </h3>
+                    {reflectionHistoryMode === 'routine' ? (
+                      <div className="space-y-5 max-h-[500px] overflow-y-auto">
+                        {routineReflectionGroups.map((group) => (
+                          <div key={group.id} className="rounded-lg border bg-muted/40 p-4">
+                            <div className="mb-3 flex items-center justify-between gap-2">
+                              <h4 className="text-sm font-semibold text-foreground">{group.title}</h4>
+                              <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
+                                {group.entries.length}
+                              </Badge>
+                            </div>
+                            <div className="space-y-3">
+                              {group.entries.map((reflection) => (
+                                <div key={reflection.id} className="rounded-md border bg-card p-3">
+                                  <div className="mb-2 flex items-center justify-between gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      Día de rutina: {formatRoutineOccurrenceDate(reflection.routine_occurrence_date)}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
+                                      Rutina
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-2">
+                                    Escrita: {new Date(reflection.created_at).toLocaleDateString('es-ES', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </p>
+                                  <p className="text-sm text-foreground whitespace-pre-wrap mb-3">
+                                    {reflection.content}
+                                  </p>
+                                  {reflection.ai_response && (
+                                    <div className="mt-3 p-3 bg-primary/10 border-l-4 border-primary rounded">
+                                      <p className="text-xs font-semibold text-primary mb-1">Mentor:</p>
+                                      <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
+                                        {formatMentorResponseText(reflection.ai_response)}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {reflection.stat_changes && Object.keys(reflection.stat_changes).length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                      {Object.entries(reflection.stat_changes).map(([stat, value]) => (
+                                        value !== 0 && (
+                                          <Badge
+                                            key={stat}
+                                            variant="outline"
+                                            className={`text-xs ${value > 0 ? 'bg-[hsl(var(--success-soft))] border-[hsl(var(--success))] text-[hsl(var(--success))]' : 'bg-[hsl(var(--destructive-soft))] border-destructive text-destructive'}`}
+                                          >
+                                            {stat}: {value > 0 ? '+' : ''}{value}
+                                          </Badge>
+                                        )
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
                     <div className="space-y-4 max-h-[500px] overflow-y-auto">
                       {reflections.map((reflection) => (
                         <div
@@ -717,7 +848,7 @@ export default function CharacterPageRefactored() {
                             <div className="flex flex-wrap justify-end gap-2">
                               {reflectionHistoryMode === 'linked' && (
                                 <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
-                                  {reflection.reflection_type === 'mission' ? 'Misión' : 'Tarea'}
+                                  {getReflectionTypeLabel(reflection.reflection_type)}
                                 </Badge>
                               )}
                               {reflection.emotion_snapshot && (
@@ -774,6 +905,7 @@ export default function CharacterPageRefactored() {
                         </div>
                       ))}
                     </div>
+                    )}
                   </div>
                 )}
                 
@@ -785,6 +917,8 @@ export default function CharacterPageRefactored() {
                         ? 'No hay reflexiones para esta fecha'
                         : reflectionHistoryMode === 'journal'
                         ? 'No hay reflexiones guardadas'
+                        : reflectionHistoryMode === 'routine'
+                        ? 'No hay reflexiones de rutinas guardadas'
                         : 'No hay reflexiones de tareas o misiones guardadas'
                     }
                     description="Cuando escribas o cierres tareas con reflexión, el historial aparecerá aquí."
