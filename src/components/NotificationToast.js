@@ -70,37 +70,37 @@ const Toast = ({ notification, onDismiss }) => {
       case 'urgent':
         return {
           icon: AlertCircle,
-          color: 'text-red-600',
-          bg: 'bg-red-50 dark:bg-red-900/20',
-          border: 'border-red-200 dark:border-red-800',
+          color: 'text-destructive',
+          bg: 'bg-[hsl(var(--destructive-soft))]',
+          border: 'border-destructive/30',
         };
       case 'high':
         return {
           icon: AlertTriangle,
-          color: 'text-orange-600',
-          bg: 'bg-orange-50 dark:bg-orange-900/20',
-          border: 'border-orange-200 dark:border-orange-800',
+          color: 'text-primary',
+          bg: 'bg-primary/10',
+          border: 'border-primary/30',
         };
       case 'medium':
         return {
           icon: AlertTriangle,
-          color: 'text-yellow-600',
-          bg: 'bg-yellow-50 dark:bg-yellow-900/20',
-          border: 'border-yellow-200 dark:border-yellow-800',
+          color: 'text-[hsl(var(--warning))]',
+          bg: 'bg-[hsl(var(--warning-soft))]',
+          border: 'border-[hsl(var(--warning))]',
         };
       case 'low':
         return {
           icon: Info,
-          color: 'text-blue-600',
-          bg: 'bg-blue-50 dark:bg-blue-900/20',
-          border: 'border-blue-200 dark:border-blue-800',
+          color: 'text-[hsl(var(--info))]',
+          bg: 'bg-[hsl(var(--info-soft))]',
+          border: 'border-[hsl(var(--info))]',
         };
       default:
         return {
           icon: Info,
-          color: 'text-gray-600',
-          bg: 'bg-gray-50 dark:bg-gray-900/20',
-          border: 'border-gray-200 dark:border-gray-800',
+          color: 'text-muted-foreground',
+          bg: 'bg-muted',
+          border: 'border-border',
         };
     }
   };
@@ -125,7 +125,7 @@ const Toast = ({ notification, onDismiss }) => {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 dark:text-white text-sm">
+          <p className="font-semibold text-foreground text-sm">
             {isReflectionFollowup
               ? '🫶 Seguimiento de reflexión'
               : isMissionReminder
@@ -136,31 +136,31 @@ const Toast = ({ notification, onDismiss }) => {
           </p>
           {isReflectionFollowup ? (
             <>
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 truncate">
+              <p className="text-sm text-foreground mt-1 truncate">
                 {payload.emotion || 'Emoción'}
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {payload.message || 'Han pasado casi 24 horas desde tu reflexión con emoción.'}
               </p>
             </>
           ) : isMissionReminder ? (
             <>
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-2">
+              <p className="text-sm text-foreground mt-1 line-clamp-2">
                 {payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`}
               </p>
               <a
                 href="/character"
-                className="text-xs text-blue-600 dark:text-blue-400 mt-1 hover:underline inline-block"
+                className="text-xs text-primary mt-1 hover:underline inline-block"
               >
                 Ver misión →
               </a>
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 truncate">
+              <p className="text-sm text-foreground mt-1 truncate">
                 {payload.task_title}
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Empieza en {payload.minutes_left} minutos
               </p>
             </>
@@ -168,13 +168,13 @@ const Toast = ({ notification, onDismiss }) => {
 
           {!isReflectionFollowup && !isMissionReminder && !isRoutine && payload.task_progress !== undefined && (
             <div className="mt-2">
-              <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                 <span>Progreso</span>
                 <span>{payload.task_progress}%</span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+              <div className="w-full bg-muted rounded-full h-1.5">
                 <div
-                  className="bg-blue-600 h-1.5 rounded-full transition-all"
+                  className="bg-primary h-1.5 rounded-full transition-all"
                   style={{ width: `${payload.task_progress}%` }}
                 />
               </div>
@@ -183,15 +183,15 @@ const Toast = ({ notification, onDismiss }) => {
 
           {/* Sprint 2.1: Show next task */}
           {!isReflectionFollowup && !isMissionReminder && payload.context?.next_task && (
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 flex items-center gap-1">
+            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <span className="font-medium">Siguiente:</span>
               <span className="truncate">{payload.context.next_task.title}</span>
-              <span className="text-gray-500">a las {formatNextTaskTime(payload.context.next_task)}</span>
+              <span className="text-muted-foreground">a las {formatNextTaskTime(payload.context.next_task)}</span>
             </p>
           )}
 
           {!isReflectionFollowup && !isMissionReminder && payload.task_domain && (
-            <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+            <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground">
               {payload.task_domain}
             </span>
           )}
@@ -200,7 +200,7 @@ const Toast = ({ notification, onDismiss }) => {
         {/* Dismiss Button */}
         <button
           onClick={onDismiss}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 flex-shrink-0"
+          className="text-muted-foreground hover:text-foreground p-1 flex-shrink-0"
           aria-label="Cerrar"
         >
           <X className="w-5 h-5" />

@@ -3,6 +3,12 @@ import { statsApi, characterApi } from '../../lib/api';
 import { buildRelativeDateRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 
+const FRICTIONS_RANGE_OPTIONS = [
+  { value: '7',  label: 'Últimos 7 días' },
+  { value: '30', label: 'Últimos 30 días' },
+  { value: '90', label: 'Últimos 90 días' },
+];
+
 const RANGE_OPTIONS = [
   { value: '7', label: 'Últimos 7 días' },
   { value: '30', label: 'Últimos 30 días' },
@@ -25,6 +31,11 @@ export function useDashboard() {
   const [totalStatsFromDate, setTotalStatsFromDate] = useState(initialTotalStatsRange.fromDate);
   const [totalStatsToDate, setTotalStatsToDate] = useState(initialTotalStatsRange.toDate);
   const [totalStatsLoading, setTotalStatsLoading] = useState(false);
+
+  // Friction patterns state
+  const [frictions, setFrictions] = useState(null);
+  const [frictionsLoading, setFrictionsLoading] = useState(false);
+  const [frictionsRange, setFrictionsRange] = useState('7');
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -87,6 +98,23 @@ export function useDashboard() {
     setTotalStatsToDate(newDate);
   }, []);
 
+  const fetchFrictions = useCallback(async () => {
+    setFrictionsLoading(true);
+    try {
+      const res = await statsApi.getFrictions({ days: parseInt(frictionsRange), limit: 500 });
+      setFrictions(res.data);
+    } catch (error) {
+      console.error('Error fetching frictions:', error);
+    } finally {
+      setFrictionsLoading(false);
+    }
+  }, [frictionsRange]);
+
+  const acknowledgeFriction = useCallback(async (friction, data) => {
+    await statsApi.acknowledgeFriction(friction, data);
+    await fetchFrictions();
+  }, [fetchFrictions]);
+
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -94,6 +122,10 @@ export function useDashboard() {
   useEffect(() => {
     fetchTotalStatsData();
   }, [fetchTotalStatsData]);
+
+  useEffect(() => {
+    fetchFrictions();
+  }, [fetchFrictions]);
 
   return {
     summary,
@@ -113,5 +145,12 @@ export function useDashboard() {
     handleTotalStatsRangeChange,
     handleTotalStatsFromDateChange,
     handleTotalStatsToDateChange,
+    frictions,
+    frictionsLoading,
+    frictionsRange,
+    setFrictionsRange,
+    frictionsRangeOptions: FRICTIONS_RANGE_OPTIONS,
+    acknowledgeFriction,
+    refreshFrictions: fetchFrictions,
   };
 }

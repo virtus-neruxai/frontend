@@ -1,7 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-profile-theme="stoic">
     <head>
         <meta charset="utf-8" />
+        <script>
+            (function () {
+                var validProfiles = {
+                    stoic: true,
+                    calm: true,
+                    spiritual: true,
+                    performance: true,
+                    student: true,
+                };
+                var profile = "stoic";
+
+                try {
+                    var cachedProfile = window.localStorage.getItem("prompt_profile");
+                    if (validProfiles[cachedProfile]) {
+                        profile = cachedProfile;
+                    }
+                } catch (error) {
+                    profile = "stoic";
+                }
+
+                document.documentElement.dataset.profileTheme = profile;
+            })();
+        </script>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
         <meta name="description" content="AI-powered Stoic philosophy assistant for personal growth" />

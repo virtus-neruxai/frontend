@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { AlertCircle, Calendar, Clock, Brain } from 'lucide-react';
 import { getProfileName } from '../lib/profileUtils';
+import { useProfileTheme } from '../theme/useProfileTheme';
 
 const DOMAIN_OPTIONS = [
   'Personal', 'Propósito', 'Mental', 'Hábitos', 'Salud',
@@ -35,11 +36,11 @@ const DIFFICULTY_LABELS = {
 };
 
 const DIFFICULTY_COLORS = {
-  1: 'bg-green-500',
-  2: 'bg-blue-500',
-  3: 'bg-yellow-500',
-  4: 'bg-orange-500',
-  5: 'bg-red-500'
+  1: 'bg-[hsl(var(--success))]',
+  2: 'bg-[hsl(var(--info))]',
+  3: 'bg-[hsl(var(--warning))]',
+  4: 'bg-primary',
+  5: 'bg-destructive'
 };
 
 const inferDifficulty = (value, durationMinutes) => {
@@ -53,10 +54,51 @@ const inferDifficulty = (value, durationMinutes) => {
   return 5;
 };
 
+function formatDateTimeLocal(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function formatDisplayDate(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function calculateDurationMinutes(startRaw, endRaw) {
+  if (!startRaw || !endRaw) return null;
+  const start = new Date(startRaw);
+  const end = new Date(endRaw);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return null;
+  return Math.round((end.getTime() - start.getTime()) / 60000);
+}
+
+function computeEndFromDuration(startRaw, durationMinutes) {
+  if (!startRaw || !durationMinutes) return '';
+  const start = new Date(startRaw);
+  if (Number.isNaN(start.getTime())) return '';
+  const end = new Date(start.getTime() + durationMinutes * 60000);
+  return formatDateTimeLocal(end.toISOString());
+}
+
 export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, onReject }) {
+  const { profileId } = useProfileTheme();
   const [editedData, setEditedData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const profileName = getProfileName(localStorage.getItem('prompt_profile') || 'stoic');
+  const profileName = getProfileName(profileId);
 
   useEffect(() => {
     if (draftData?.data) {
@@ -72,7 +114,9 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
         title: draftData.data.title || '',
         description: draftData.data.description || '',
         date_start: draftData.data.date_start ? formatDateTimeLocal(draftData.data.date_start) : '',
-        date_end: draftData.data.date_end ? formatDateTimeLocal(draftData.data.date_end) : '',
+        date_end: draftData.data.date_end
+          ? formatDateTimeLocal(draftData.data.date_end)
+          : computeEndFromDuration(draftData.data.date_start, draftData.data.estimated_duration_minutes),
         estimated_duration_minutes: draftData.data.estimated_duration_minutes || 30,
         difficulty: inferDifficulty(draftData.data.difficulty, draftData.data.estimated_duration_minutes),
         domain: draftData.data.domain || 'Personal',
@@ -85,22 +129,6 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
       });
     }
   }, [draftData]);
-
-  const calculateDurationMinutes = (startRaw, endRaw) => {
-    if (!startRaw || !endRaw) return null;
-    const start = new Date(startRaw);
-    const end = new Date(endRaw);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return null;
-    return Math.round((end.getTime() - start.getTime()) / 60000);
-  };
-
-  const computeEndFromDuration = (startRaw, durationMinutes) => {
-    if (!startRaw || !durationMinutes) return '';
-    const start = new Date(startRaw);
-    if (Number.isNaN(start.getTime())) return '';
-    const end = new Date(start.getTime() + durationMinutes * 60000);
-    return formatDateTimeLocal(end.toISOString());
-  };
 
   const handleDateStartChange = (value) => {
     setEditedData((prev) => {
@@ -133,30 +161,6 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
       estimated_duration_minutes: duration,
       date_end: computeEndFromDuration(prev.date_start, duration) || prev.date_end,
     }));
-  };
-
-  const formatDateTimeLocal = (isoString) => {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  const formatDisplayDate = (isoString) => {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const handleConfirm = async () => {
@@ -234,7 +238,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#C1502E]" />
+            <Calendar className="w-5 h-5 text-primary" />
             {modalTitle}
           </DialogTitle>
           <DialogDescription>
@@ -247,12 +251,12 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
         <div className="space-y-4 py-4">
           {/* Agent Reasoning */}
           {metadata.agent_reasoning && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-3 bg-[hsl(var(--warning-soft))] border border-[hsl(var(--warning))] rounded-lg">
               <div className="flex items-start gap-2">
-                <Brain className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <Brain className="w-5 h-5 text-[hsl(var(--warning))] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-amber-900">Razonamiento del Mentor</p>
-                  <p className="text-sm text-amber-700 mt-1">{metadata.agent_reasoning}</p>
+                  <p className="text-sm font-medium text-foreground">Razonamiento del Mentor</p>
+                  <p className="text-sm text-muted-foreground mt-1">{metadata.agent_reasoning}</p>
                 </div>
               </div>
             </div>
@@ -283,7 +287,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
               placeholder="Ej: Meditar 10 minutos"
               maxLength={60}
             />
-            <p className="text-xs text-gray-500">{editedData.title?.length || 0}/60 caracteres</p>
+            <p className="text-xs text-muted-foreground">{editedData.title?.length || 0}/60 caracteres</p>
           </div>
 
           {/* Description */}
@@ -321,7 +325,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
           </div>
 
           {isRoutine && (
-            <div className="space-y-3 p-3 border rounded-lg bg-gray-50">
+            <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
               <Label className="font-medium">Recurrencia de la Rutina</Label>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -362,7 +366,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
                         <button
                           key={day.value}
                           type="button"
-                          className={`px-3 py-1 rounded-md border text-sm ${selected ? 'bg-[#C1502E] text-white border-[#C1502E]' : 'bg-white border-gray-300'}`}
+                          className={`px-3 py-1 rounded-md border text-sm ${selected ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-input'}`}
                           onClick={() => {
                             const current = editedData.recurrence_weekdays || [];
                             const next = selected
@@ -433,8 +437,8 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
                   onClick={() => setEditedData({ ...editedData, difficulty: level })}
                   className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all ${
                     editedData.difficulty === level
-                      ? `${DIFFICULTY_COLORS[level]} border-gray-700 text-white`
-                      : 'border-gray-300 hover:border-gray-400 bg-white'
+                      ? `${DIFFICULTY_COLORS[level]} border-foreground/30 text-white`
+                      : 'border-input hover:border-primary/50 bg-background'
                   }`}
                 >
                   <div className="text-sm font-medium">{level}</div>
@@ -468,7 +472,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
           <Button
             onClick={handleConfirm}
             disabled={isSubmitting || !editedData.title || !editedData.date_start || !editedData.domain || (isRoutine && !editedData.date_end)}
-            className="bg-[#C1502E] hover:bg-[#9A3F24]"
+            className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary)/0.9)]"
           >
             {isSubmitting ? submittingLabel : confirmLabel}
           </Button>

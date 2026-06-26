@@ -1,6 +1,7 @@
 import { Card, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { CheckCircle2, CalendarCheck, Flame } from 'lucide-react';
+import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -19,41 +20,47 @@ const formatDate = (value) => {
  */
 export function FinishedList({ items, emptyText = 'Aún no hay elementos finalizados.' }) {
   if (!items || items.length === 0) {
-    return <p className="text-sm text-[#71717A]">{emptyText}</p>;
+    return (
+      <ProfileEmptyState
+        icon={CheckCircle2}
+        title={emptyText}
+        compact
+      />
+    );
   }
 
   return (
     <div className="space-y-2">
       {items.map((item) => (
-        <Card key={item.id} className="border-[#E4E4E7]">
+        <Card key={item.id}>
           <CardContent className="p-3 flex items-start gap-3">
-            <CheckCircle2 size={18} className="text-[#22C55E] mt-0.5 shrink-0" />
+            <CheckCircle2 size={18} className="text-[hsl(var(--success))] mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-semibold text-[#18181B] leading-snug">{item.title}</p>
+                <p className="text-sm font-semibold text-foreground leading-snug">{item.title}</p>
                 {item.badge && (
                   <Badge variant="outline" className="text-[11px]">{item.badge}</Badge>
                 )}
               </div>
               {item.subtitle && (
-                <p className="text-xs text-[#71717A] mt-0.5 italic line-clamp-2">{item.subtitle}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 italic line-clamp-2">{item.subtitle}</p>
               )}
               {item.metrics && (
                 <div className="flex items-center gap-3 text-xs mt-1.5">
                   <Badge variant="outline" className="font-medium">
                     {item.metrics.completion_rate ?? 0}% cumplimiento
                   </Badge>
-                  <span className="flex items-center gap-1 text-[#71717A]">
-                    <Flame size={13} className="text-[#F97316]" />
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Flame size={13} className="text-primary" />
                     {item.metrics.streak ?? 0}
                   </span>
-                  <span className="text-[#71717A]">
+                  <span className="text-muted-foreground">
                     {item.metrics.completion_count ?? 0}/{item.metrics.expected ?? 0}
                   </span>
                 </div>
               )}
             </div>
-            <span className="flex items-center gap-1 text-xs text-[#71717A] shrink-0">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
               <CalendarCheck size={13} />
               {formatDate(item.completed_at)}
             </span>

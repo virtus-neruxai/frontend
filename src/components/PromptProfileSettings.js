@@ -2,39 +2,15 @@ import React from 'react';
 import { Sparkles } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { PROFILE_THEME_IDS, PROFILE_THEMES } from '../theme/profileThemes';
 
-const PROFILES = [
-  {
-    id: 'stoic',
-    name: 'Estoico',
-    emoji: '⚖️',
-    description: 'Autodominio y voluntad. Marco Aurelio como mentor: claridad, ejecución y control de lo que está en tu mano.',
-  },
-  {
-    id: 'spiritual',
-    name: 'Espiritual',
-    emoji: '🌿',
-    description: 'Propósito y coherencia interior. Guía que conecta tus acciones con tus valores más profundos.',
-  },
-  {
-    id: 'calm',
-    name: 'Calma',
-    emoji: '🌊',
-    description: 'Recuperación sin presión. Para momentos de agotamiento: pasos pequeños, sin sermones de rendimiento.',
-  },
-  {
-    id: 'performance',
-    name: 'Rendimiento',
-    emoji: '⚡',
-    description: 'Hábitos físicos y consistencia corporal. El cuerpo como herramienta de la voluntad.',
-  },
-  {
-    id: 'student',
-    name: 'Estudiante',
-    emoji: '📚',
-    description: 'Aprendizaje y carrera. Deep work, estudio sistemático y progreso académico medible.',
-  },
-];
+const PROFILE_DESCRIPTIONS = {
+  stoic: 'Autodominio y voluntad. Claridad, ejecucion y control de lo que esta en tu mano.',
+  spiritual: 'Proposito y coherencia interior. Conecta tus acciones con tus valores mas profundos.',
+  calm: 'Recuperacion sin presion. Pasos pequenos, sin sermones de rendimiento.',
+  performance: 'Habitos fisicos y consistencia corporal. El cuerpo como herramienta de accion.',
+  student: 'Aprendizaje y carrera. Deep work, estudio sistematico y progreso medible.',
+};
 
 export default function PromptProfileSettings({
   currentProfile,
@@ -66,7 +42,9 @@ export default function PromptProfileSettings({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3">
-          {PROFILES.map((profile) => {
+          {PROFILE_THEME_IDS.map((profileId) => {
+            const profile = PROFILE_THEMES[profileId];
+            const Icon = profile.icon;
             const isSelected = currentProfile === profile.id;
             return (
               <button
@@ -76,24 +54,33 @@ export default function PromptProfileSettings({
                 className={[
                   'flex items-start gap-3 rounded-lg border p-4 text-left transition-colors w-full',
                   isSelected
-                    ? 'border-[#18181B] bg-[#18181B]/5 dark:border-white dark:bg-white/5'
-                    : 'border-border hover:border-[#71717A] hover:bg-muted/40',
+                    ? 'border-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]'
+                    : 'border-border hover:border-primary/50 hover:bg-muted/40',
                 ].join(' ')}
                 data-testid={`profile-option-${profile.id}`}
               >
-                <span className="text-xl leading-none mt-0.5">{profile.emoji}</span>
+                <span
+                  className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border"
+                  style={{
+                    color: profile.primary,
+                    backgroundColor: profile.soft,
+                    borderColor: profile.primary,
+                  }}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
                 <div className="flex-1 min-w-0">
                   <p className={[
                     'text-sm font-semibold',
-                    isSelected ? 'text-[#18181B] dark:text-white' : 'text-foreground',
+                    isSelected ? 'text-foreground' : 'text-foreground',
                   ].join(' ')}>
                     {profile.name}
                     {isSelected && (
-                      <span className="ml-2 text-xs font-normal text-[#71717A]">activo</span>
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">activo</span>
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    {profile.description}
+                    {PROFILE_DESCRIPTIONS[profile.id]}
                   </p>
                 </div>
               </button>

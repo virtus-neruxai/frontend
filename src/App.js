@@ -4,11 +4,16 @@ import LoginPage from "./pages/LoginPage";
 import CalendarPage from "./pages/CalendarPage";
 import DashboardPage from "./pages/DashboardPage";
 import CharacterPage from "./pages/CharacterPage";
+import MentorPage from "./pages/MentorPage";
 import QuestionnairePage from "./pages/QuestionnairePage";
 import SettingsPage from "./pages/SettingsPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { NotificationSystem } from "./components/NotificationSystem";
 import { ThemeProvider } from "./components/theme-provider";
+import { ProfileThemeProvider } from "./presentation/components/profile-theme/ProfileThemeProvider";
+import { useProfileTheme } from "./theme/useProfileTheme";
+import { userSettingsApi } from "./lib/api";
+import { useEffect } from "react";
 import "./App.css";
 
 const ProtectedRoute = ({ children }) => {
@@ -70,6 +75,14 @@ function AppRoutes() {
           </ProtectedRoute>
         } 
       />
+      <Route
+        path="/mentor"
+        element={
+          <ProtectedRoute>
+            <MentorPage />
+          </ProtectedRoute>
+        }
+      />
       <Route 
         path="/profile" 
         element={
@@ -93,17 +106,49 @@ function AppRoutes() {
   );
 }
 
+function ProfileSettingsSync() {
+  const { isAuthenticated, loading } = useAuth();
+  const { syncPersistedProfile } = useProfileTheme();
+
+  useEffect(() => {
+    if (loading || !isAuthenticated) return undefined;
+
+    let cancelled = false;
+
+    userSettingsApi.getSettings()
+      .then((response) => {
+        if (cancelled) return;
+        const resolved = response?.data?.resolved_prompt_profile || response?.data?.prompt_profile;
+        if (resolved) {
+          syncPersistedProfile(resolved);
+        }
+      })
+      .catch(() => {
+        // Settings sync should never block the authenticated app shell.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, loading, syncPersistedProfile]);
+
+  return null;
+}
+
 function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="virtus-theme">
-      <AuthProvider>
-        <NotificationSystem>
-          <BrowserRouter>
-            <AppRoutes />
-            <Toaster position="top-right" richColors />
-          </BrowserRouter>
-        </NotificationSystem>
-      </AuthProvider>
+      <ProfileThemeProvider>
+        <AuthProvider>
+          <NotificationSystem>
+            <BrowserRouter>
+              <ProfileSettingsSync />
+              <AppRoutes />
+              <Toaster position="top-right" richColors />
+            </BrowserRouter>
+          </NotificationSystem>
+        </AuthProvider>
+      </ProfileThemeProvider>
     </ThemeProvider>
   );
 }

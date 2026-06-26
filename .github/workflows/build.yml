@@ -2,7 +2,7 @@ name: Build and Push Docker Image to GCP Artifact Registry
 
 on:
   push:
-    branches: [main]
+    branches: [pro]
   workflow_dispatch:
 
 jobs:

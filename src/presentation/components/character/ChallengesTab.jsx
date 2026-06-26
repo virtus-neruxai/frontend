@@ -15,9 +15,9 @@ import { FinishedList } from './FinishedList';
 const CHALLENGE_TYPE_LABEL = { daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual' };
 
 const TYPES = [
-  { key: 'daily', label: 'Diario', help: 'Cada día', icon: Sun, color: 'text-[#3B82F6]' },
-  { key: 'weekly', label: 'Semanal', help: 'Cada semana', icon: CalendarDays, color: 'text-[#8B5CF6]' },
-  { key: 'monthly', label: 'Mensual', help: 'Cada mes', icon: CalendarRange, color: 'text-[#6366F1]' },
+  { key: 'daily', label: 'Diario', help: 'Cada día', icon: Sun, color: 'text-[hsl(var(--info))]' },
+  { key: 'weekly', label: 'Semanal', help: 'Cada semana', icon: CalendarDays, color: 'text-primary' },
+  { key: 'monthly', label: 'Mensual', help: 'Cada mes', icon: CalendarRange, color: 'text-[hsl(var(--virtus-secondary))]' },
 ];
 
 const PLACEHOLDERS = {
@@ -30,22 +30,22 @@ function ChallengeBlock({ type, challenge, generating, prompt, onPromptChange, o
   const Icon = type.icon;
 
   return (
-    <Card className="border-[#E4E4E7]">
+    <Card>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Icon size={18} className={type.color} strokeWidth={1.5} />
           <div>
-            <p className="text-sm font-semibold text-[#18181B]">{type.label}</p>
-            <p className="text-xs text-[#71717A]">{type.help}</p>
+            <p className="text-sm font-semibold text-foreground">{type.label}</p>
+            <p className="text-xs text-muted-foreground">{type.help}</p>
           </div>
         </div>
 
         {challenge ? (
           <div className="space-y-3">
             <div>
-              <p className="text-sm font-semibold text-[#18181B] leading-snug">{challenge.title}</p>
+              <p className="text-sm font-semibold text-foreground leading-snug">{challenge.title}</p>
               {challenge.prompt && (
-                <p className="text-xs text-[#71717A] mt-0.5 italic line-clamp-2">“{challenge.prompt}”</p>
+                <p className="text-xs text-muted-foreground mt-0.5 italic line-clamp-2">“{challenge.prompt}”</p>
               )}
             </div>
 
@@ -53,11 +53,11 @@ function ChallengeBlock({ type, challenge, generating, prompt, onPromptChange, o
               <Badge variant="outline" className="font-medium">
                 {challenge.metrics?.completion_rate ?? 0}% cumplimiento
               </Badge>
-              <span className="flex items-center gap-1 text-[#71717A]">
-                <Flame size={13} className="text-[#F97316]" />
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <Flame size={13} className="text-primary" />
                 {challenge.metrics?.streak ?? 0}
               </span>
-              <span className="text-[#71717A]">
+              <span className="text-muted-foreground">
                 {challenge.metrics?.completion_count ?? 0}/{challenge.metrics?.expected ?? 0}
               </span>
             </div>
@@ -66,7 +66,7 @@ function ChallengeBlock({ type, challenge, generating, prompt, onPromptChange, o
               <Button
                 size="sm"
                 onClick={() => onCompleteChallenge(challenge)}
-                className="bg-[#22C55E] hover:bg-[#16A34A]"
+                className="bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.9)]"
               >
                 <CheckCircle2 size={14} className="mr-1" />
                 Completar desafío
@@ -75,7 +75,7 @@ function ChallengeBlock({ type, challenge, generating, prompt, onPromptChange, o
                 size="sm"
                 variant="ghost"
                 onClick={() => onDelete(challenge.id)}
-                className="text-[#71717A] hover:text-[#EF4444]"
+                className="text-muted-foreground hover:text-destructive"
               >
                 <Trash2 size={14} />
               </Button>
@@ -95,7 +95,7 @@ function ChallengeBlock({ type, challenge, generating, prompt, onPromptChange, o
               size="sm"
               onClick={onGenerate}
               disabled={generating || !prompt.trim()}
-              className="w-full bg-[#C1502E] hover:bg-[#A13E23]"
+              className="w-full"
             >
               <Sparkles size={14} className="mr-1" />
               {generating ? 'Generando...' : 'Crear desafío'}
@@ -160,17 +160,17 @@ export function ChallengesTab() {
   return (
     <div className="space-y-4">
       <Tabs defaultValue="active" className="space-y-4">
-        <TabsList className="bg-[#F4F4F5] p-1 rounded-full">
-          <TabsTrigger value="active" className="rounded-full data-[state=active]:bg-white">
+        <TabsList className="bg-muted p-1 rounded-full">
+          <TabsTrigger value="active" className="rounded-full data-[state=active]:bg-card">
             Activos
           </TabsTrigger>
-          <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-white">
+          <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-card">
             Historial {finishedItems.length > 0 && `(${finishedItems.length})`}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="space-y-4">
-          <p className="text-sm text-[#71717A]">
+          <p className="text-sm text-muted-foreground">
             Proponte un desafío de cada tipo. El mentor diseñará una rutina recurrente que podrás ajustar y programar en el calendario.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -216,7 +216,7 @@ export function ChallengesTab() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Flag className="w-5 h-5 text-[#22C55E]" />
+              <Flag className="w-5 h-5 text-[hsl(var(--success))]" />
               Completar desafío
             </DialogTitle>
             <DialogDescription>
@@ -224,7 +224,7 @@ export function ChallengesTab() {
             </DialogDescription>
           </DialogHeader>
           {challengeToComplete && (
-            <p className="text-sm font-medium text-[#18181B]">“{challengeToComplete.title}”</p>
+            <p className="text-sm font-medium text-foreground">“{challengeToComplete.title}”</p>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setChallengeToComplete(null)} disabled={finishing}>
@@ -233,7 +233,7 @@ export function ChallengesTab() {
             <Button
               onClick={handleConfirmComplete}
               disabled={finishing}
-              className="bg-[#22C55E] hover:bg-[#16A34A]"
+              className="bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.9)]"
             >
               {finishing ? 'Cerrando...' : 'Sí, completar desafío'}
             </Button>

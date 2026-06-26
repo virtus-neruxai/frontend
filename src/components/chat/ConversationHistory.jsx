@@ -15,9 +15,23 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
     fetchConversations();
   }, []);
 
-  // Expose refresh function to parent component
+  // Auto-load the active session's messages when it appears in the list
+  useEffect(() => {
+    if (activeSessionId) {
+      fetchConversationDetail(activeSessionId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId]);
+
+  // Expose refresh: reloads list + reloads the active/selected conversation detail
   useImperativeHandle(ref, () => ({
-    refresh: fetchConversations
+    refresh: async () => {
+      await fetchConversations();
+      const sessionToLoad = activeSessionId || selectedConversation;
+      if (sessionToLoad) {
+        await fetchConversationDetail(sessionToLoad);
+      }
+    }
   }));
 
   const fetchConversations = async () => {
@@ -79,12 +93,12 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
     if (!friction || friction === 'none') return null;
 
     const colors = {
-      avoidance_loop: 'bg-yellow-100 text-yellow-800',
-      rumination_loop: 'bg-orange-100 text-orange-800',
-      low_energy: 'bg-blue-100 text-blue-800',
-      reactivity: 'bg-red-100 text-red-800',
-      unclear_goal: 'bg-purple-100 text-purple-800',
-      overload: 'bg-pink-100 text-pink-800',
+      avoidance_loop: 'bg-[hsl(var(--warning-soft))] text-[hsl(var(--warning))]',
+      rumination_loop: 'bg-primary/10 text-primary',
+      low_energy: 'bg-[hsl(var(--info-soft))] text-[hsl(var(--info))]',
+      reactivity: 'bg-[hsl(var(--destructive-soft))] text-destructive',
+      unclear_goal: 'bg-secondary text-secondary-foreground',
+      overload: 'bg-primary/10 text-primary',
     };
 
     const labels = {
@@ -97,7 +111,7 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
     };
 
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colors[friction] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colors[friction] || 'bg-muted text-muted-foreground'}`}>
         {labels[friction] || friction}
       </span>
     );
@@ -106,15 +120,15 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
   if (loading && conversations.length === 0) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
     <div className="mt-8">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-        <MessageCircle className="mr-2 h-5 w-5 text-indigo-600" />
+      <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+        <MessageCircle className="mr-2 h-5 w-5 text-primary" />
         Historial de Conversaciones
       </h3>
 
@@ -122,17 +136,17 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
         {/* Lista de conversaciones */}
         <div className="space-y-2">
           {conversations.length === 0 ? (
-            <p className="text-gray-500 text-sm">No hay conversaciones guardadas</p>
+            <p className="text-muted-foreground text-sm">No hay conversaciones guardadas</p>
           ) : (
             conversations.map((conv) => (
               <div
                 key={conv.session_id}
                 className={`p-4 border rounded-lg cursor-pointer transition-all ${
                   conv.session_id === activeSessionId
-                    ? 'border-2 border-[#F97316] bg-orange-50/50'
+                    ? 'border-2 border-primary bg-primary/10'
                     : selectedConversation === conv.session_id
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-200 hover:border-indigo-300 bg-white'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/40 bg-card'
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -140,22 +154,22 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
                     className="flex-1"
                     onClick={() => fetchConversationDetail(conv.session_id)}
                   >
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                       {conv.session_id === activeSessionId && (
-                        <span className="px-2 py-0.5 text-xs font-medium bg-[#F97316] text-white rounded-full">
+                        <span className="px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground rounded-full">
                           Activo
                         </span>
                       )}
                       <Clock className="h-3 w-3 mr-1" />
                       {formatDate(conv.last_message_at)}
                     </div>
-                    <p className="text-sm text-gray-700 line-clamp-2">
+                    <p className="text-sm text-foreground line-clamp-2">
                       {conv.preview}
                     </p>
-                    <div className="flex items-center mt-2 text-xs text-gray-400">
+                    <div className="flex items-center mt-2 text-xs text-muted-foreground">
                       <span>{conv.message_count} mensajes</span>
                       {selectedConversation === conv.session_id && (
-                        <ChevronRight className="ml-auto h-4 w-4 text-indigo-600" />
+                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
                       )}
                     </div>
                   </div>
@@ -164,7 +178,7 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
                       e.stopPropagation();
                       deleteConversation(conv.session_id);
                     }}
-                    className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
+                    className="ml-2 p-1 text-muted-foreground hover:text-destructive transition-colors"
                     title="Eliminar conversación"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -176,9 +190,9 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
         </div>
 
         {/* Detalle de la conversación */}
-        <div className="border border-gray-200 rounded-lg bg-gray-50">
+        <div className="border rounded-lg bg-muted/50">
           {!selectedConversation ? (
-            <div className="flex items-center justify-center h-64 text-gray-400">
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
               <p>Selecciona una conversación para ver los detalles</p>
             </div>
           ) : (
@@ -193,8 +207,8 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
                   <div
                     className={`inline-block max-w-[80%] p-3 rounded-lg ${
                       msg.role === 'user'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white text-gray-900 border border-gray-200'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card text-foreground border'
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
@@ -209,7 +223,7 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
                       </div>
                     )}
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     {formatDate(msg.timestamp)}
                   </div>
                 </div>

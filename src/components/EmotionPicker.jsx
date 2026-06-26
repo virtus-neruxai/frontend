@@ -35,22 +35,22 @@ const POLARITY_LABELS = {
 
 const POLARITY_STYLES = {
   positive: {
-    tab: 'border-green-300 text-green-700 hover:bg-green-100',
-    tabActive: 'bg-green-100 border-green-500 text-green-900 font-semibold',
-    chip: 'border-green-300 text-green-700 hover:bg-green-100',
-    chipActive: 'bg-green-200 border-green-500 text-green-900 font-semibold',
+    tab: 'border-[hsl(var(--success))] text-[hsl(var(--success))] hover:bg-[hsl(var(--success-soft))]',
+    tabActive: 'bg-[hsl(var(--success-soft))] border-[hsl(var(--success))] text-[hsl(var(--success))] font-semibold',
+    chip: 'border-[hsl(var(--success))] text-[hsl(var(--success))] hover:bg-[hsl(var(--success-soft))]',
+    chipActive: 'bg-[hsl(var(--success-soft))] border-[hsl(var(--success))] text-[hsl(var(--success))] font-semibold',
   },
   neutral: {
-    tab: 'border-blue-300 text-blue-700 hover:bg-blue-100',
-    tabActive: 'bg-blue-100 border-blue-500 text-blue-900 font-semibold',
-    chip: 'border-blue-300 text-blue-700 hover:bg-blue-100',
-    chipActive: 'bg-blue-200 border-blue-500 text-blue-900 font-semibold',
+    tab: 'border-[hsl(var(--info))] text-[hsl(var(--info))] hover:bg-[hsl(var(--info-soft))]',
+    tabActive: 'bg-[hsl(var(--info-soft))] border-[hsl(var(--info))] text-[hsl(var(--info))] font-semibold',
+    chip: 'border-[hsl(var(--info))] text-[hsl(var(--info))] hover:bg-[hsl(var(--info-soft))]',
+    chipActive: 'bg-[hsl(var(--info-soft))] border-[hsl(var(--info))] text-[hsl(var(--info))] font-semibold',
   },
   negative: {
-    tab: 'border-red-300 text-red-700 hover:bg-red-100',
-    tabActive: 'bg-red-100 border-red-500 text-red-900 font-semibold',
-    chip: 'border-red-300 text-red-700 hover:bg-red-100',
-    chipActive: 'bg-red-200 border-red-500 text-red-900 font-semibold',
+    tab: 'border-destructive text-destructive hover:bg-[hsl(var(--destructive-soft))]',
+    tabActive: 'bg-[hsl(var(--destructive-soft))] border-destructive text-destructive font-semibold',
+    chip: 'border-destructive text-destructive hover:bg-[hsl(var(--destructive-soft))]',
+    chipActive: 'bg-[hsl(var(--destructive-soft))] border-destructive text-destructive font-semibold',
   },
 };
 
@@ -81,7 +81,7 @@ export default function EmotionPicker({ value, onChange }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
         ¿Cómo te sientes? <span className="normal-case font-normal">(opcional)</span>
       </p>
       <div className="flex gap-2">
@@ -123,20 +123,20 @@ export default function EmotionPicker({ value, onChange }) {
       </div>
       {value && (
         <div className="flex items-center gap-3 pt-1">
-          <span className="text-xs text-gray-500 whitespace-nowrap">Intensidad:</span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Intensidad:</span>
           <input
             type="range"
             min={1}
             max={5}
             value={value.intensity}
             onChange={handleIntensity}
-            className="flex-1 h-1 accent-orange-500 cursor-pointer"
+            className="flex-1 h-1 accent-[hsl(var(--primary))] cursor-pointer"
           />
-          <span className="text-xs font-bold text-orange-600 w-6 text-right">{value.intensity}/5</span>
+          <span className="text-xs font-bold text-primary w-6 text-right">{value.intensity}/5</span>
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="text-xs text-gray-400 hover:text-gray-600"
+            className="text-xs text-muted-foreground hover:text-foreground"
           >
             ✕
           </button>

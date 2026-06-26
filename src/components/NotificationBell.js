@@ -12,14 +12,14 @@ export const NotificationBell = () => {
       {/* Bell Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="relative p-2 rounded-full hover:bg-accent transition-colors"
         aria-label="Notificaciones"
       >
-        <Bell className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+        <Bell className="w-6 h-6 text-muted-foreground" />
 
         {/* Unread Badge */}
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+          <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-destructive rounded-full">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -27,7 +27,7 @@ export const NotificationBell = () => {
         {/* Connection Status Indicator */}
         {!isConnected && (
           <span
-            className="absolute bottom-0 right-0 w-3 h-3 bg-yellow-400 border-2 border-white rounded-full"
+            className="absolute bottom-0 right-0 w-3 h-3 bg-[hsl(var(--warning))] border-2 border-card rounded-full"
             title="Reconectando..."
           />
         )}

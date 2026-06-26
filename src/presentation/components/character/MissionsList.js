@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { getProfileName, getProfileEmoji } from '../../../lib/profileUtils';
 import { formatStatLabel } from '../../../lib/statUtils';
+import { SEMANTIC_COLORS } from '../../../theme/semanticTokens';
+import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 const MISSION_TYPE_LABELS = {
   daily: 'Diaria',
@@ -29,7 +31,7 @@ const MissionCard = ({ mission, onSelect, onSchedule, onDelete, statsInfo = {} }
   const canOpenMissionDialog = !!mission.linked_task_id;
 
   return (
-    <Card className="border-[#E4E4E7] hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div
@@ -43,24 +45,25 @@ const MissionCard = ({ mission, onSelect, onSchedule, onDelete, statsInfo = {} }
               <Badge variant="outline" className="text-xs">
                 Dificultad: {mission.difficulty}/5
               </Badge>
-              <Badge variant="outline" className="text-xs border-purple-300 text-purple-700 bg-purple-50">
+              <Badge variant="outline" className="text-xs border-primary/30 text-primary bg-primary/10">
                 {getProfileEmoji(mission.prompt_profile || 'stoic')} {getProfileName(mission.prompt_profile || 'stoic')}
               </Badge>
             </div>
             
-            <h3 className="font-semibold text-[#18181B] dark:text-white mb-1">{mission.title}</h3>
-            <p className="text-sm text-[#71717A] mb-2">{mission.description}</p>
+            <h3 className="font-semibold text-foreground mb-1">{mission.title}</h3>
+            <p className="text-sm text-muted-foreground mb-2">{mission.description}</p>
             
             {/* Rewards */}
             {mission.stat_rewards && Object.keys(mission.stat_rewards).length > 0 && (
               <div className="flex items-center gap-1 mb-2">
-                <CheckCircle2 className="w-4 h-4 text-[#22C55E]" strokeWidth={1.5} />
+                <CheckCircle2 className="w-4 h-4" style={{ color: SEMANTIC_COLORS.success }} strokeWidth={1.5} />
                 <div className="flex gap-1 flex-wrap">
                   {Object.entries(mission.stat_rewards).map(([stat, value]) => (
                     <Badge 
                       key={stat} 
                       variant="outline" 
-                      className="text-xs text-[#22C55E] border-[#22C55E]"
+                      className="text-xs"
+                      style={{ color: SEMANTIC_COLORS.success, borderColor: SEMANTIC_COLORS.success }}
                     >
                       +{value} {formatStatLabel(stat, statsInfo)}
                     </Badge>
@@ -72,14 +75,15 @@ const MissionCard = ({ mission, onSelect, onSchedule, onDelete, statsInfo = {} }
             {/* Penalties */}
             {mission.stat_penalties && Object.keys(mission.stat_penalties).length > 0 && (
               <div className="flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-[#EF4444]" strokeWidth={1.5} />
-                <span className="text-xs font-medium text-[#EF4444]">Si fallas:</span>
+                <XCircle className="w-4 h-4" style={{ color: SEMANTIC_COLORS.destructive }} strokeWidth={1.5} />
+                <span className="text-xs font-medium" style={{ color: SEMANTIC_COLORS.destructive }}>Si fallas:</span>
                 <div className="flex gap-1 flex-wrap">
                   {Object.entries(mission.stat_penalties).map(([stat, value]) => (
                     <Badge 
                       key={stat} 
                       variant="outline" 
-                      className="text-xs text-[#EF4444] border-[#EF4444]"
+                      className="text-xs"
+                      style={{ color: SEMANTIC_COLORS.destructive, borderColor: SEMANTIC_COLORS.destructive }}
                     >
                       -{Math.abs(Number(value) || 0)} {formatStatLabel(stat, statsInfo)}
                     </Badge>
@@ -106,7 +110,7 @@ const MissionCard = ({ mission, onSelect, onSchedule, onDelete, statsInfo = {} }
               size="sm"
               onClick={() => onDelete(mission.id)}
               disabled={!!mission.linked_task_id}
-              className="rounded-full text-[#EF4444] hover:bg-[#FEF2F2] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-full text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed"
               title={mission.linked_task_id ? "No puedes eliminar una misión programada" : "Eliminar misión"}
             >
               <Trash2 className="w-3 h-3" />
@@ -148,13 +152,13 @@ export const MissionsList = ({
     <div className="space-y-4">
       {/* Header with Actions */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-[#18181B] dark:text-white">Misiones Activas</h2>
+        <h2 className="text-lg font-bold text-foreground">Misiones Activas</h2>
         <div className="flex items-center gap-2">
           <Button
             onClick={onNightlyReview}
             disabled={nightlyReviewLoading}
             variant="outline"
-            className="rounded-full border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#EDE9FE]"
+            className="rounded-full border-primary text-primary hover:bg-primary/10"
             data-testid="nightly-review-btn"
           >
             <RefreshCw 
@@ -166,7 +170,7 @@ export const MissionsList = ({
           <Button
             onClick={onGenerateMissions}
             disabled={generatingMissions}
-            className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full"
+            className="rounded-full"
             data-testid="generate-missions-btn"
           >
             <RefreshCw 
@@ -180,13 +184,12 @@ export const MissionsList = ({
 
       {/* Missions List */}
       {missions.length === 0 ? (
-        <Card className="border-[#E4E4E7] border-dashed">
-          <CardContent className="p-8 text-center">
-            <Target className="w-12 h-12 mx-auto text-[#71717A] mb-4" strokeWidth={1} />
-            <p className="text-[#71717A]">No tienes misiones activas</p>
-            <p className="text-sm text-[#A1A1AA]">Genera nuevas misiones para empezar</p>
-          </CardContent>
-        </Card>
+        <ProfileEmptyState
+          icon={Target}
+          title="No tienes misiones activas"
+          description="Genera nuevas misiones para empezar."
+          className="min-h-40"
+        />
       ) : (
         <div className="grid gap-4">
           {missions.map(mission => (

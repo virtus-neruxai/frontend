@@ -55,17 +55,17 @@ export const NotificationPermissionBanner = () => {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-50 animate-slide-in-right">
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg shadow-lg p-4">
+      <div className="bg-card border rounded-lg shadow-lg p-4">
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-800">
-            <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <div className="p-2 rounded-full bg-[hsl(var(--info-soft))]">
+            <Bell className="w-5 h-5 text-[hsl(var(--info))]" />
           </div>
           
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">
+            <h3 className="font-semibold text-foreground text-sm mb-1">
               Activa las notificaciones
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+            <p className="text-sm text-muted-foreground mb-3">
               Recibe alertas cuando tus tareas estén por empezar, incluso cuando estés en otra pestaña.
             </p>
             
@@ -73,7 +73,6 @@ export const NotificationPermissionBanner = () => {
               <Button
                 onClick={handleEnable}
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Activar
               </Button>
@@ -81,7 +80,7 @@ export const NotificationPermissionBanner = () => {
                 onClick={handleDismiss}
                 size="sm"
                 variant="ghost"
-                className="text-gray-600 dark:text-gray-400"
+                className="text-muted-foreground"
               >
                 Ahora no
               </Button>
@@ -90,7 +89,7 @@ export const NotificationPermissionBanner = () => {
           
           <button
             onClick={handleDismiss}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+            className="text-muted-foreground hover:text-foreground p-1"
             aria-label="Cerrar"
           >
             <X className="w-5 h-5" />

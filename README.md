@@ -10,6 +10,12 @@ This frontend follows **Clean Architecture** principles with **MVVM pattern** to
 
 ```
 src/
+├── theme/               # Dynamic visual profile tokens
+│   ├── profileThemes.js
+│   ├── profileThemeUtils.js
+│   ├── semanticTokens.js
+│   └── useProfileTheme.js
+│
 ├── domain/              # Business logic layer (portable to Kotlin/Swift)
 │   ├── models/          # Domain entities
 │   ├── usecases/        # Business use cases
@@ -33,7 +39,9 @@ src/
 │       │   ├── NorthStarCard.jsx
 │       │   ├── StatusDistributionChart.js
 │       │   ├── StatusBarChart.js
-│       │   └── TimeseriesChart.js
+│       │   ├── TimeseriesChart.js
+│       │   ├── DetectedPatternsPanel.jsx   # Panel de patrones de fricción detectados
+│       │   └── FrictionAcknowledgeDialog.jsx  # Dialog para confirmar/progresar/resolver fricciones
 │       └── calendar/    # Calendar page components
 │           ├── CalendarNavigation.js
 │           ├── ViewSelector.js
@@ -62,6 +70,14 @@ src/
 └── hooks/               # Shared custom hooks
     └── use-toast.js
 ```
+
+## Perfil Visual Dinámico
+
+`prompt_profile` define el perfil visual activo (`stoic`, `calm`, `spiritual`, `performance`, `student`). El backend es la fuente de verdad; `localStorage.prompt_profile` solo actúa como caché visual para evitar parpadeos antes de la respuesta inicial.
+
+`ThemeProvider` sigue controlando light/dark. `ProfileThemeProvider` aplica `data-profile-theme` sobre `<html>` y el CSS de `src/index.css` resuelve las variables por perfil. Los componentes deben usar tokens (`primary`, `accent`, `border`, `muted`, `chart-*`) o helpers de `src/theme/semanticTokens.js`; no se deben añadir colores hardcodeados en componentes.
+
+Para añadir o modificar un perfil visual, editar `src/theme/profileThemes.js` y las variables asociadas en `src/index.css`. Los colores semánticos de éxito, error, warning, estados de tarea y gráficos viven en `src/theme/semanticTokens.js`.
 
 ## 🎯 Refactoring Strategy
 
@@ -110,6 +126,19 @@ class CharacterViewModel : ViewModel() {
     fun fetchStatsHistory(days: Int)
 }
 ```
+
+### useDashboard
+Manages Dashboard state including friction patterns:
+```javascript
+const {
+  summary, timeseries, loading, range, setRange,
+  frictions, frictionsLoading, frictionsRange, setFrictionsRange,
+  acknowledgeFriction,   // PATCH /stats/frictions/{friction}/acknowledge
+  refreshFrictions,
+} = useDashboard();
+```
+
+`frictionsRange` defaults to `'7'` (últimos 7 días). `acknowledgeFriction(friction, data)` hace PATCH y recarga los datos automáticamente.
 
 ### useMissions
 Manages missions state and operations:

@@ -56,6 +56,9 @@ export const statsApi = {
   getSummary: (params = {}) => api.get('/stats/summary', { params }),
   getTimeseries: (days = 30) => api.get('/stats/timeseries', { params: { days } }),
   getEvolution: (params = {}) => api.get('/stats/evolution', { params }),
+  getFrictions: (params = {}) => api.get('/stats/frictions', { params }),
+  acknowledgeFriction: (friction, data) => api.patch(`/stats/frictions/${friction}/acknowledge`, data),
+  getResolvedFrictions: () => api.get('/stats/frictions/resolved'),
 };
 
 // Character API

@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart } from 'lucide-react';
 import { StatsDateRangeControls } from '../stats/StatsDateRangeControls';
-
-const CHART_PALETTE = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4'];
+import { CHART_COLORS, CHART_SURFACE } from '../../../theme/semanticTokens';
+import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 /**
  * StatsHistoryChart Component
@@ -53,10 +54,10 @@ export function StatsHistoryChart({
   });
 
   return (
-    <Card className="border-[#E4E4E7]">
+    <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
             {title}
           </CardTitle>
           <StatsDateRangeControls
@@ -73,43 +74,47 @@ export function StatsHistoryChart({
       <CardContent>
         {loading ? (
           <div className="h-64 flex items-center justify-center">
-            <p className="text-sm text-[#71717A]">Cargando datos...</p>
+            <p className="text-sm text-muted-foreground">Cargando datos...</p>
           </div>
         ) : chartData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-sm text-[#71717A]">No hay datos disponibles</p>
-          </div>
+          <ProfileEmptyState
+            icon={LineChart}
+            title="No hay datos disponibles"
+            description="Tus reflexiones irán mostrando cambios acumulados en esta gráfica."
+            compact
+            className="h-64"
+          />
         ) : (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_SURFACE.grid} />
                 <XAxis
                   dataKey="date"
-                  stroke="#71717A"
-                  style={{ fontSize: '12px', fontFamily: 'Manrope, sans-serif' }}
+                  stroke={CHART_SURFACE.tick}
+                  style={{ fontSize: '12px', fontFamily: 'var(--font-ui)' }}
                 />
                 <YAxis
-                  stroke="#71717A"
-                  style={{ fontSize: '12px', fontFamily: 'Manrope, sans-serif' }}
+                  stroke={CHART_SURFACE.tick}
+                  style={{ fontSize: '12px', fontFamily: 'var(--font-ui)' }}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #E4E4E7',
+                    backgroundColor: CHART_SURFACE.tooltipBackground,
+                    border: `1px solid ${CHART_SURFACE.tooltipBorder}`,
                     borderRadius: '8px',
                     fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
+                    fontFamily: 'var(--font-ui)'
                   }}
                 />
                 <Legend
                   wrapperStyle={{
                     fontSize: '12px',
-                    fontFamily: 'Manrope, sans-serif'
+                    fontFamily: 'var(--font-ui)'
                   }}
                 />
                 {statKeys.map((key, i) => {
-                  const color = CHART_PALETTE[i % CHART_PALETTE.length];
+                  const color = CHART_COLORS[i % CHART_COLORS.length];
                   const label = statsInfo[key]?.name || key;
                   return (
                     <Area

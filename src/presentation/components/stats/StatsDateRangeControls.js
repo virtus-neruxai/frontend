@@ -29,15 +29,15 @@ export function StatsDateRangeControls({
           type="date"
           value={fromDate}
           onChange={(event) => onFromDateChange && onFromDateChange(event.target.value)}
-          className="px-3 py-1.5 text-sm border border-[#E4E4E7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+          className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
           aria-label="Fecha de inicio"
         />
-        <span className="text-xs text-[#71717A]">a</span>
+        <span className="text-xs text-muted-foreground">a</span>
         <input
           type="date"
           value={toDate}
           onChange={(event) => onToDateChange && onToDateChange(event.target.value)}
-          className="px-3 py-1.5 text-sm border border-[#E4E4E7] rounded-md focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+          className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
           aria-label="Fecha de fin"
         />
       </div>

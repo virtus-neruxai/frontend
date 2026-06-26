@@ -9,13 +9,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Calendar, LayoutDashboard, LogOut, Sparkles, ClipboardList, Settings } from 'lucide-react';
+import { Calendar, LayoutDashboard, LogOut, Sparkles, ClipboardList, Settings, MessageCircle } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { NotificationPermissionBanner } from './NotificationPermissionBanner';
 import { ThemeToggle } from './ThemeToggle';
 import { VirtusBrand } from './VirtusBrand';
+import { ProfileThemeBackground } from '../presentation/components/profile-theme/ProfileThemeBackground';
 
-export default function Layout({ children }) {
+export default function Layout({ children, ambient = false }) {
   const { user, logout } = useAuth();
   const location = useLocation();
 
@@ -23,13 +24,14 @@ export default function Layout({ children }) {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/calendar', label: 'Tareas', icon: Calendar },
     { path: '/character', label: 'Carácter', icon: Sparkles },
+    { path: '/mentor', label: 'Mentor', icon: MessageCircle },
     { path: '/profile', label: 'Perfil', icon: ClipboardList },
     { path: '/settings', label: 'Ajustes', icon: Settings },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
+    <div className="app-shell min-h-screen">
+      <header className="app-shell-header sticky top-0 z-50 border-b backdrop-blur">
         <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-6">
           <div className="flex items-center gap-8">
             <NavLink to="/dashboard">
@@ -45,8 +47,8 @@ export default function Layout({ children }) {
                   <NavLink
                     key={item.path}
                     to={item.path}
-                    className={`inline-flex items-center gap-2 rounded-[6px] px-3 py-2 text-sm ${
-                      isActive ? 'bg-primary/15 text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    className={`app-nav-link inline-flex items-center gap-2 rounded-[6px] px-3 py-2 text-sm ${
+                      isActive ? 'is-active' : ''
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -87,7 +89,8 @@ export default function Layout({ children }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-screen-2xl p-6">
+      <main className="relative mx-auto max-w-screen-2xl p-6">
+        {ambient && <ProfileThemeBackground />}
         <div className="animate-fade-in">{children}</div>
       </main>
 

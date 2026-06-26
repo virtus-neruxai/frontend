@@ -1,20 +1,17 @@
 const DEFAULT_STAT_COLORS = [
-  '#3B82F6',
-  '#10B981',
-  '#F59E0B',
-  '#8B5CF6',
-  '#06B6D4',
-  '#EC4899',
-  '#14B8A6',
-  '#F97316',
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
 ];
 
 const LEGACY_STAT_COLORS = {
-  autodominio: '#F97316',
-  claridad: '#3B82F6',
-  disciplina: '#8B5CF6',
-  virtud: '#EC4899',
-  serenidad: '#22C55E',
+  autodominio: 'hsl(var(--chart-1))',
+  claridad: 'hsl(var(--chart-2))',
+  disciplina: 'hsl(var(--chart-3))',
+  virtud: 'hsl(var(--chart-4))',
+  serenidad: 'hsl(var(--chart-5))',
 };
 
 export function formatStatLabel(statKey, statsInfo = {}) {

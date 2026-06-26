@@ -12,12 +12,12 @@ export function StatusLegend() {
       {Object.entries(STATUS_LABELS).map(([status, label]) => (
         <div key={status} className="flex items-center gap-2">
           <div className={`w-3 h-3 rounded-sm status-badge ${status}`} />
-          <span className="text-sm text-[#71717A]">{label}</span>
+          <span className="text-sm text-muted-foreground">{label}</span>
         </div>
       ))}
       <div className="flex items-center gap-2">
-        <div className="w-3 h-3 rounded-sm bg-blue-300" />
-        <span className="text-sm text-[#71717A]">Rutina</span>
+        <div className="w-3 h-3 rounded-sm bg-[hsl(var(--info))]" />
+        <span className="text-sm text-muted-foreground">Rutina</span>
       </div>
     </div>
   );
