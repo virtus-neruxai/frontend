@@ -14,13 +14,15 @@ import { useProfileTheme } from '../theme/useProfileTheme';
 const MISSION_TYPE_LABELS = {
   daily: 'Diaria',
   weekly: 'Semanal',
-  long_term: 'A Largo Plazo'
+  long_term: 'A Largo Plazo',
+  reflection: 'Reflexión'
 };
 
 const MISSION_TYPE_COLORS = {
   daily: 'bg-[hsl(var(--info))]',
   weekly: 'bg-primary',
-  long_term: 'bg-[hsl(var(--virtus-secondary))]'
+  long_term: 'bg-[hsl(var(--virtus-secondary))]',
+  reflection: 'bg-[hsl(var(--muted-foreground))]'
 };
 
 const DIFFICULTY_LABELS = {
@@ -45,19 +47,30 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
   const [isSubmitting, setIsSubmitting] = useState(false);
   const profileName = getProfileName(profileId);
 
+  const defaultDueDate = (missionType, baseDate) => {
+    const ttl = { daily: 1, weekly: 7, long_term: 30, reflection: 7 }[missionType] ?? 7;
+    const d = baseDate ? new Date(baseDate) : new Date();
+    d.setDate(d.getDate() + ttl);
+    d.setHours(23, 59, 0, 0);
+    return formatDateTimeLocal(d.toISOString());
+  };
+
   useEffect(() => {
     if (draftData?.data) {
+      const missionType = draftData.data.mission_type || 'daily';
       setEditedData({
         title: draftData.data.title || '',
         description: draftData.data.description || '',
-        mission_type: draftData.data.mission_type || 'daily',
+        mission_type: missionType,
         difficulty: draftData.data.difficulty || 2,
         estimated_minutes: draftData.data.estimated_minutes || 30,
         target_stats: draftData.data.target_stats || [],
         stat_rewards: draftData.data.stat_rewards || {},
         addToCalendar: draftData.data.addToCalendar !== false,
         start_date: draftData.data.start_date ? formatDateTimeLocal(draftData.data.start_date) : '',
-        due_date: draftData.data.due_date ? formatDateTimeLocal(draftData.data.due_date) : ''
+        due_date: draftData.data.due_date
+          ? formatDateTimeLocal(draftData.data.due_date)
+          : defaultDueDate(missionType, draftData.data.start_date || null)
       });
     }
   }, [draftData]);
@@ -215,6 +228,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
                   <SelectItem value="daily">Diaria</SelectItem>
                   <SelectItem value="weekly">Semanal</SelectItem>
                   <SelectItem value="long_term">A Largo Plazo</SelectItem>
+                  <SelectItem value="reflection">Reflexión</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -290,7 +304,14 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
                   id="start_date"
                   type="datetime-local"
                   value={editedData.start_date}
-                  onChange={(e) => setEditedData({ ...editedData, start_date: e.target.value })}
+                  onChange={(e) => {
+                    const newStart = e.target.value;
+                    setEditedData({
+                      ...editedData,
+                      start_date: newStart,
+                      due_date: defaultDueDate(editedData.mission_type, newStart),
+                    });
+                  }}
                 />
                 <p className="text-xs text-muted-foreground">
                   {editedData.start_date

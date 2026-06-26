@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import CalendarPage from "./pages/CalendarPage";
 import DashboardPage from "./pages/DashboardPage";
 import CharacterPage from "./pages/CharacterPage";
+import MentorPage from "./pages/MentorPage";
 import QuestionnairePage from "./pages/QuestionnairePage";
 import SettingsPage from "./pages/SettingsPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -73,6 +74,14 @@ function AppRoutes() {
             <CharacterPage />
           </ProtectedRoute>
         } 
+      />
+      <Route
+        path="/mentor"
+        element={
+          <ProtectedRoute>
+            <MentorPage />
+          </ProtectedRoute>
+        }
       />
       <Route 
         path="/profile" 

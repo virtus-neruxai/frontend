@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Nunito+Sans:wght@400;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bitter:wght@500;600;700&family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=Montserrat:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&family=Spectral:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -59,10 +59,10 @@
     --virtus-chart-4: 217 42% 48%;
     --virtus-chart-5: 33 29% 44%;
     --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-heading: 'Cinzel', 'Playfair Display', Georgia, serif;
+    --font-heading: 'Lora', Georgia, serif;
     --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-brand: 'Cinzel', 'Playfair Display', Georgia, serif;
-    --virtus-brand-letter-spacing: 0.22em;
+    --font-brand: 'Cinzel', Georgia, serif;
+    --virtus-brand-letter-spacing: 0.12em;
     --virtus-nav-letter-spacing: 0.02em;
   }
 
@@ -102,10 +102,10 @@
     --virtus-chart-4: 217 42% 48%;
     --virtus-chart-5: 33 29% 44%;
     --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-heading: 'Cinzel', 'Playfair Display', Georgia, serif;
+    --font-heading: 'Lora', Georgia, serif;
     --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-brand: 'Cinzel', 'Playfair Display', Georgia, serif;
-    --virtus-brand-letter-spacing: 0.22em;
+    --font-brand: 'Cinzel', Georgia, serif;
+    --virtus-brand-letter-spacing: 0.12em;
     --virtus-nav-letter-spacing: 0.02em;
   }
 
@@ -144,10 +144,10 @@
     --virtus-chart-4: 42 37% 50%;
     --virtus-chart-5: 118 28% 38%;
     --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-heading: 'Cormorant Garamond', Georgia, serif;
+    --font-heading: 'Spectral', Georgia, serif;
     --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-brand: 'Cormorant Garamond', Georgia, serif;
-    --virtus-brand-letter-spacing: 0.06em;
+    --font-brand: 'Spectral', Georgia, serif;
+    --virtus-brand-letter-spacing: 0.03em;
     --virtus-nav-letter-spacing: 0.01em;
   }
 
@@ -165,11 +165,11 @@
     --virtus-chart-4: 0 66% 50%;
     --virtus-chart-5: 217 42% 48%;
     --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-heading: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
-    --font-ui: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
-    --font-brand: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
-    --virtus-brand-letter-spacing: 0.12em;
-    --virtus-nav-letter-spacing: 0.05em;
+    --font-heading: 'Montserrat', 'Inter', system-ui, sans-serif;
+    --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-brand: 'Montserrat', 'Inter', system-ui, sans-serif;
+    --virtus-brand-letter-spacing: 0.04em;
+    --virtus-nav-letter-spacing: 0.03em;
   }
 
   :root[data-profile-theme="student"] {
@@ -186,10 +186,10 @@
     --virtus-chart-4: 168 34% 40%;
     --virtus-chart-5: 29 43% 48%;
     --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-heading: 'Merriweather', Georgia, serif;
+    --font-heading: 'Bitter', Georgia, serif;
     --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    --font-brand: 'Merriweather', Georgia, serif;
-    --virtus-brand-letter-spacing: 0.08em;
+    --font-brand: 'Bitter', Georgia, serif;
+    --virtus-brand-letter-spacing: 0.02em;
     --virtus-nav-letter-spacing: 0.01em;
   }
 
@@ -493,7 +493,7 @@
 }
 
 .fc .fc-toolbar-title {
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-heading);
   font-weight: 600;
   font-size: 1.3rem;
   color: hsl(var(--foreground));

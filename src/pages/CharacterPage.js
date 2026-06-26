@@ -5,21 +5,19 @@ import Layout from '../components/Layout';
 import TaskDraftModal from '../components/TaskDraftModal';
 import MissionDraftModal from '../components/MissionDraftModal';
 import EmotionPicker from '../components/EmotionPicker';
-import ConversationHistory from '../components/chat/ConversationHistory';
 import { CharacterStats } from '../presentation/components/character/CharacterStats';
 import { MissionsList } from '../presentation/components/character/MissionsList';
 import { StatsHistoryChart } from '../presentation/components/character/StatsHistoryChart';
 import { ReflectionKPIs } from '../presentation/components/character/ReflectionKPIs';
 import { MissionEvolutionChart } from '../presentation/components/character/MissionEvolutionChart';
-import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
 import { FinishedList } from '../presentation/components/character/FinishedList';
 import { ProfileEmptyState } from '../presentation/components/profile-theme/ProfileEmptyState';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { useCharacter } from '../presentation/viewmodels/useCharacter';
 import { useMissions } from '../presentation/viewmodels/useMissions';
-import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { buildRelativeDateRange } from '../lib/dateRangeUtils';
+import { formatMentorResponseText } from '../lib/mentorTextFormat';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
@@ -29,8 +27,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { SEMANTIC_COLORS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import {
-  Target, Scroll, MessageCircle, Send,
-  XCircle, CheckCircle2, AlertTriangle, Clock, Repeat
+  Target, Scroll,
+  XCircle, CheckCircle2, Clock
 } from 'lucide-react';
 
 /**
@@ -44,7 +42,6 @@ import {
  * Architecture:
  * - useCharacter: Character state management
  * - useMissions: Missions state management
- * - useAgentChat: Agent chat interactions
  * - useDrafts: Draft confirmations (tasks + missions)
  * - CharacterStats: Stats display component
  * - MissionsList: Missions display component
@@ -98,16 +95,6 @@ export default function CharacterPageRefactored() {
   } = useMissions();
   
   const {
-    chatMessage,
-    chatResponse,
-    chatLoading,
-    sessionId,
-    sendMessage,
-    setChatMessage,
-    startNewConversation,
-  } = useAgentChat();
-  
-  const {
     showTaskDraftModal,
     showMissionDraftModal,
     currentDraftData,
@@ -119,9 +106,6 @@ export default function CharacterPageRefactored() {
     setShowTaskDraftModal,
     setShowMissionDraftModal,
   } = useDrafts();
-  
-  // Ref for refreshing conversation history after sending messages
-  const conversationHistoryRef = useRef();
 
   const { theme } = useProfileTheme();
   const profileName = theme.name;
@@ -132,7 +116,6 @@ export default function CharacterPageRefactored() {
   const [selectedMission, setSelectedMission] = useState(null);
   const [reflectionText, setReflectionText] = useState('');
   const [missionReflectionText, setMissionReflectionText] = useState('');
-  const [activeTab, setActiveTab] = useState('missions');
   const [selectedDate, setSelectedDate] = useState(''); // For reflection filter
   const [reflectionHistoryMode, setReflectionHistoryMode] = useState('journal');
   const [aiResponse, setAiResponse] = useState(null); // AI mentor response
@@ -372,18 +355,6 @@ export default function CharacterPageRefactored() {
     setMissionToDate(newDate);
   }, []);
 
-  // Chat with agent handler
-  const handleChat = async () => {
-    await sendMessage(chatMessage, ({ draftId, uiAction, type }) => {
-      openDraftModal({ draftId, uiAction, type });
-    });
-    
-    // Refresh conversation history after sending message
-    if (conversationHistoryRef.current) {
-      conversationHistoryRef.current.refresh();
-    }
-  };
-
   // Schedule mission handler
   const handleScheduleMission = async () => {
     await scheduleMission(fetchAllData);
@@ -453,23 +424,15 @@ export default function CharacterPageRefactored() {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="missions" className="space-y-4" onValueChange={setActiveTab}>
+        <Tabs defaultValue="missions" className="space-y-4">
           <TabsList className="bg-muted p-1 rounded-full">
             <TabsTrigger value="missions" className="rounded-full data-[state=active]:bg-card">
               <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Misiones
             </TabsTrigger>
-            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-card">
-              <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Desafíos
-            </TabsTrigger>
             <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-card">
               <Scroll className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Diario
-            </TabsTrigger>
-            <TabsTrigger value="agent" className="rounded-full data-[state=active]:bg-card">
-              <MessageCircle className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Mentor {profileName}
             </TabsTrigger>
           </TabsList>
 
@@ -530,11 +493,6 @@ export default function CharacterPageRefactored() {
             </Tabs>
           </TabsContent>
 
-          {/* Challenges Tab */}
-          <TabsContent value="challenges" className="space-y-4">
-            <ChallengesTab />
-          </TabsContent>
-
           {/* Reflection Tab */}
           <TabsContent value="reflection" className="space-y-4">
             {/* Reflection KPIs */}
@@ -569,7 +527,9 @@ export default function CharacterPageRefactored() {
                 {aiResponse && (
                   <div className="p-4 bg-primary/10 border border-primary/25 rounded-lg">
                     <p className="text-sm font-semibold text-primary mb-2">Respuesta del Mentor:</p>
-                    <p className="text-sm text-foreground">{aiResponse}</p>
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                      {formatMentorResponseText(aiResponse)}
+                    </p>
                     
                     {statChanges && (
                       <div className="mt-3 pt-3 border-t border-primary/20">
@@ -790,7 +750,9 @@ export default function CharacterPageRefactored() {
                           {reflection.ai_response && (
                             <div className="mt-3 p-3 bg-primary/10 border-l-4 border-primary rounded">
                               <p className="text-xs font-semibold text-primary mb-1">Mentor:</p>
-                              <p className="text-xs text-foreground">{reflection.ai_response}</p>
+                              <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
+                                {formatMentorResponseText(reflection.ai_response)}
+                              </p>
                             </div>
                           )}
                           
@@ -833,52 +795,6 @@ export default function CharacterPageRefactored() {
             </Card>
           </TabsContent>
 
-          {/* Agent Chat Tab */}
-          <TabsContent value="agent">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">Mentor {profileName}</CardTitle>
-                <Button
-                  onClick={startNewConversation}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                >
-                  <MessageCircle className="w-3 h-3 mr-1" />
-                  Nueva Conversación
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {chatResponse && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-foreground whitespace-pre-wrap">{chatResponse}</p>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <Textarea
-                    placeholder="Pregunta a tu mentor..."
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    className="min-h-[80px]"
-                  />
-                </div>
-                <Button
-                  onClick={handleChat}
-                  disabled={!chatMessage.trim() || chatLoading}
-                  className="rounded-full w-full"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  {chatLoading ? 'Pensando...' : 'Enviar'}
-                </Button>
-
-                {/* Conversation History */}
-                <ConversationHistory 
-                  ref={conversationHistoryRef}
-                  activeSessionId={sessionId}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         {/* Mission Completion Dialog */}
