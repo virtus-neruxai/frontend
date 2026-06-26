@@ -8,6 +8,7 @@ import { StatusDistributionChart } from '../presentation/components/dashboard/St
 import { StatusBarChart } from '../presentation/components/dashboard/StatusBarChart';
 import { TimeseriesChart } from '../presentation/components/dashboard/TimeseriesChart';
 import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/TotalStatsEvolutionChart';
+import { DetectedPatternsPanel } from '../presentation/components/dashboard/DetectedPatternsPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -30,6 +31,11 @@ export default function DashboardPageRefactored() {
     handleTotalStatsRangeChange,
     handleTotalStatsFromDateChange,
     handleTotalStatsToDateChange,
+    frictions,
+    frictionsLoading,
+    frictionsRange,
+    setFrictionsRange,
+    acknowledgeFriction,
   } = useDashboard();
 
   return (
@@ -123,6 +129,15 @@ export default function DashboardPageRefactored() {
               onFromDateChange={handleTotalStatsFromDateChange}
               onToDateChange={handleTotalStatsToDateChange}
               loading={totalStatsLoading}
+            />
+
+            {/* Detected Patterns Panel */}
+            <DetectedPatternsPanel
+              data={frictions}
+              loading={frictionsLoading}
+              range={frictionsRange}
+              onRangeChange={setFrictionsRange}
+              onAcknowledge={acknowledgeFriction}
             />
           </div>
         )}

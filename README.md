@@ -39,7 +39,9 @@ src/
 │       │   ├── NorthStarCard.jsx
 │       │   ├── StatusDistributionChart.js
 │       │   ├── StatusBarChart.js
-│       │   └── TimeseriesChart.js
+│       │   ├── TimeseriesChart.js
+│       │   ├── DetectedPatternsPanel.jsx   # Panel de patrones de fricción detectados
+│       │   └── FrictionAcknowledgeDialog.jsx  # Dialog para confirmar/progresar/resolver fricciones
 │       └── calendar/    # Calendar page components
 │           ├── CalendarNavigation.js
 │           ├── ViewSelector.js
@@ -124,6 +126,19 @@ class CharacterViewModel : ViewModel() {
     fun fetchStatsHistory(days: Int)
 }
 ```
+
+### useDashboard
+Manages Dashboard state including friction patterns:
+```javascript
+const {
+  summary, timeseries, loading, range, setRange,
+  frictions, frictionsLoading, frictionsRange, setFrictionsRange,
+  acknowledgeFriction,   // PATCH /stats/frictions/{friction}/acknowledge
+  refreshFrictions,
+} = useDashboard();
+```
+
+`frictionsRange` defaults to `'7'` (últimos 7 días). `acknowledgeFriction(friction, data)` hace PATCH y recarga los datos automáticamente.
 
 ### useMissions
 Manages missions state and operations:
