@@ -15,9 +15,23 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
     fetchConversations();
   }, []);
 
-  // Expose refresh function to parent component
+  // Auto-load the active session's messages when it appears in the list
+  useEffect(() => {
+    if (activeSessionId) {
+      fetchConversationDetail(activeSessionId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId]);
+
+  // Expose refresh: reloads list + reloads the active/selected conversation detail
   useImperativeHandle(ref, () => ({
-    refresh: fetchConversations
+    refresh: async () => {
+      await fetchConversations();
+      const sessionToLoad = activeSessionId || selectedConversation;
+      if (sessionToLoad) {
+        await fetchConversationDetail(sessionToLoad);
+      }
+    }
   }));
 
   const fetchConversations = async () => {

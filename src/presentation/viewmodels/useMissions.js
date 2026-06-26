@@ -206,9 +206,9 @@ export const useMissions = () => {
       toast.success('Misión creada');
       setProposedMissions(remainingMissions);
       setShowConfirmModal(remainingMissions.length > 0);
-      
-      if (onSuccess) onSuccess();
+
       await fetchMissions();
+      if (onSuccess) await onSuccess();
     } catch (error) {
       console.error('Error confirming missions:', error);
       toast.error('Error al confirmar misiones');

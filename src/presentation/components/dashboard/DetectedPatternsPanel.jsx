@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
-import { TrendingUp, TrendingDown, Minus, MessageSquare, BookOpen, CheckSquare, Target, RotateCcw, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, MessageSquare, BookOpen, CheckSquare, Target, RotateCcw, ChevronDown, CheckCircle2, Pencil, X } from 'lucide-react';
 import { FrictionAcknowledgeDialog } from './FrictionAcknowledgeDialog';
 
 function Skeleton({ className }) {
@@ -103,22 +103,34 @@ function SourceChips({ sources }) {
   );
 }
 
-function FrictionChip({ item, onEdit }) {
+function FrictionChip({ item, onEdit, selected, onSelect }) {
   const isDismissed = item.user_confirmed === false;
   return (
-    <button
-      type="button"
-      onClick={() => onEdit(item)}
-      className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium transition-opacity hover:opacity-80 cursor-pointer border border-transparent hover:border-border
-        ${isDismissed ? 'opacity-40 bg-muted text-muted-foreground' : 'bg-muted/60 text-foreground'}`}
-      title="Haz clic para actualizar tu progreso"
+    <div
+      className={`inline-flex items-center gap-1 text-xs rounded-full font-medium transition-all border
+        ${isDismissed ? 'opacity-40 bg-muted text-muted-foreground border-transparent' : selected ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/60 text-foreground border-transparent hover:border-border'}`}
     >
-      <span>{item.label}</span>
-      <span className="opacity-60">×{item.count}</span>
-      {item.user_progress != null && item.user_progress < 5 && (
-        <ProgressDots progress={item.user_progress} />
-      )}
-    </button>
+      <button
+        type="button"
+        onClick={() => onSelect(item.friction)}
+        className="pl-2.5 pr-1.5 py-1.5 cursor-pointer"
+        title="Filtrar evidencias por este patrón"
+      >
+        <span>{item.label}</span>
+        <span className={`ml-1 ${selected ? 'opacity-80' : 'opacity-60'}`}>×{item.count}</span>
+        {item.user_progress != null && item.user_progress < 5 && (
+          <span className="ml-1"><ProgressDots progress={item.user_progress} /></span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => onEdit(item)}
+        className={`pr-2 py-1.5 cursor-pointer ${selected ? 'opacity-80 hover:opacity-100' : 'opacity-40 hover:opacity-70'}`}
+        title="Actualizar progreso"
+      >
+        <Pencil size={10} />
+      </button>
+    </div>
   );
 }
 
@@ -132,20 +144,17 @@ function TimelineEvent({ event }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-sm font-medium truncate">{event.label}</span>
+          <span className="text-sm font-medium truncate">
+            {event.label}
+            {event.secondary_label && (
+              <span className="text-muted-foreground font-normal"> · {event.secondary_label}</span>
+            )}
+          </span>
           <PatternStatusBadge status={event.pattern_status} />
         </div>
-        {event.insight && (
-          <p className="text-xs text-muted-foreground mt-0.5">{event.insight}</p>
-        )}
         {event.excerpt && (
           <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">
             &ldquo;{event.excerpt}&rdquo;
-          </p>
-        )}
-        {event.suggested_next_action && (
-          <p className="text-xs text-foreground mt-1.5 font-medium">
-            → {event.suggested_next_action}
           </p>
         )}
         <div className="flex items-center gap-2 mt-1">
@@ -239,11 +248,16 @@ function ResolvedSection({ resolvedFrictions }) {
 
 export function DetectedPatternsPanel({ data, loading, range = '7', onRangeChange, onAcknowledge }) {
   const [dialogState, setDialogState] = useState({ open: false, friction: null });
+  const [selectedFriction, setSelectedFriction] = useState(null);
 
   const openDialog = (item) => {
     setDialogState({ open: true, friction: { ...item, range } });
   };
   const closeDialog = () => setDialogState({ open: false, friction: null });
+
+  const toggleFriction = (frictionKey) => {
+    setSelectedFriction(prev => prev === frictionKey ? null : frictionKey);
+  };
 
   if (loading) {
     return (
@@ -260,6 +274,10 @@ export function DetectedPatternsPanel({ data, loading, range = '7', onRangeChang
   const summary = data?.summary || {};
   const byFriction = data?.by_friction || [];
   const resolvedFrictions = data?.resolved_frictions || [];
+
+  const filteredTimeline = selectedFriction
+    ? timeline.filter(evt => evt.friction === selectedFriction || evt.secondary_friction === selectedFriction)
+    : timeline;
 
   const hasData = timeline.length > 0 || byFriction.length > 0 || resolvedFrictions.length > 0;
 
@@ -301,31 +319,42 @@ export function DetectedPatternsPanel({ data, loading, range = '7', onRangeChang
         <>
           <SummaryRow summary={summary} />
 
-          {/* Friction chips — clickable */}
+          {/* Friction chips */}
           {byFriction.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {byFriction.map((f) => (
-                <FrictionChip key={f.friction} item={f} onEdit={openDialog} />
+                <FrictionChip
+                  key={f.friction}
+                  item={f}
+                  onEdit={openDialog}
+                  selected={selectedFriction === f.friction}
+                  onSelect={toggleFriction}
+                />
               ))}
+              {selectedFriction && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFriction(null)}
+                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted cursor-pointer"
+                >
+                  <X size={10} /> Ver todos
+                </button>
+              )}
             </div>
           )}
 
-          {/* Top suggested next action */}
-          {summary.top_suggested_next_action && (
-            <div className="bg-muted/60 rounded-md px-3 py-2 mb-4 text-sm">
-              <span className="font-medium">Próximo paso: </span>
-              {summary.top_suggested_next_action}
-            </div>
-          )}
-
-          {/* Timeline — all events */}
-          {timeline.length > 0 && (
+          {/* Timeline */}
+          {filteredTimeline.length > 0 ? (
             <div className="divide-y divide-border">
-              {timeline.map((evt) => (
+              {filteredTimeline.map((evt) => (
                 <TimelineEvent key={`${evt.source_type}-${evt.id}-${evt.created_at}`} event={evt} />
               ))}
             </div>
-          )}
+          ) : timeline.length > 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No hay evidencias de este patrón en el periodo seleccionado.
+            </p>
+          ) : null}
 
           {/* Resolved frictions section */}
           <ResolvedSection resolvedFrictions={resolvedFrictions} />
