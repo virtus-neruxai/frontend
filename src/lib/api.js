@@ -76,7 +76,7 @@ export const missionsApi = {
     status: data.success === false ? 'failed' : 'done',
     is_complete: data.success !== false,
   }),
-  nightlyReview: () => api.post('/items/nightly-review'),
+  nightlyReview: () => agentApiInstance.post('/agent/nightly-review'),
   confirmMissions: (missions) => api.post('/items/confirm', { missions }),
   schedule: (missionId, data) => api.patch(`/items/${missionId}`, data),
   remove: (missionId) => api.delete(`/items/${missionId}`),
