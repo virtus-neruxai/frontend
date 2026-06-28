@@ -16,7 +16,7 @@ function VirtusGlyph() {
   );
 }
 
-export function VirtusBrand({ compact = false, logoSrc = `${process.env.PUBLIC_URL || ''}/assets/virtus-logo.png` }) {
+export function VirtusBrand({ compact = false, logoSrc = '/assets/virtus-logo.png' }) {
   const [useFallbackGlyph, setUseFallbackGlyph] = useState(false);
   const { theme } = useProfileTheme();
 

@@ -10,7 +10,7 @@ const WebSocketInitializer = ({ children }) => {
   const userId = user?.username || '';
 
   // Determine WebSocket URL based on environment
-  const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8008/ws/notifications';
+  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8008/ws/notifications';
 
   // Initialize WebSocket connection
   useWebSocket({

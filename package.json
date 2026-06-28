@@ -53,7 +53,6 @@
     "react-hook-form": "^7.54.2",
     "react-resizable-panels": "^2.1.7",
     "react-router-dom": "^7.1.5",
-    "react-scripts": "5.0.1",
     "recharts": "^2.15.1",
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.0.1",
@@ -62,9 +61,12 @@
     "zod": "^3.24.2"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
-    "test": "craco test"
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src"
   },
   "browserslist": {
     "production": [
@@ -79,10 +81,16 @@
     ]
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.0",
+    "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.20",
+    "jsdom": "^26.0.0",
     "postcss": "^8.5.1",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
   },
   "pnpm": {
     "overrides": {

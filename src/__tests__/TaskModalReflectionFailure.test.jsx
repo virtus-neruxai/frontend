@@ -3,42 +3,42 @@ import TaskModal from '../components/TaskModal';
 import { tasksApi, missionsApi, reflectionsApi } from '../lib/api';
 import { toast } from 'sonner';
 
-jest.mock('sonner', () => ({
+vi.mock('sonner', () => ({
   toast: {
-    error: jest.fn(),
-    success: jest.fn(),
-    warning: jest.fn(),
+    error: vi.fn(),
+    success: vi.fn(),
+    warning: vi.fn(),
   },
 }));
 
-jest.mock('../lib/api', () => ({
+vi.mock('../lib/api', () => ({
   tasksApi: {
-    patch: jest.fn(),
-    delete: jest.fn(),
-    markRoutineToday: jest.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    markRoutineToday: vi.fn(),
   },
   missionsApi: {
-    getAll: jest.fn(),
-    complete: jest.fn(),
+    getAll: vi.fn(),
+    complete: vi.fn(),
   },
   reflectionsApi: {
-    getAll: jest.fn(),
-    create: jest.fn(),
+    getAll: vi.fn(),
+    create: vi.fn(),
   },
 }));
 
 beforeAll(() => {
   if (!window.HTMLElement.prototype.hasPointerCapture) {
-    window.HTMLElement.prototype.hasPointerCapture = jest.fn();
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn();
   }
   if (!window.HTMLElement.prototype.setPointerCapture) {
-    window.HTMLElement.prototype.setPointerCapture = jest.fn();
+    window.HTMLElement.prototype.setPointerCapture = vi.fn();
   }
   if (!window.HTMLElement.prototype.releasePointerCapture) {
-    window.HTMLElement.prototype.releasePointerCapture = jest.fn();
+    window.HTMLElement.prototype.releasePointerCapture = vi.fn();
   }
   if (!window.HTMLElement.prototype.scrollIntoView) {
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
   }
   if (!window.ResizeObserver) {
     window.ResizeObserver = class ResizeObserver {
@@ -62,7 +62,7 @@ describe('TaskModal reflection failure handling', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     reflectionsApi.getAll.mockResolvedValue({ data: [] });
     reflectionsApi.create.mockRejectedValue(new Error('reflection failed'));
     tasksApi.patch.mockResolvedValue({ data: { ...task, status: 'done', is_complete: true } });
@@ -71,15 +71,15 @@ describe('TaskModal reflection failure handling', () => {
   });
 
   test('keeps the reflection text visible when saving it fails after task completion', async () => {
-    const onSaved = jest.fn();
+    const onSaved = vi.fn();
 
     render(
       <TaskModal
         open
-        onClose={jest.fn()}
+        onClose={vi.fn()}
         task={task}
         onSaved={onSaved}
-        onDeleted={jest.fn()}
+        onDeleted={vi.fn()}
       />
     );
 
@@ -101,16 +101,16 @@ describe('TaskModal reflection failure handling', () => {
   });
 
   test('deletes a task without asking for a deletion reason', async () => {
-    const onDeleted = jest.fn();
-    const promptSpy = jest.spyOn(window, 'prompt').mockImplementation(() => 'unused');
+    const onDeleted = vi.fn();
+    const promptSpy = vi.spyOn(window, 'prompt').mockImplementation(() => 'unused');
     tasksApi.delete.mockResolvedValue({});
 
     render(
       <TaskModal
         open
-        onClose={jest.fn()}
+        onClose={vi.fn()}
         task={task}
-        onSaved={jest.fn()}
+        onSaved={vi.fn()}
         onDeleted={onDeleted}
       />
     );
@@ -148,16 +148,16 @@ describe('TaskModal reflection failure handling', () => {
         created_at: '2026-06-26T08:00:00+00:00',
       },
     });
-    const onSaved = jest.fn();
+    const onSaved = vi.fn();
 
     render(
       <TaskModal
         open
-        onClose={jest.fn()}
+        onClose={vi.fn()}
         task={routine}
         occurrenceDate="2026-06-26T09:00:00"
         onSaved={onSaved}
-        onDeleted={jest.fn()}
+        onDeleted={vi.fn()}
       />
     );
 
@@ -209,11 +209,11 @@ describe('TaskModal reflection failure handling', () => {
     render(
       <TaskModal
         open
-        onClose={jest.fn()}
+        onClose={vi.fn()}
         task={routine}
         occurrenceDate="2026-06-27T09:00:00"
-        onSaved={jest.fn()}
-        onDeleted={jest.fn()}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
       />
     );
 

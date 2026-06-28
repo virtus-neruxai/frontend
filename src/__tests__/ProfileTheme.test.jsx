@@ -7,35 +7,41 @@ import { normalizeProfileId } from '../theme/profileThemeUtils';
 import { VirtusBrand } from '../components/VirtusBrand';
 import { notificationsApi, userSettingsApi } from '../lib/api';
 
-jest.mock('sonner', () => ({
+vi.mock('sonner', () => ({
   toast: {
-    error: jest.fn(),
-    success: jest.fn(),
+    error: vi.fn(),
+    success: vi.fn(),
   },
 }));
 
-jest.mock('../lib/api', () => ({
+vi.mock('../lib/api', () => ({
   notificationsApi: {
-    getSettings: jest.fn(),
-    saveSettings: jest.fn(),
+    getSettings: vi.fn(),
+    saveSettings: vi.fn(),
   },
   userSettingsApi: {
-    getSettings: jest.fn(),
-    saveSettings: jest.fn(),
+    getSettings: vi.fn(),
+    saveSettings: vi.fn(),
   },
 }));
 
-jest.mock('../components/Layout', () => function MockLayout({ children }) {
-  return <div>{children}</div>;
-});
+vi.mock('../components/Layout', () => ({
+  default: function MockLayout({ children }) {
+    return <div>{children}</div>;
+  },
+}));
 
-jest.mock('../components/NotificationSettings', () => function MockNotificationSettings() {
-  return <div data-testid="notification-settings" />;
-});
+vi.mock('../components/NotificationSettings', () => ({
+  default: function MockNotificationSettings() {
+    return <div data-testid="notification-settings" />;
+  },
+}));
 
-jest.mock('../components/ProactiveSettings', () => function MockProactiveSettings() {
-  return <div data-testid="proactive-settings" />;
-});
+vi.mock('../components/ProactiveSettings', () => ({
+  default: function MockProactiveSettings() {
+    return <div data-testid="proactive-settings" />;
+  },
+}));
 
 function ThemeProbe() {
   const { profileId, previewProfile, persistProfile } = useProfileTheme();
@@ -51,7 +57,7 @@ function ThemeProbe() {
 
 describe('profile theme', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     window.localStorage.clear();
     document.documentElement.dataset.profileTheme = 'stoic';
     notificationsApi.getSettings.mockResolvedValue({ data: {} });

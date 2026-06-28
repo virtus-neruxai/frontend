@@ -317,24 +317,6 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     try {
       const nextStart = new Date(formData.date_start).toISOString();
       const nextEnd = formData.date_end ? new Date(formData.date_end).toISOString() : null;
-      let reason = null;
-      
-      if (isEditing && task) {
-        // Normalizar fechas actuales para comparación
-        const currentStart = new Date(task.date_start).toISOString();
-        const currentEnd = task.date_end ? new Date(task.date_end).toISOString() : null;
-        
-        const startDateChanged = currentStart !== nextStart;
-        const endDateChanged = currentEnd !== nextEnd;
-        
-        if (startDateChanged || endDateChanged) {
-          reason = window.prompt('Motivo del cambio de fecha');
-          if (!reason) {
-            setLoading(false);
-            return;
-          }
-        }
-      }
 
       const recurrenceRuleBase = isRoutine
         ? (formData.recurrence_type === 'custom'
@@ -357,8 +339,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
         date_end: nextEnd,
         recurrence_rule: recurrenceRule,
         task_kind: isRoutine ? 'routine' : 'task',
-        ...(isRoutine ? { status: 'in_progress', progress_percent: 100, is_complete: false } : {}),
-        ...(reason ? { reason } : {})
+        ...(isRoutine ? { status: 'in_progress', progress_percent: 100, is_complete: false } : {})
       };
       delete payload.recurrence_type;
       delete payload.recurrence_interval;

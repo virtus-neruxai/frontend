@@ -236,15 +236,9 @@ export function useCalendar() {
     const newEnd = info.event.end;
 
     try {
-      const reason = window.prompt('Motivo del cambio de fecha');
-      if (!reason) {
-        info.revert();
-        return;
-      }
       await tasksApi.patch(taskId, {
         date_start: newStart.toISOString(),
         date_end: newEnd ? newEnd.toISOString() : null,
-        reason
       });
       toast.success('Tarea movida');
       fetchTasks();
@@ -259,14 +253,8 @@ export function useCalendar() {
     const newEnd = info.event.end;
 
     try {
-      const reason = window.prompt('Motivo del cambio de fecha');
-      if (!reason) {
-        info.revert();
-        return;
-      }
       await tasksApi.patch(taskId, {
         date_end: newEnd ? newEnd.toISOString() : null,
-        reason
       });
       toast.success('Duración actualizada');
       fetchTasks();

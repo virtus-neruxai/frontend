@@ -9,7 +9,7 @@ import { Lock, User, Key } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { VirtusBrand } from '../components/VirtusBrand';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -185,7 +185,7 @@ export default function LoginPage() {
           </div>
           <div className="flex justify-center my-4">
             <img
-              src={process.env.PUBLIC_URL + "/assets/login.png"}
+              src="/assets/login.png"
               alt="Virtus login visual"
               className="w-full h-auto rounded shadow border"
               style={{ objectFit: 'contain', padding: '0', margin: 0, background: 'var(--background)' }}

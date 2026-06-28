@@ -6,15 +6,20 @@ import listPlugin from '@fullcalendar/list';
 
 const renderEventContent = (eventInfo) => {
   const { status, progress, taskKind, completedToday } = eventInfo.event.extendedProps;
+  const start = eventInfo.event.start;
+  const end = eventInfo.event.end;
+  const durationMin = start && end ? (end - start) / 60000 : 60;
+  const isShort = durationMin < 30;
+
   return (
-    <div className="flex items-center gap-1.5 px-1 overflow-hidden">
-      <span className={`truncate font-medium ${status === 'failed' ? 'line-through opacity-80' : ''}`}>
+    <div className={`flex items-center overflow-hidden w-full ${isShort ? 'px-1 gap-1' : 'px-1.5 gap-1.5'}`}>
+      <span className={`truncate font-medium leading-tight ${isShort ? 'text-[10px]' : 'text-xs'} ${status === 'failed' ? 'line-through opacity-80' : ''}`}>
         {eventInfo.event.title}
       </span>
-      {taskKind === 'routine' && completedToday && (
+      {!isShort && taskKind === 'routine' && completedToday && (
         <span className="text-[11px] text-[hsl(var(--success))] shrink-0">✓</span>
       )}
-      {taskKind !== 'routine' && progress > 0 && progress < 100 && (
+      {!isShort && taskKind !== 'routine' && progress > 0 && progress < 100 && (
         <span className="text-[10px] opacity-70 shrink-0">{progress}%</span>
       )}
     </div>
@@ -74,6 +79,7 @@ export function CalendarGrid({
       slotMinTime="00:00:00"
       slotMaxTime="24:00:00"
       slotDuration="00:30:00"
+      eventMinHeight={20}
       nowIndicator={true}
       scrollTimeReset={true}
       buttonText={{
