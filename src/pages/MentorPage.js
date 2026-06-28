@@ -18,7 +18,7 @@ export default function MentorPage() {
   const { theme } = useProfileTheme();
   const profileName = theme.name;
   const conversationHistoryRef = useRef();
-  const [activeTab, setActiveTab] = useState('challenges');
+  const [activeTab, setActiveTab] = useState('agent');
 
   const {
     chatMessage,
@@ -70,21 +70,17 @@ export default function MentorPage() {
           }
         />
 
-        <Tabs defaultValue="challenges" className="space-y-4" onValueChange={setActiveTab}>
+        <Tabs defaultValue="agent" className="space-y-4" onValueChange={setActiveTab}>
           <TabsList className="bg-muted p-1 rounded-full">
-            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-card">
-              <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Desafíos
-            </TabsTrigger>
             <TabsTrigger value="agent" className="rounded-full data-[state=active]:bg-card">
               <MessageCircle className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Mentor {profileName}
             </TabsTrigger>
+            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-card">
+              <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Desafíos
+            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="challenges" className="space-y-4">
-            <ChallengesTab />
-          </TabsContent>
 
           <TabsContent value="agent">
             <Card>
@@ -129,6 +125,10 @@ export default function MentorPage() {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="challenges" className="space-y-4">
+            <ChallengesTab />
           </TabsContent>
         </Tabs>
 

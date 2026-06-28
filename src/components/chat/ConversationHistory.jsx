@@ -4,16 +4,21 @@ import { es } from 'date-fns/locale';
 import { MessageCircle, Trash2, ChevronRight, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { conversationsApi } from '../../lib/api';
+import { useProfileTheme } from '../../theme/useProfileTheme';
 
 const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
+  const { persistedProfileId } = useProfileTheme();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // The history is profile-scoped server-side; reload it whenever the active
+  // profile changes so it always reflects the current profile's conversations.
   useEffect(() => {
     fetchConversations();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persistedProfileId]);
 
   // Auto-load the active session's messages when it appears in the list
   useEffect(() => {

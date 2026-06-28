@@ -196,6 +196,12 @@ export default function SettingsPage() {
     try {
       const response = await userSettingsApi.saveSettings({ prompt_profile: promptProfile });
       const resolved = response?.data?.resolved_prompt_profile || response?.data?.prompt_profile || promptProfile;
+      if (resolved !== persistedPromptProfile) {
+        // El Mentor es especialista por perfil: al cambiar de perfil, arrancamos
+        // una conversación nueva (useAgentChat genera un session_id fresco cuando
+        // no hay ninguno guardado).
+        localStorage.removeItem('agent_session_id');
+      }
       setPromptProfile(resolved);
       setPersistedPromptProfile(resolved);
       persistProfile(resolved);

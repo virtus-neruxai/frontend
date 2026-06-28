@@ -79,6 +79,61 @@ src/
 
 Para añadir o modificar un perfil visual, editar `src/theme/profileThemes.js` y las variables asociadas en `src/index.css`. Los colores semánticos de éxito, error, warning, estados de tarea y gráficos viven en `src/theme/semanticTokens.js`.
 
+## 🔒 Aislamiento por Perfil (Mentor + Misiones + RAG)
+
+Cada perfil (`stoic`, `calm`, `spiritual`, `performance`, `student`) tiene datos completamente aislados: el Mentor solo ve conversaciones e historial del perfil activo, y las misiones generadas solo aparecen en el perfil en que se crearon.
+
+### Flujo al cambiar de perfil
+
+```
+Usuario guarda nuevo perfil en SettingsPage
+        │
+        ▼
+savePromptProfile()
+  └─ resolved !== persistedPromptProfile?
+       ├─ SÍ → localStorage.removeItem('agent_session_id')
+       │         useAgentChat genera un UUID nuevo al montar
+       │         → nueva conversación del Mentor en el perfil entrante
+       └─ NO → sin cambios en la sesión activa
+```
+
+**Fichero**: `src/pages/SettingsPage.js` → `savePromptProfile()`
+
+### Historial de conversaciones por perfil
+
+`ConversationHistory.jsx` suscribe su carga al cambio de perfil persisted:
+
+```javascript
+const { persistedProfileId } = useProfileTheme();
+
+useEffect(() => {
+  fetchConversations();   // recarga desde el servidor con el perfil nuevo
+}, [persistedProfileId]);
+```
+
+El filtrado real ocurre en el servidor (`GET /v1/agent/interactions` filtra por `prompt_profile` del usuario autenticado). El frontend solo necesita re-disparar la petición cuando el perfil cambia.
+
+**Fichero**: `src/components/chat/ConversationHistory.jsx`
+
+### localStorage involucrado
+
+| Clave | Propósito | Lifecycle |
+|-------|-----------|-----------|
+| `agent_session_id` | UUID de la sesión activa del Mentor | Se borra al cambiar de perfil; `useAgentChat` siembra uno nuevo en el siguiente mount |
+| `prompt_profile` | Caché visual del perfil activo | Escrito por `persistProfile()`; lectura inicial antes de que responda el backend |
+
+### Misiones filtradas por perfil
+
+`missionsApi.getAll()` llama a `GET /items?item_type=mission`. El backend filtra por `prompt_profile` activo del usuario, de modo que solo aparecen las misiones creadas bajo el perfil actual. Las tareas del calendario (`item_type=task`) no se filtran y son compartidas entre perfiles.
+
+### Qué NO se aísla (compartido entre perfiles)
+
+- Tareas del calendario (`item_type=task`)
+- Enunciado de misión vital / estrella norte (`goal_statement`, `goal_description`)
+- Mission statement lenses (se generan por perfil, pero el enunciado principal es universal)
+
+---
+
 ## 🎯 Refactoring Strategy
 
 ### Problem
@@ -295,17 +350,47 @@ Calendar page components for navigation, view selection, FullCalendar grid, and 
 
 **Props:** Various navigation and event handling callbacks
 
+## ⚡ Migración CRA → Vite (Node 26)
+
+El proyecto migró de **Create React App** a **Vite 6 + Vitest 3 + React 19** corriendo sobre **Node 26**. Los cambios clave respecto a la configuración anterior:
+
+| Aspecto | Antes (CRA) | Ahora (Vite) |
+|---------|-------------|--------------|
+| Build tool | `react-scripts` | `vite` + `@vitejs/plugin-react` |
+| Test runner | Jest / `react-scripts test` | Vitest 3 + jsdom |
+| Variables de entorno | `REACT_APP_*` | `VITE_*` |
+| Salida del build | `build/` | `dist/` |
+| Dev server | `react-scripts start` | `vite` (puerto 3000) |
+| Node en Docker | 18-alpine | **26-alpine** |
+| Archivos `.js` como JSX | automático en CRA | plugin `treat-js-files-as-jsx` en `vite.config.js` |
+
+### Por qué `.js` como JSX necesita el plugin
+
+El proyecto usa `.js` para componentes React (sin renombrar a `.jsx`). Vite por defecto no procesa JSX en archivos `.js`, así que `vite.config.js` incluye:
+
+```javascript
+{
+  name: 'treat-js-files-as-jsx',
+  enforce: 'pre',
+  async transform(code, id) {
+    if (!id.includes('/src/') || !id.endsWith('.js')) return null
+    return transformWithEsbuild(code, id, { loader: 'jsx', jsx: 'automatic' })
+  },
+}
+```
+
+---
+
 ## 🚀 Entorno Local — Configuración
 
 ### Requisitos
 
 | Herramienta | Versión | Notas |
 |-------------|---------|-------|
-| **Node.js** | 26.x (LTS) | Motor de ejecución |
-| **pnpm** | 9.15.4 | Gestor de paquetes (via Corepack) |
-| **Corepack** | incluido en Node 16+ | Activa pnpm sin instalación manual |
+| **Node.js** | 26.x | Motor de ejecución (igual que el Dockerfile de producción) |
+| **pnpm** | 9.15.4 | Gestor de paquetes |
 
-> Las versiones son las usadas en CI/CD y en el Dockerfile de producción. Usar versiones distintas puede generar un `pnpm-lock.yaml` incompatible.
+> Usar una versión distinta de Node puede generar un `pnpm-lock.yaml` incompatible con el lock de CI/CD.
 
 ### Instalación de Node 26
 
@@ -317,17 +402,16 @@ node --version  # v26.x.x
 ```
 
 **Opción B — instalador oficial:**
-Descarga desde [nodejs.org](https://nodejs.org/) la versión 26 LTS.
+Descarga desde [nodejs.org](https://nodejs.org/) la versión 26.
 
 ### Instalar pnpm
 
 ```bash
 npm install -g pnpm@9.15.4
-
 pnpm --version  # 9.15.4
 ```
 
-> En Docker esto se hace con `RUN npm install -g pnpm@9.15.4` (Corepack no está disponible en `node:26-alpine`).
+> En Docker se instala con `RUN npm install -g pnpm@9.15.4` (el Dockerfile usa `node:26-alpine` que no incluye Corepack preconfigurado).
 
 ### Instalar dependencias
 
@@ -338,32 +422,62 @@ pnpm install        # lee pnpm-lock.yaml y reproduce el entorno exacto
 
 ### Variables de entorno
 
-Crea un archivo `.env` en `frontend/` (o copia `.env.example`):
+Crea un archivo `.env` en `frontend/` con el prefijo `VITE_` (no `REACT_APP_`):
 
 ```bash
-cp .env.example .env
+VITE_BACKEND_URL=http://localhost:8001
+VITE_ARENA_BACKEND_URL=http://localhost:8004
+VITE_WS_URL=ws://localhost:8008/ws/notifications
 ```
 
 | Variable | Descripción | Valor local por defecto |
 |----------|-------------|------------------------|
-| `REACT_APP_BACKEND_URL` | URL del backend REST | `http://localhost:8001` |
-| `REACT_APP_ARENA_BACKEND_URL` | URL del agent-service | `http://localhost:8004` |
-| `REACT_APP_WS_URL` | WebSocket del worker-service | `ws://localhost:8008/ws/notifications` |
+| `VITE_BACKEND_URL` | URL del backend REST | `http://localhost:8001` |
+| `VITE_ARENA_BACKEND_URL` | URL del agent-service | `http://localhost:8004` |
+| `VITE_WS_URL` | WebSocket del worker-service | `ws://localhost:8008/ws/notifications` |
+
+> En el código se accede como `import.meta.env.VITE_BACKEND_URL` (no `process.env.REACT_APP_*`).
+
+En Docker el build las recibe como `ARG` / `ENV`:
+```dockerfile
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+```
 
 ### Comandos disponibles
 
 ```bash
-pnpm start          # Dev server en http://localhost:3000 (hot reload)
-pnpm build          # Build de producción → carpeta build/
-pnpm test           # Tests con CRA test runner
+pnpm start          # Dev server en http://localhost:3000 (HMR instantáneo)
+pnpm build          # Build de producción → carpeta dist/
+pnpm preview        # Sirve el build de dist/ localmente
+pnpm test           # Tests con Vitest (modo CI, sin watch)
+pnpm test:watch     # Tests en modo watch
+pnpm lint           # ESLint sobre src/
 ```
 
 ## 🧪 Testing
 
+El proyecto usa **Vitest 3** con entorno **jsdom** (configurado en `vitest.config.js`, que extiende `vite.config.js`):
+
 ```bash
-pnpm test                        # Ejecutar todos los tests
-pnpm test -- --watchAll=false    # Sin modo interactivo (útil en CI)
-pnpm test -- --coverage          # Con reporte de cobertura
+pnpm test                  # Ejecutar todos los tests una vez (CI)
+pnpm test:watch            # Modo watch interactivo
+```
+
+> Los comandos Jest de la era CRA (`--watchAll=false`, `--coverage`) no aplican. Vitest sale con código 0/1 automáticamente en modo `run`.
+
+## 🐳 Docker (producción)
+
+El Dockerfile usa un build multistage:
+
+1. **Builder** (`node:26-alpine`): instala pnpm, hace `pnpm install --frozen-lockfile`, recibe las variables `VITE_*` como `ARG` y ejecuta `pnpm run build` → genera `dist/`.
+2. **Runtime** (`nginx:stable-alpine`): copia `dist/` y sirve con `nginx.conf`. No necesita Node en producción.
+
+```bash
+docker build \
+  --build-arg VITE_BACKEND_URL=https://api.example.com \
+  --build-arg VITE_WS_URL=wss://api.example.com/ws/notifications \
+  -t virtus-frontend .
 ```
 
 ## 📱 Mobile Migration
@@ -385,13 +499,16 @@ See [MOBILE-MIGRATION.md](./MOBILE-MIGRATION.md) for detailed instructions on co
 
 ## 🔧 Environment Variables
 
-Create a `.env` file in the project root:
+Ver sección [Variables de entorno](#variables-de-entorno) más arriba. Resumen rápido:
 
 ```bash
-REACT_APP_BACKEND_URL=http://localhost:3000
+# .env (frontend/)
+VITE_BACKEND_URL=http://localhost:8001
+VITE_ARENA_BACKEND_URL=http://localhost:8004
+VITE_WS_URL=ws://localhost:8008/ws/notifications
 ```
 
-For Docker deployment, this is automatically set via `docker-compose.yml`.
+En Docker se pasan como `ARG` en el Dockerfile y quedan embebidas en el bundle estático por Vite en tiempo de build. El servidor Nginx sirve el contenido de `dist/` sin necesidad de Node en producción.
 
 ## 🏛️ Architecture Principles
 
@@ -906,8 +1023,8 @@ console.log("Unread count:", notifications.filter(n => !n.read).length);
 
 ---
 
-**Last Updated**: February 12, 2026  
-**Version**: 1.2.0 (Phase 1 Complete + Strategic Phase 2/3 Roadmap)  
+**Last Updated**: June 28, 2026  
+**Version**: 1.3.0 (Profile-scoped Mentor isolation + Mission filtering)  
 **Author**: David (with AI assistance)
 
 ### Analyzing the Bundle Size
