@@ -295,40 +295,75 @@ Calendar page components for navigation, view selection, FullCalendar grid, and 
 
 **Props:** Various navigation and event handling callbacks
 
-## 🚀 Getting Started
+## 🚀 Entorno Local — Configuración
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+### Requisitos
 
-## Available Scripts
+| Herramienta | Versión | Notas |
+|-------------|---------|-------|
+| **Node.js** | 26.x (LTS) | Motor de ejecución |
+| **pnpm** | 9.15.4 | Gestor de paquetes (via Corepack) |
+| **Corepack** | incluido en Node 16+ | Activa pnpm sin instalación manual |
 
-In the project directory, you can run:
+> Las versiones son las usadas en CI/CD y en el Dockerfile de producción. Usar versiones distintas puede generar un `pnpm-lock.yaml` incompatible.
 
-### `npm start`
+### Instalación de Node 26
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+**Opción A — nvm (recomendado):**
+```bash
+nvm install 26
+nvm use 26
+node --version  # v26.x.x
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+**Opción B — instalador oficial:**
+Descarga desde [nodejs.org](https://nodejs.org/) la versión 26 LTS.
 
-### `npm test`
+### Instalar pnpm
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npm install -g pnpm@9.15.4
 
-### `npm run build`
+pnpm --version  # 9.15.4
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+> En Docker esto se hace con `RUN npm install -g pnpm@9.15.4` (Corepack no está disponible en `node:26-alpine`).
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Instalar dependencias
+
+```bash
+cd frontend
+pnpm install        # lee pnpm-lock.yaml y reproduce el entorno exacto
+```
+
+### Variables de entorno
+
+Crea un archivo `.env` en `frontend/` (o copia `.env.example`):
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Descripción | Valor local por defecto |
+|----------|-------------|------------------------|
+| `REACT_APP_BACKEND_URL` | URL del backend REST | `http://localhost:8001` |
+| `REACT_APP_ARENA_BACKEND_URL` | URL del agent-service | `http://localhost:8004` |
+| `REACT_APP_WS_URL` | WebSocket del worker-service | `ws://localhost:8008/ws/notifications` |
+
+### Comandos disponibles
+
+```bash
+pnpm start          # Dev server en http://localhost:3000 (hot reload)
+pnpm build          # Build de producción → carpeta build/
+pnpm test           # Tests con CRA test runner
+```
 
 ## 🧪 Testing
 
 ```bash
-npm test                    # Run tests
-npm test -- --coverage      # Run with coverage
+pnpm test                        # Ejecutar todos los tests
+pnpm test -- --watchAll=false    # Sin modo interactivo (útil en CI)
+pnpm test -- --coverage          # Con reporte de cobertura
 ```
 
 ## 📱 Mobile Migration
