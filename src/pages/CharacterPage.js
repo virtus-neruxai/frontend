@@ -18,6 +18,7 @@ import { useMissions } from '../presentation/viewmodels/useMissions';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { buildRelativeDateRange } from '../lib/dateRangeUtils';
 import { formatMentorResponseText } from '../lib/mentorTextFormat';
+import { formatStatLabel } from '../lib/statUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
@@ -184,24 +185,38 @@ export default function CharacterPageRefactored() {
         tasksApi.getAll()
       ]);
 
-      let displayReflections = journalReflectionsRes.data;
+      const filterByActiveProfile = (items, activeStatsInfo) => {
+        const activeStatKeys = Object.keys(activeStatsInfo || {});
+        if (activeStatKeys.length === 0) return items;
+        return items.filter((r) => {
+          const changes = r.stat_changes || {};
+          return Object.keys(changes).length === 0 || Object.keys(changes).some((k) => activeStatKeys.includes(k));
+        });
+      };
+
+      let displayReflections = filterByActiveProfile(
+        [...(journalReflectionsRes.data || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        activeStatsInfo
+      );
       if (reflectionHistoryMode === 'linked') {
         const [taskReflectionsRes, missionReflectionsRes] = await Promise.all([
           reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'task' }),
           reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'mission' }),
         ]);
-        displayReflections = [
+        const merged = [
           ...(taskReflectionsRes.data || []),
           ...(missionReflectionsRes.data || []),
         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        displayReflections = filterByActiveProfile(merged, activeStatsInfo);
       } else if (reflectionHistoryMode === 'routine') {
         const routineDateParams = selectedDate ? { routine_occurrence_date: selectedDate } : {};
         const routineReflectionsRes = await reflectionsApi.getAll({
           ...routineDateParams,
           reflection_type: 'routine',
         });
-        displayReflections = (routineReflectionsRes.data || [])
+        const sorted = (routineReflectionsRes.data || [])
           .sort((a, b) => String(b.routine_occurrence_date || b.created_at).localeCompare(String(a.routine_occurrence_date || a.created_at)));
+        displayReflections = filterByActiveProfile(sorted, activeStatsInfo);
       }
 
       setReflections(displayReflections);
@@ -592,23 +607,28 @@ export default function CharacterPageRefactored() {
                       {formatMentorResponseText(aiResponse)}
                     </p>
                     
-                    {statChanges && (
-                      <div className="mt-3 pt-3 border-t border-primary/20">
-                        <p className="text-xs font-semibold text-primary mb-2">Cambios de Carácter:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(statChanges).map(([stat, value]) => (
-                            value !== 0 && (
-                              <Badge 
+                    {statChanges && (() => {
+                      const activeStatKeys = Object.keys(statsInfo || {});
+                      const filteredChanges = Object.entries(statChanges).filter(([stat, value]) =>
+                        value !== 0 && (activeStatKeys.length === 0 || activeStatKeys.includes(stat))
+                      );
+                      if (filteredChanges.length === 0) return null;
+                      return (
+                        <div className="mt-3 pt-3 border-t border-primary/20">
+                          <p className="text-xs font-semibold text-primary mb-2">Cambios de Carácter:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {filteredChanges.map(([stat, value]) => (
+                              <Badge
                                 key={stat}
                                 className={value > 0 ? 'bg-[hsl(var(--success-soft))] text-[hsl(var(--success))]' : 'bg-[hsl(var(--destructive-soft))] text-destructive'}
                               >
-                                {stat}: {value > 0 ? '+' : ''}{value}
+                                {formatStatLabel(stat, statsInfo)}: {value > 0 ? '+' : ''}{value}
                               </Badge>
-                            )
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                     
                     <button
                       onClick={() => { setAiResponse(null); setStatChanges(null); }}
@@ -807,21 +827,26 @@ export default function CharacterPageRefactored() {
                                       </p>
                                     </div>
                                   )}
-                                  {reflection.stat_changes && Object.keys(reflection.stat_changes).length > 0 && (
-                                    <div className="mt-2 flex flex-wrap gap-1">
-                                      {Object.entries(reflection.stat_changes).map(([stat, value]) => (
-                                        value !== 0 && (
+                                  {reflection.stat_changes && (() => {
+                                    const activeStatKeys = Object.keys(statsInfo || {});
+                                    const filteredChanges = Object.entries(reflection.stat_changes).filter(([stat, value]) =>
+                                      value !== 0 && (activeStatKeys.length === 0 || activeStatKeys.includes(stat))
+                                    );
+                                    if (filteredChanges.length === 0) return null;
+                                    return (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {filteredChanges.map(([stat, value]) => (
                                           <Badge
                                             key={stat}
                                             variant="outline"
                                             className={`text-xs ${value > 0 ? 'bg-[hsl(var(--success-soft))] border-[hsl(var(--success))] text-[hsl(var(--success))]' : 'bg-[hsl(var(--destructive-soft))] border-destructive text-destructive'}`}
                                           >
-                                            {stat}: {value > 0 ? '+' : ''}{value}
+                                            {formatStatLabel(stat, statsInfo)}: {value > 0 ? '+' : ''}{value}
                                           </Badge>
-                                        )
-                                      ))}
-                                    </div>
-                                  )}
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               ))}
                             </div>
@@ -887,21 +912,26 @@ export default function CharacterPageRefactored() {
                             </div>
                           )}
                           
-                          {reflection.stat_changes && Object.keys(reflection.stat_changes).length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-1">
-                              {Object.entries(reflection.stat_changes).map(([stat, value]) => (
-                                value !== 0 && (
-                                  <Badge 
+                          {reflection.stat_changes && (() => {
+                            const activeStatKeys = Object.keys(statsInfo || {});
+                            const filteredChanges = Object.entries(reflection.stat_changes).filter(([stat, value]) =>
+                              value !== 0 && (activeStatKeys.length === 0 || activeStatKeys.includes(stat))
+                            );
+                            if (filteredChanges.length === 0) return null;
+                            return (
+                              <div className="mt-3 flex flex-wrap gap-1">
+                                {filteredChanges.map(([stat, value]) => (
+                                  <Badge
                                     key={stat}
                                     variant="outline"
                                     className={`text-xs ${value > 0 ? 'bg-[hsl(var(--success-soft))] border-[hsl(var(--success))] text-[hsl(var(--success))]' : 'bg-[hsl(var(--destructive-soft))] border-destructive text-destructive'}`}
                                   >
-                                    {stat}: {value > 0 ? '+' : ''}{value}
+                                    {formatStatLabel(stat, statsInfo)}: {value > 0 ? '+' : ''}{value}
                                   </Badge>
-                                )
-                              ))}
-                            </div>
-                          )}
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))}
                     </div>

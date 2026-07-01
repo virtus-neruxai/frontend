@@ -1,32 +1,112 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { MessageCircle, Trash2, ChevronRight, Clock } from 'lucide-react';
+import { MessageCircle, Trash2, ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { conversationsApi } from '../../lib/api';
 import { useProfileTheme } from '../../theme/useProfileTheme';
 
-const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
+// Retry with a tight, near-constant cadence (not exponential backoff): the
+// backend is only unavailable during its own startup window, so we want to
+// recover within ~2s of it coming up rather than waiting for a widening gap.
+const MAX_FETCH_RETRIES = 18;
+const RETRY_STEP_MS = 500;
+const RETRY_MAX_MS = 2000;
+
+const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation }, ref) => {
   const { persistedProfileId } = useProfileTheme();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // Start in loading state so the first render shows a spinner instead of a
+  // premature "no conversations" flash before the initial fetch resolves.
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  // True while we're retrying after a failed fetch (e.g. the agent service is
+  // still starting up right after a deploy) so the UI can reassure the user.
+  const [connecting, setConnecting] = useState(false);
+  const retryTimerRef = useRef(null);
+
+  // Fetch the conversation list, retrying transient failures with backoff.
+  // Right after a deploy the frontend can load before the agent service is
+  // accepting connections; without retries the first request fails and the list
+  // stays empty until the next profile switch re-triggers it. Retrying (while
+  // keeping the spinner up) makes the list self-heal.
+  const fetchConversations = useCallback(async (attempt = 0) => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    setLoading(true);
+    try {
+      const response = await conversationsApi.getAll();
+      const data = response.data;
+      setConversations(Array.isArray(data) ? data : []);
+      setLoadError(false);
+      setConnecting(false);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      if (attempt < MAX_FETCH_RETRIES) {
+        const delay = Math.min(RETRY_STEP_MS * (attempt + 1), RETRY_MAX_MS);
+        setConnecting(true);
+        retryTimerRef.current = setTimeout(() => fetchConversations(attempt + 1), delay);
+        // Keep loading=true so the UI shows a spinner, not "no conversations".
+      } else {
+        setLoadError(true);
+        setConnecting(false);
+        setConversations([]);
+        setLoading(false);
+        toast.error('Error al cargar el historial');
+      }
+    }
+  }, []);
+
+  // forceSelect: true when the user explicitly clicks a conversation or after
+  // sending a message (so the panel always shows); false for auto-loads on
+  // activeSessionId change (only selects if the session actually has messages).
+  // Note: this does NOT touch `loading` — that state belongs to the list fetch,
+  // so loading a (possibly empty) new session never clears the list's spinner.
+  const fetchConversationDetail = useCallback(async (sessionId, forceSelect = false) => {
+    try {
+      const response = await conversationsApi.getById(sessionId);
+      const data = response.data;
+      const loaded = Array.isArray(data.messages) ? data.messages : [];
+      setMessages(loaded);
+      if (forceSelect || loaded.length > 0) {
+        setSelectedConversation(sessionId);
+      }
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+      setMessages([]);
+    }
+  }, []);
 
   // The history is profile-scoped server-side; reload it whenever the active
   // profile changes so it always reflects the current profile's conversations.
   useEffect(() => {
     fetchConversations();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persistedProfileId]);
+  }, [persistedProfileId, fetchConversations]);
 
-  // Auto-load the active session's messages when it appears in the list
+  // Auto-load the active session's messages when activeSessionId changes
   useEffect(() => {
     if (activeSessionId) {
       fetchConversationDetail(activeSessionId);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSessionId]);
+  }, [activeSessionId, fetchConversationDetail]);
+
+  // Refetch when the tab/window regains focus so the list self-heals after the
+  // backend finishes starting or after a transient network error.
+  useEffect(() => {
+    const onFocus = () => fetchConversations();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [fetchConversations]);
+
+  // Cancel any pending retry timer on unmount.
+  useEffect(() => () => {
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+  }, []);
 
   // Expose refresh: reloads list + reloads the active/selected conversation detail
   useImperativeHandle(ref, () => ({
@@ -34,39 +114,17 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
       await fetchConversations();
       const sessionToLoad = activeSessionId || selectedConversation;
       if (sessionToLoad) {
-        await fetchConversationDetail(sessionToLoad);
+        await fetchConversationDetail(sessionToLoad, true);
       }
     }
   }));
 
-  const fetchConversations = async () => {
-    try {
-      setLoading(true);
-      const response = await conversationsApi.getAll();
-      const data = response.data;
-      setConversations(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-      toast.error('Error al cargar el historial');
-      setConversations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchConversationDetail = async (sessionId) => {
-    try {
-      setLoading(true);
-      const response = await conversationsApi.getById(sessionId);
-      const data = response.data;
-      setMessages(Array.isArray(data.messages) ? data.messages : []);
-      setSelectedConversation(sessionId);
-    } catch (error) {
-      console.error('Error fetching conversation:', error);
-      toast.error('Error al cargar la conversación');
-      setMessages([]);
-    } finally {
-      setLoading(false);
+  // When the user clicks a conversation: show its messages AND tell the parent
+  // to redirect future messages to that session.
+  const handleConversationClick = (conv) => {
+    fetchConversationDetail(conv.session_id, true);
+    if (onSelectConversation) {
+      onSelectConversation(conv.session_id, conv);
     }
   };
 
@@ -124,8 +182,11 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
 
   if (loading && conversations.length === 0) {
     return (
-      <div className="flex justify-center items-center py-12">
+      <div className="flex flex-col justify-center items-center py-12 gap-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        {connecting && (
+          <p className="text-sm text-muted-foreground">Conectando con el mentor…</p>
+        )}
       </div>
     );
   }
@@ -135,62 +196,87 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
       <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
         <MessageCircle className="mr-2 h-5 w-5 text-primary" />
         Historial de Conversaciones
+        <button
+          onClick={() => fetchConversations()}
+          className="ml-auto p-1.5 text-muted-foreground hover:text-primary transition-colors"
+          title="Actualizar historial"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </h3>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Lista de conversaciones */}
         <div className="space-y-2">
-          {conversations.length === 0 ? (
+          {loadError && conversations.length === 0 ? (
+            <div className="p-4 border border-dashed border-border rounded-lg text-sm text-muted-foreground space-y-2">
+              <p>No se pudo cargar el historial.</p>
+              <button
+                onClick={() => fetchConversations()}
+                className="inline-flex items-center gap-1.5 text-primary font-medium hover:opacity-70"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Reintentar
+              </button>
+            </div>
+          ) : conversations.length === 0 ? (
             <p className="text-muted-foreground text-sm">No hay conversaciones guardadas</p>
           ) : (
-            conversations.map((conv) => (
-              <div
-                key={conv.session_id}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                  conv.session_id === activeSessionId
-                    ? 'border-2 border-primary bg-primary/10'
-                    : selectedConversation === conv.session_id
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/40 bg-card'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div
-                    className="flex-1"
-                    onClick={() => fetchConversationDetail(conv.session_id)}
-                  >
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                      {conv.session_id === activeSessionId && (
-                        <span className="px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground rounded-full">
-                          Activo
-                        </span>
-                      )}
-                      <Clock className="h-3 w-3 mr-1" />
-                      {formatDate(conv.last_message_at)}
+            conversations.map((conv) => {
+              const isActive = conv.session_id === activeSessionId;
+              const isSelected = conv.session_id === selectedConversation;
+              return (
+                <div
+                  key={conv.session_id}
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    isActive
+                      ? 'border-2 border-primary bg-primary/10'
+                      : isSelected
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-primary/40 bg-card'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div
+                      className="flex-1"
+                      onClick={() => handleConversationClick(conv)}
+                    >
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1 flex-wrap">
+                        {isActive && (
+                          <span className="px-2 py-0.5 text-xs font-semibold bg-primary text-primary-foreground rounded-full">
+                            Activa · aquí irán tus mensajes
+                          </span>
+                        )}
+                        <Clock className="h-3 w-3 mr-1" />
+                        {formatDate(conv.last_message_at)}
+                      </div>
+                      <p className="text-sm text-foreground line-clamp-2">
+                        {conv.preview}
+                      </p>
+                      <div className="flex items-center mt-2 text-xs text-muted-foreground">
+                        <span>{conv.message_count} mensajes</span>
+                        {isSelected && !isActive && (
+                          <span className="ml-2 text-primary font-medium">· Seleccionada</span>
+                        )}
+                        {isSelected && (
+                          <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-foreground line-clamp-2">
-                      {conv.preview}
-                    </p>
-                    <div className="flex items-center mt-2 text-xs text-muted-foreground">
-                      <span>{conv.message_count} mensajes</span>
-                      {selectedConversation === conv.session_id && (
-                        <ChevronRight className="ml-auto h-4 w-4 text-primary" />
-                      )}
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteConversation(conv.session_id);
+                      }}
+                      className="ml-2 p-1 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Eliminar conversación"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteConversation(conv.session_id);
-                    }}
-                    className="ml-2 p-1 text-muted-foreground hover:text-destructive transition-colors"
-                    title="Eliminar conversación"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -202,37 +288,43 @@ const ConversationHistory = forwardRef(({ activeSessionId }, ref) => {
             </div>
           ) : (
             <div className="p-4 space-y-4 max-h-[600px] overflow-y-auto">
-              {messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`${
-                    msg.role === 'user' ? 'text-right' : 'text-left'
-                  }`}
-                >
+              {messages.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+                  <p>Esta conversación aún no tiene mensajes guardados</p>
+                </div>
+              ) : (
+                messages.map((msg, idx) => (
                   <div
-                    className={`inline-block max-w-[80%] p-3 rounded-lg ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card text-foreground border'
+                    key={idx}
+                    className={`${
+                      msg.role === 'user' ? 'text-right' : 'text-left'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                    {msg.friction && (
-                      <div className="mt-2">
-                        {getFrictionBadge(msg.friction)}
-                      </div>
-                    )}
-                    {msg.mode && (
-                      <div className="mt-1 text-xs opacity-75">
-                        Modo: {msg.mode}
-                      </div>
-                    )}
+                    <div
+                      className={`inline-block max-w-[80%] p-3 rounded-lg ${
+                        msg.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card text-foreground border'
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                      {msg.friction && (
+                        <div className="mt-2">
+                          {getFrictionBadge(msg.friction)}
+                        </div>
+                      )}
+                      {msg.mode && (
+                        <div className="mt-1 text-xs opacity-75">
+                          Modo: {msg.mode}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatDate(msg.timestamp)}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {formatDate(msg.timestamp)}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
         </div>

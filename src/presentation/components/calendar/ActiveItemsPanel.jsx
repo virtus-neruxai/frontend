@@ -2,6 +2,8 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { useState } from 'react';
 import { CheckSquare, Repeat, Target } from 'lucide-react';
+import { PROFILE_THEMES } from '../../../theme/profileThemes';
+import { getProfileName, getProfileEmoji } from '../../../lib/profileUtils';
 
 const INACTIVE_STATUSES = new Set(['done', 'completed', 'failed']);
 
@@ -146,11 +148,22 @@ export function ActiveItemsPanel({ tasks = [], onItemClick }) {
                     {formatDate(item.date_end || item.date_start)}
                   </p>
                 )}
-                <div className="flex items-center gap-2 mt-1 pl-5">
+                <div className="flex items-center gap-2 mt-1 pl-5 flex-wrap">
                   <span className="text-[10px] text-muted-foreground">{typeLabel(item._kind)}</span>
                   {STATUS_LABELS[item.status] && (
                     <span className="text-[10px] font-medium" style={{ color: statusColor(item) }}>
                       · {STATUS_LABELS[item.status]}
+                    </span>
+                  )}
+                  {item.prompt_profile && PROFILE_THEMES[item.prompt_profile] && (
+                    <span
+                      className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                      style={{
+                        color: PROFILE_THEMES[item.prompt_profile].primary,
+                        backgroundColor: PROFILE_THEMES[item.prompt_profile].soft,
+                      }}
+                    >
+                      {getProfileEmoji(item.prompt_profile)} {getProfileName(item.prompt_profile)}
                     </span>
                   )}
                 </div>

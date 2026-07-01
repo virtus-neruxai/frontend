@@ -21,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { Trash2, CheckCircle2, Target, AlertTriangle, RotateCcw } from 'lucide-react';
 import { TASK_STATUS_COLORS } from '../theme/semanticTokens';
+import { PROFILE_THEMES } from '../theme/profileThemes';
+import { getProfileName, getProfileEmoji } from '../lib/profileUtils';
 
 const STATUS_OPTIONS = [
   { value: 'todo', label: 'Pendiente', color: TASK_STATUS_COLORS.todo },
@@ -576,22 +578,52 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg z-50 max-h-[90dvh] overflow-y-auto" data-testid="task-modal">
         <DialogHeader>
-          <DialogTitle 
-            className="text-xl" 
-            style={{ fontFamily: 'var(--font-heading)' }}
-            data-testid="task-modal-title"
-          >
-            {isEditing ? (isRoutine ? 'Editar rutina' : 'Editar Tarea') : isRoutine ? 'Nueva rutina' : 'Nueva Tarea'}
-          </DialogTitle>
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle
+              className="text-xl"
+              style={{ fontFamily: 'var(--font-heading)' }}
+              data-testid="task-modal-title"
+            >
+              {isEditing ? (isRoutine ? 'Editar rutina' : 'Editar Tarea') : isRoutine ? 'Nueva rutina' : 'Nueva Tarea'}
+            </DialogTitle>
+            {(() => {
+              const profile = task?.prompt_profile || linkedMission?.prompt_profile;
+              if (!profile || !PROFILE_THEMES[profile]) return null;
+              return (
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0"
+                  style={{
+                    color: PROFILE_THEMES[profile].primary,
+                    backgroundColor: PROFILE_THEMES[profile].soft,
+                  }}
+                >
+                  {getProfileEmoji(profile)} {getProfileName(profile)}
+                </span>
+              );
+            })()}
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Linked Mission Info */}
           {linkedMissionIsActive && (
             <div className="p-3 bg-primary/10 border border-primary/25 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="w-4 h-4 text-primary" strokeWidth={1.5} />
-                <span className="text-sm font-medium text-primary">Misión vinculada</span>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-primary" strokeWidth={1.5} />
+                  <span className="text-sm font-medium text-primary">Misión vinculada</span>
+                </div>
+                {linkedMission?.prompt_profile && PROFILE_THEMES[linkedMission.prompt_profile] && (
+                  <span
+                    className="text-xs font-medium px-2 py-0.5 rounded-full"
+                    style={{
+                      color: PROFILE_THEMES[linkedMission.prompt_profile].primary,
+                      backgroundColor: PROFILE_THEMES[linkedMission.prompt_profile].soft,
+                    }}
+                  >
+                    {getProfileEmoji(linkedMission.prompt_profile)} {getProfileName(linkedMission.prompt_profile)}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
                 Puedes completar la misión directamente aquí para registrar tu progreso.

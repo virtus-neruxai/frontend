@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import Layout from '../components/Layout';
 import ConversationHistory from '../components/chat/ConversationHistory';
 import TaskDraftModal from '../components/TaskDraftModal';
@@ -14,10 +16,19 @@ import { ProfileHeroCard } from '../presentation/components/profile-theme/Profil
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { useProfileTheme } from '../theme/useProfileTheme';
-import { Clock, MessageCircle, Repeat, Send } from 'lucide-react';
+import { Clock, MessageCircle, PlusCircle, Repeat, Send } from 'lucide-react';
+
+const formatConvDate = (dateString) => {
+  if (!dateString) return '';
+  try {
+    return format(new Date(dateString), "d MMM, HH:mm", { locale: es });
+  } catch {
+    return '';
+  }
+};
 
 export default function MentorPage() {
-  const { theme } = useProfileTheme();
+  const { theme, persistedProfileId } = useProfileTheme();
   const profileName = theme.name;
   const conversationHistoryRef = useRef();
   const [activeTab, setActiveTab] = useState('agent');
@@ -30,7 +41,8 @@ export default function MentorPage() {
     sendMessage,
     setChatMessage,
     startNewConversation,
-  } = useAgentChat();
+    selectConversation,
+  } = useAgentChat(persistedProfileId);
 
   const {
     showTaskDraftModal,
@@ -45,8 +57,16 @@ export default function MentorPage() {
     setShowMissionDraftModal,
   } = useDrafts();
 
+  // Metadata of the currently selected/active conversation (for UI indicator)
+  const [activeConversation, setActiveConversation] = useState(null);
+
   const [pendingDraft, setPendingDraft] = useState(null);
   const [draftNowTick, setDraftNowTick] = useState(Date.now());
+
+  // Clear active conversation when profile changes (sessionId comes from new profile's storage)
+  useEffect(() => {
+    setActiveConversation(null);
+  }, [persistedProfileId]);
 
   useEffect(() => {
     if (!pendingDraft) return undefined;
@@ -94,6 +114,27 @@ export default function MentorPage() {
     }
   };
 
+  // Called by ConversationHistory when user clicks a conversation.
+  // Updates the active session so future messages go there.
+  const handleSelectConversation = useCallback((convSessionId, convData) => {
+    selectConversation(convSessionId);
+    setActiveConversation(convData || { session_id: convSessionId });
+  }, [selectConversation]);
+
+  // Starts a new conversation and clears the active conversation indicator.
+  const handleNewConversation = useCallback(() => {
+    startNewConversation();
+    setActiveConversation(null);
+    if (conversationHistoryRef.current) {
+      conversationHistoryRef.current.refresh();
+    }
+  }, [startNewConversation]);
+
+  // Label shown in the active conversation indicator
+  const convPreview = activeConversation?.preview
+    ? `"${activeConversation.preview.slice(0, 80)}${activeConversation.preview.length > 80 ? '…' : ''}"`
+    : null;
+
   return (
     <Layout ambient>
       <div className="space-y-6" data-testid="mentor-page">
@@ -128,12 +169,12 @@ export default function MentorPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">Mentor {profileName}</CardTitle>
                 <Button
-                  onClick={startNewConversation}
+                  onClick={handleNewConversation}
                   variant="outline"
                   size="sm"
                   className="text-xs"
                 >
-                  <MessageCircle className="w-3 h-3 mr-1" />
+                  <PlusCircle className="w-3 h-3 mr-1" />
                   Nueva Conversación
                 </Button>
               </CardHeader>
@@ -143,11 +184,61 @@ export default function MentorPage() {
                     <p className="text-sm text-foreground whitespace-pre-wrap">{chatResponse}</p>
                   </div>
                 )}
+
+                {/* ── Active conversation indicator ─────────────────────────── */}
+                <div className={[
+                  'flex items-start gap-3 px-3 py-2.5 rounded-lg border text-xs transition-colors',
+                  activeConversation
+                    ? 'bg-primary/10 border-primary/40'
+                    : 'bg-muted/50 border-dashed border-border',
+                ].join(' ')}>
+                  <MessageCircle className={[
+                    'w-4 h-4 mt-0.5 shrink-0',
+                    activeConversation ? 'text-primary' : 'text-muted-foreground',
+                  ].join(' ')} />
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    {activeConversation ? (
+                      <>
+                        <p className="font-semibold text-primary leading-tight">
+                          Continuando conversación del {formatConvDate(activeConversation.last_message_at)}
+                        </p>
+                        {convPreview && (
+                          <p className="text-muted-foreground leading-snug italic">{convPreview}</p>
+                        )}
+                        <p className="text-muted-foreground">
+                          Tu mensaje se añadirá a esta conversación · Pulsa{' '}
+                          <button
+                            onClick={handleNewConversation}
+                            className="text-primary underline underline-offset-2 hover:opacity-70"
+                          >
+                            Nueva Conversación
+                          </button>{' '}
+                          para empezar una nueva
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium text-foreground leading-tight">Nueva conversación</p>
+                        <p className="text-muted-foreground">
+                          Tu mensaje iniciará una nueva conversación ·{' '}
+                          Selecciona una del historial para continuar una existente
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* ─────────────────────────────────────────────────────────── */}
+
                 <div className="flex gap-2">
                   <Textarea
                     placeholder="Pregunta a tu mentor..."
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && chatMessage.trim() && !chatLoading) {
+                        handleChat();
+                      }
+                    }}
                     className="min-h-[80px]"
                   />
                 </div>
@@ -205,6 +296,7 @@ export default function MentorPage() {
                 <ConversationHistory
                   ref={conversationHistoryRef}
                   activeSessionId={sessionId}
+                  onSelectConversation={handleSelectConversation}
                 />
               </CardContent>
             </Card>
