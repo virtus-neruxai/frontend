@@ -27,6 +27,8 @@ const parseRule = (raw) => {
 
 
 const isOverdue = (task) => {
+  // "Failed" by overdue applies only to missions, not to tasks or routines
+  if (task.task_kind === 'task' || task.task_kind === 'routine') return false;
   if (!task.date_end) return false;
   if (['done', 'completed'].includes(task.status)) return false;
   if (task.linked_mission_id) return false;

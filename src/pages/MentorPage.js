@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import ConversationHistory from '../components/chat/ConversationHistory';
 import TaskDraftModal from '../components/TaskDraftModal';
 import MissionDraftModal from '../components/MissionDraftModal';
+import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -12,7 +14,7 @@ import { ProfileHeroCard } from '../presentation/components/profile-theme/Profil
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { useProfileTheme } from '../theme/useProfileTheme';
-import { MessageCircle, Repeat, Send } from 'lucide-react';
+import { Clock, MessageCircle, Repeat, Send } from 'lucide-react';
 
 export default function MentorPage() {
   const { theme } = useProfileTheme();
@@ -43,9 +45,48 @@ export default function MentorPage() {
     setShowMissionDraftModal,
   } = useDrafts();
 
+  const [pendingDraft, setPendingDraft] = useState(null);
+  const [draftNowTick, setDraftNowTick] = useState(Date.now());
+
+  useEffect(() => {
+    if (!pendingDraft) return undefined;
+    const id = setInterval(() => setDraftNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [pendingDraft]);
+
+  useEffect(() => {
+    if (!pendingDraft) return;
+    if (Date.now() >= pendingDraft.expiresAt) {
+      setPendingDraft(null);
+      toast.info('La propuesta del mentor ha expirado');
+    }
+  }, [pendingDraft, draftNowTick]);
+
+  const formatDraftType = (type) => {
+    if (type === 'task') return 'tarea';
+    if (type === 'mission') return 'misión';
+    return 'propuesta';
+  };
+
+  const getDraftTimeLabel = () => {
+    if (!pendingDraft) return '';
+    const remainingMs = Math.max(0, pendingDraft.expiresAt - draftNowTick);
+    const remainingSec = Math.floor(remainingMs / 1000);
+    const minutes = Math.floor(remainingSec / 60);
+    const seconds = remainingSec % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+
   const handleChat = async () => {
     await sendMessage(chatMessage, ({ draftId, uiAction, type }) => {
-      openDraftModal({ draftId, uiAction, type });
+      const expiresInSeconds = uiAction?.metadata?.expires_in_seconds ?? 3600;
+      setPendingDraft({
+        draftId,
+        uiAction,
+        type,
+        expiresAt: Date.now() + expiresInSeconds * 1000,
+      });
+      toast.success('Tu mentor tiene una propuesta pendiente. Ábrela cuando quieras.');
     });
 
     if (conversationHistoryRef.current) {
@@ -118,6 +159,48 @@ export default function MentorPage() {
                   <Send className="w-4 h-4 mr-2" />
                   {chatLoading ? 'Pensando...' : 'Enviar'}
                 </Button>
+
+                {pendingDraft && (
+                  <div className="p-4 border border-[hsl(var(--warning))] bg-[hsl(var(--warning-soft))] rounded-lg">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          Tu mentor te propone una {formatDraftType(pendingDraft.type)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Puedes abrirla, editarla y confirmarla cuando quieras.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-foreground border-[hsl(var(--warning))] bg-background shrink-0">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {getDraftTimeLabel()}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-[hsl(var(--primary)/0.9)]"
+                        onClick={() => {
+                          openDraftModal({
+                            draftId: pendingDraft.draftId,
+                            uiAction: pendingDraft.uiAction,
+                            type: pendingDraft.type,
+                          });
+                          setPendingDraft(null);
+                        }}
+                      >
+                        Abrir propuesta
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setPendingDraft(null)}
+                      >
+                        Cerrar aviso
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 <ConversationHistory
                   ref={conversationHistoryRef}

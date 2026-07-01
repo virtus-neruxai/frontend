@@ -8,10 +8,12 @@ import { CalendarNavigation } from '../presentation/components/calendar/Calendar
 import { ViewSelector } from '../presentation/components/calendar/ViewSelector';
 import { CalendarGrid } from '../presentation/components/calendar/CalendarGrid';
 import { StatusLegend } from '../presentation/components/calendar/StatusLegend';
+import { ActiveItemsPanel } from '../presentation/components/calendar/ActiveItemsPanel';
 
 export default function CalendarPageRefactored() {
   const {
     view,
+    tasks,
     loading,
     calendarRef,
     currentTitle,
@@ -39,6 +41,12 @@ export default function CalendarPageRefactored() {
     viewMap,
   } = useCalendar();
 
+  const handlePanelItemClick = (item) => {
+    // All items in the panel are tasks (linked tasks show with mission icon).
+    // Delegate to the same handler the calendar uses → opens TaskModal.
+    handleEventClick({ event: { id: item.id, extendedProps: { recurringParentId: null } } });
+  };
+
   return (
     <Layout>
       <div className="h-full flex flex-col gap-5" data-testid="calendar-page">
@@ -55,46 +63,46 @@ export default function CalendarPageRefactored() {
           <div className="flex items-center gap-3">
             <ViewSelector currentView={view} onViewChange={handleViewChange} />
 
-            <Button
-              onClick={openCreateModal}
-              className="font-medium"
-              data-testid="create-task-btn"
-            >
+            <Button onClick={openCreateModal} className="font-medium" data-testid="create-task-btn">
               <Plus className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
               Nueva Tarea
             </Button>
-            <Button
-              onClick={openCreateRoutineModal}
-              variant="secondary"
-              className="font-medium"
-              data-testid="create-routine-btn"
-            >
+            <Button onClick={openCreateRoutineModal} variant="secondary" className="font-medium" data-testid="create-routine-btn">
               <Plus className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
               Crear rutina
             </Button>
           </div>
         </div>
 
-        {/* Calendar */}
-        <div className="flex-1 rounded-[8px] border bg-card p-4 overflow-visible min-h-[600px]">
-          <CalendarGrid
-            calendarRef={calendarRef}
-            initialView={viewMap[view] || 'dayGridMonth'}
-            events={calendarEvents}
-            loading={loading}
-            onDateClick={handleDateClick}
-            onEventClick={handleEventClick}
-            onEventDrop={handleEventDrop}
-            onEventResize={handleEventResize}
-            onDatesSet={handleDatesSet}
-            currentScrollTime={currentScrollTime}
-          />
+        {/* Calendar + Active items panel.
+            items-start: each child uses its own natural height so the panel never
+            forces the calendar container to grow. Panel is capped at max-h-[660px]
+            (slightly under a 4-week month) so it never exceeds the calendar height. */}
+        <div className="flex gap-4 items-start">
+          <div className="flex-1 rounded-[8px] border bg-card p-4 overflow-visible">
+            <CalendarGrid
+              calendarRef={calendarRef}
+              initialView={viewMap[view] || 'dayGridMonth'}
+              events={calendarEvents}
+              loading={loading}
+              onDateClick={handleDateClick}
+              onEventClick={handleEventClick}
+              onEventDrop={handleEventDrop}
+              onEventResize={handleEventResize}
+              onDatesSet={handleDatesSet}
+              currentScrollTime={currentScrollTime}
+            />
+          </div>
+
+          <div className="w-72 shrink-0 max-h-[660px] overflow-y-auto rounded-[8px] border bg-card p-4">
+            <ActiveItemsPanel tasks={tasks} onItemClick={handlePanelItemClick} />
+          </div>
         </div>
 
         {/* Legend */}
         <StatusLegend />
 
-        {/* Task Modal */}
+        {/* Task Modal — same modal used by calendar click and panel click */}
         <TaskModal
           open={modalOpen}
           onClose={handleModalClose}

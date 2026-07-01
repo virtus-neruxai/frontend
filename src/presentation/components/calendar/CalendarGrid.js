@@ -74,6 +74,7 @@ export function CalendarGrid({
       height={isTimeView ? 700 : 'auto'}
       contentHeight={isTimeView ? undefined : 'auto'}
       aspectRatio={isTimeView ? undefined : 1.8}
+      firstDay={1}
       locale="es"
       scrollTime={currentScrollTime || "08:00:00"}
       slotMinTime="00:00:00"
