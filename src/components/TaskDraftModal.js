@@ -10,6 +10,8 @@ import { Badge } from './ui/badge';
 import { AlertCircle, Calendar, Clock, Brain } from 'lucide-react';
 import { getProfileName } from '../lib/profileUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
+import { useDndSettings } from '../hooks/useDndSettings';
+import { snapLocalStringOutOfDnd } from '../lib/dnd';
 
 const DOMAIN_OPTIONS = [
   'Personal', 'Propósito', 'Mental', 'Hábitos', 'Salud',
@@ -96,6 +98,7 @@ function computeEndFromDuration(startRaw, durationMinutes) {
 
 export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, onReject }) {
   const { profileId } = useProfileTheme();
+  const dnd = useDndSettings();
   const [editedData, setEditedData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const profileName = getProfileName(profileId);
@@ -129,6 +132,24 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
       });
     }
   }, [draftData]);
+
+  // Never keep a *proposed* start time inside the user's DND window; snap it to
+  // the first allowed slot. Runs on open and when DND settings resolve. Keyed on
+  // draftData (not date_start) so it never fights the user's manual edits after.
+  useEffect(() => {
+    if (!draftData?.data) return;
+    setEditedData((prev) => {
+      if (!prev.date_start) return prev;
+      const snapped = snapLocalStringOutOfDnd(prev.date_start, dnd);
+      if (snapped === prev.date_start) return prev;
+      const duration = Math.max(5, Number(prev.estimated_duration_minutes || 30));
+      return {
+        ...prev,
+        date_start: snapped,
+        date_end: computeEndFromDuration(snapped, duration) || prev.date_end,
+      };
+    });
+  }, [dnd, draftData]);
 
   const handleDateStartChange = (value) => {
     setEditedData((prev) => {

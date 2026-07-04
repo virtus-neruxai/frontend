@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Calendar, LayoutDashboard, LogOut, Sparkles, ClipboardList, Settings, MessageCircle } from 'lucide-react';
+import { Calendar, LayoutDashboard, LogOut, Sparkles, ClipboardList, Settings, MessageCircle, Brain } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { NotificationPermissionBanner } from './NotificationPermissionBanner';
 import { ThemeToggle } from './ThemeToggle';
@@ -25,6 +25,7 @@ export default function Layout({ children, ambient = false }) {
     { path: '/calendar', label: 'Tareas', icon: Calendar },
     { path: '/character', label: 'Carácter', icon: Sparkles },
     { path: '/mentor', label: 'Mentor', icon: MessageCircle },
+    { path: '/informe-razonado', label: 'Informe Razonado', icon: Brain },
     { path: '/profile', label: 'Perfil', icon: ClipboardList },
     { path: '/settings', label: 'Ajustes', icon: Settings },
   ];

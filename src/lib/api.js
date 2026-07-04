@@ -127,11 +127,50 @@ agentApiInstance.interceptors.response.use(
 );
 
 export const agentApi = {
-  chat: (message, sessionId) => agentApiInstance.post('/agent/chat', { 
+  chat: (message, sessionId) => agentApiInstance.post('/agent/chat', {
     message,
-    session_id: sessionId 
+    session_id: sessionId
   }),
   confirmDraft: (data) => agentApiInstance.post('/agent/draft/confirm', data),
+};
+
+// Reasoning API (Informe Razonado) — usa /reasoning-api/v1 (Traefik stripea /reasoning-api)
+const reasoningApiInstance = axios.create({
+  baseURL: `${API_URL}/reasoning-api/v1`,
+});
+
+reasoningApiInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+reasoningApiInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const reasoningApi = {
+  generateReport: () => reasoningApiInstance.post('/reasoning/report', {}),
+  getReports: () => reasoningApiInstance.get('/reasoning/reports'),
+  getReport: (reportId) => reasoningApiInstance.get(`/reasoning/reports/${reportId}`),
+  chat: (message, sessionId, reportId, intent) =>
+    reasoningApiInstance.post('/reasoning/chat', {
+      message,
+      session_id: sessionId,
+      report_id: reportId,
+      intent,
+    }),
+  recommendationToTask: (data) =>
+    reasoningApiInstance.post('/reasoning/recommendation/to-task', data),
 };
 
 const getAgentInteractions = async (params = {}) => {

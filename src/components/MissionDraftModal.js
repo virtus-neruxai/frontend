@@ -10,6 +10,8 @@ import { Target, Clock, Brain, TrendingUp, Calendar, Star } from 'lucide-react';
 import { getProfileName } from '../lib/profileUtils';
 import { formatStatLabel } from '../lib/statUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
+import { useDndSettings } from '../hooks/useDndSettings';
+import { snapLocalStringOutOfDnd } from '../lib/dnd';
 
 const MISSION_TYPE_LABELS = {
   daily: 'Diaria',
@@ -43,6 +45,7 @@ const STAT_ICONS = {
 
 export default function MissionDraftModal({ isOpen, onClose, draftData, onConfirm, onReject }) {
   const { profileId } = useProfileTheme();
+  const dnd = useDndSettings();
   const [editedData, setEditedData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const profileName = getProfileName(profileId);
@@ -74,6 +77,16 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
       });
     }
   }, [draftData]);
+
+  // Never keep a *proposed* calendar start inside the user's DND window.
+  useEffect(() => {
+    if (!draftData?.data) return;
+    setEditedData((prev) => {
+      if (!prev.start_date) return prev;
+      const snapped = snapLocalStringOutOfDnd(prev.start_date, dnd);
+      return snapped === prev.start_date ? prev : { ...prev, start_date: snapped };
+    });
+  }, [dnd, draftData]);
 
   const formatDateTimeLocal = (isoString) => {
     if (!isoString) return '';
