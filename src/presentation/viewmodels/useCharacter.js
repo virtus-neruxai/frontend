@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { characterApi, statsApi } from '../../lib/api';
 import { toast } from 'sonner';
 import { calculateReflectionKPIsForProfile } from './reflectionKpiUtils';
@@ -34,6 +34,8 @@ export const useCharacter = () => {
   });
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [justLeveledUp, setJustLeveledUp] = useState(false);
+  const previousLevelRef = useRef(null);
 
   /**
    * Fetches current character data from the API
@@ -41,6 +43,11 @@ export const useCharacter = () => {
   const fetchCharacter = useCallback(async () => {
     try {
       const response = await characterApi.get();
+      const prevLevel = previousLevelRef.current;
+      if (prevLevel !== null && response.data.level > prevLevel) {
+        setJustLeveledUp(true);
+      }
+      previousLevelRef.current = response.data.level;
       setCharacter(response.data);
       return response.data;
     } catch (error) {
@@ -50,6 +57,8 @@ export const useCharacter = () => {
       setLoading(false);
     }
   }, []);
+
+  const dismissLevelUp = useCallback(() => setJustLeveledUp(false), []);
 
   /**
    * Fetches stat metadata for the user's active profile (profile-aware labels)
@@ -107,6 +116,8 @@ export const useCharacter = () => {
     reflectionKPIs,
     loading,
     historyLoading,
+    justLeveledUp,
+    dismissLevelUp,
     fetchCharacter,
     fetchStatsInfo,
     fetchStatsHistory,

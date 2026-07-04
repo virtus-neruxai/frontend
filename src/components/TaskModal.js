@@ -313,6 +313,11 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
         return;
       }
     }
+
+    if (isRoutine && occurrenceIsFuture && completionReflection.trim()) {
+      toast.error('No puedes comentar una ocurrencia futura');
+      return;
+    }
     
     setLoading(true);
 
@@ -354,10 +359,16 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
       if (isEditing) {
         await tasksApi.patch(task.id, payload);
         if (completionReflection.trim()) {
-          const reflectionSaved = await saveCompletionReflection((linkedMission || task?.linked_mission_id) ? 'mission' : 'task');
+          const reflectionType = isRoutine
+            ? 'routine'
+            : (linkedMission || task?.linked_mission_id) ? 'mission' : 'task';
+          const reflectionSaved = await saveCompletionReflection(
+            reflectionType,
+            isRoutine ? { routineOccurrenceDate: occurrenceKey } : {},
+          );
           if (!reflectionSaved) return;
         }
-        toast.success('Tarea actualizada');
+        toast.success(isRoutine ? 'Rutina actualizada' : 'Tarea actualizada');
       } else {
         await tasksApi.create(payload);
         toast.success('Tarea creada');
@@ -427,14 +438,8 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
       setReflectionSaveFailed(false);
       return true;
     } catch (error) {
-      if (isRoutineReflection && error?.response?.status === 409) {
-        setCompletionReflection('');
-        setReflectionSaveFailed(false);
-        toast.warning('Ya existe una reflexión para esa rutina y día');
-        return true;
-      }
       setReflectionSaveFailed(true);
-      toast.warning('La acción se completó, pero no se pudo guardar la reflexión');
+      toast.warning('Los cambios se guardaron, pero no se pudo guardar la reflexión');
       return false;
     }
   };
@@ -443,8 +448,13 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     if (!completionReflection.trim()) return;
     setLoading(true);
     try {
-      const reflectionType = reflectionTypeOverride || ((linkedMission || task?.linked_mission_id) ? 'mission' : 'task');
-      const reflectionSaved = await saveCompletionReflection(reflectionType, options);
+      const reflectionType = reflectionTypeOverride || (
+        isRoutine ? 'routine' : (linkedMission || task?.linked_mission_id) ? 'mission' : 'task'
+      );
+      const reflectionOptions = reflectionType === 'routine' && !options.routineOccurrenceDate
+        ? { ...options, routineOccurrenceDate: occurrenceKey }
+        : options;
+      const reflectionSaved = await saveCompletionReflection(reflectionType, reflectionOptions);
       if (!reflectionSaved) return;
       toast.success('Reflexión guardada');
       onSaved();
@@ -456,7 +466,6 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
   // For routines, open a small dialog to confirm/edit the completion datetime.
   const openRoutineCompleteDialog = () => {
     setRoutineCompletionAt(formatDateTimeLocal(occurrenceDate ? new Date(occurrenceDate) : new Date()));
-    setCompletionReflection('');
     setReflectionSaveFailed(false);
     setShowRoutineCompleteDialog(true);
   };
@@ -548,25 +557,27 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
 
   // Button visibility depends on the OPENED occurrence (clicked day, or today).
   const occurrenceKey = getDateKeyLocal(occurrenceDate ? new Date(occurrenceDate) : new Date());
+  const todayKey = getDateKeyLocal(new Date());
+  const occurrenceIsFuture = occurrenceKey > todayKey;
   const occurrenceCompleted = (task?.routine_completed_dates || []).includes(occurrenceKey);
   // Dialog warning/confirm depends on the date currently PICKED in the dialog.
   const selectedCompletionKey = routineCompletionAt ? getDateKeyLocal(new Date(routineCompletionAt)) : occurrenceKey;
+  const selectedCompletionIsFuture = selectedCompletionKey > todayKey;
   const selectedDateCompleted = (task?.routine_completed_dates || []).includes(selectedCompletionKey);
-  const routineReflectionForDate = (dateKey) => linkedItemReflections.find((reflection) => (
+  const routineReflectionsForDate = (dateKey) => linkedItemReflections.filter((reflection) => (
     reflection.reflection_type === 'routine'
     && reflection.routine_id === task?.id
     && reflection.routine_occurrence_date === dateKey
   ));
-  const occurrenceRoutineReflection = isRoutine ? routineReflectionForDate(occurrenceKey) : null;
-  const selectedRoutineReflection = isRoutine ? routineReflectionForDate(selectedCompletionKey) : null;
+  const selectedRoutineReflections = isRoutine ? routineReflectionsForDate(selectedCompletionKey) : [];
   const taskWasAlreadyComplete = !!(task?.is_complete || task?.status === 'done');
-  // Hide the button when the opened occurrence is already marked done.
-  const canMarkRoutineToday = isRoutine && isEditing && (!occurrenceCompleted || !occurrenceRoutineReflection);
+  const canMarkRoutineToday = isRoutine && isEditing && !occurrenceIsFuture;
   const canAddTaskCompletionReflection = !isRoutine && isEditing && !taskWasAlreadyComplete && !linkedMission;
   const canMarkTaskDone = canAddTaskCompletionReflection && !formData.is_complete;
   const canCompleteLinkedMission = linkedMissionIsActive;
   const showCompletionReflection = isEditing && (
-    canAddTaskCompletionReflection
+    isRoutine
+    || canAddTaskCompletionReflection
     || canCompleteLinkedMission
     || reflectionSaveFailed
     || !!completionReflection.trim()
@@ -902,7 +913,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           {showCompletionReflection && (
             <div className="space-y-2">
               <Label htmlFor="completion-reflection" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Comentario o reflexión
+                {isRoutine ? `Comentario o reflexión · ${occurrenceKey}` : 'Comentario o reflexión'}
               </Label>
               <Textarea
                 id="completion-reflection"
@@ -911,12 +922,17 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                 onChange={(e) => setCompletionReflection(e.target.value)}
                 placeholder="¿Qué observaste, aprendiste o sentiste al hacer esto?"
                 className="min-h-[88px] resize-none"
-                disabled={loading || missionActionLoading}
+                disabled={loading || missionActionLoading || (isRoutine && occurrenceIsFuture)}
               />
+              {isRoutine && occurrenceIsFuture && (
+                <p className="text-xs text-muted-foreground" data-testid="routine-future-reflection-help">
+                  Podrás escribir cuando llegue esta fecha.
+                </p>
+              )}
               {reflectionSaveFailed && (
                 <div className="flex flex-col gap-2 rounded-md border border-[hsl(var(--warning))] bg-[hsl(var(--warning-soft))] p-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-foreground">
-                    La acción ya se completó, pero esta reflexión no se guardó.
+                    Los cambios se guardaron, pero esta reflexión no.
                   </p>
                   <Button
                     type="button"
@@ -1064,7 +1080,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           />
           {selectedDateCompleted && (
             <p className="text-xs text-primary">
-              Ya está marcada para esa fecha{selectedRoutineReflection ? ' y tiene reflexión guardada.' : '. Puedes guardar una reflexión pendiente.'}
+              Ya está marcada para esa fecha. Puedes añadir otra reflexión.
             </p>
           )}
         </div>
@@ -1073,39 +1089,29 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           <Label htmlFor="routine-completion-reflection" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Comentario o reflexión
           </Label>
-          {selectedRoutineReflection ? (
-            <>
-              <Textarea
-                id="routine-completion-reflection"
-                data-testid="routine-completion-reflection-readonly"
-                value={selectedRoutineReflection.content || ''}
-                readOnly
-                disabled
-                className="min-h-[88px] resize-none"
-              />
-              <p className="text-xs text-muted-foreground">
-                Esta reflexión ya quedó cerrada para ese día y no se puede editar.
+          <Textarea
+            id="routine-completion-reflection"
+            data-testid="routine-completion-reflection-input"
+            value={completionReflection}
+            onChange={(e) => setCompletionReflection(e.target.value)}
+            placeholder="¿Qué observaste sobre este hábito hoy?"
+            className="min-h-[88px] resize-none"
+            disabled={loading || selectedCompletionIsFuture}
+          />
+          {selectedRoutineReflections.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Ya hay {selectedRoutineReflections.length} reflexión(es) guardada(s) para esta fecha; esta se añadirá al historial.
+            </p>
+          )}
+          {selectedCompletionIsFuture && (
+            <p className="text-xs text-destructive">No puedes registrar una fecha futura.</p>
+          )}
+          {reflectionSaveFailed && (
+            <div className="rounded-md border border-[hsl(var(--warning))] bg-[hsl(var(--warning-soft))] p-3">
+              <p className="text-xs text-foreground">
+                La rutina ya se marcó, pero esta reflexión no se guardó. Puedes reintentar sin perder el texto.
               </p>
-            </>
-          ) : (
-            <>
-              <Textarea
-                id="routine-completion-reflection"
-                data-testid="routine-completion-reflection-input"
-                value={completionReflection}
-                onChange={(e) => setCompletionReflection(e.target.value)}
-                placeholder="¿Qué observaste sobre este hábito hoy?"
-                className="min-h-[88px] resize-none"
-                disabled={loading}
-              />
-              {reflectionSaveFailed && (
-                <div className="rounded-md border border-[hsl(var(--warning))] bg-[hsl(var(--warning-soft))] p-3">
-                  <p className="text-xs text-foreground">
-                    La rutina ya se marcó, pero esta reflexión no se guardó. Puedes reintentar sin perder el texto.
-                  </p>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
 
@@ -1122,7 +1128,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           <Button
             type="button"
             onClick={confirmRoutineCompletion}
-            disabled={loading || !routineCompletionAt || !!selectedRoutineReflection || (selectedDateCompleted && !completionReflection.trim())}
+            disabled={loading || !routineCompletionAt || selectedCompletionIsFuture || (selectedDateCompleted && !completionReflection.trim())}
             className="bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.9)] rounded-full"
             data-testid="routine-complete-confirm-btn"
           >

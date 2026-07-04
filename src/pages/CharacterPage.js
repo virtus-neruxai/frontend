@@ -6,6 +6,7 @@ import TaskDraftModal from '../components/TaskDraftModal';
 import MissionDraftModal from '../components/MissionDraftModal';
 import EmotionPicker from '../components/EmotionPicker';
 import { CharacterStats } from '../presentation/components/character/CharacterStats';
+import { LevelStaircase } from '../presentation/components/character/LevelStaircase';
 import { MissionsList } from '../presentation/components/character/MissionsList';
 import { StatsHistoryChart } from '../presentation/components/character/StatsHistoryChart';
 import { ReflectionKPIs } from '../presentation/components/character/ReflectionKPIs';
@@ -62,6 +63,8 @@ export default function CharacterPageRefactored() {
     reflectionKPIs,
     loading,
     historyLoading,
+    justLeveledUp,
+    dismissLevelUp,
     fetchCharacter,
     fetchStatsInfo,
     fetchStatsHistory,
@@ -479,6 +482,15 @@ export default function CharacterPageRefactored() {
 
         {/* Character Stats Component */}
         <CharacterStats character={character} statsInfo={statsInfo} />
+
+        {/* Level Staircase — gamified level progress */}
+        <LevelStaircase
+          level={character?.level || 0}
+          levelTitle={character?.level_title}
+          theme={theme}
+          justLeveledUp={justLeveledUp}
+          onAnimationEnd={dismissLevelUp}
+        />
 
         {/* Nightly Review Result (if exists) */}
         {nightlyReviewResult && (

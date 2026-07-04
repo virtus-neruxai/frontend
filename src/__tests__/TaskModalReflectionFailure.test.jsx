@@ -95,7 +95,7 @@ describe('TaskModal reflection failure handling', () => {
       status: 'done',
     });
     expect(onSaved).not.toHaveBeenCalled();
-    expect(toast.warning).toHaveBeenCalledWith('La acción se completó, pero no se pudo guardar la reflexión');
+    expect(toast.warning).toHaveBeenCalledWith('Los cambios se guardaron, pero no se pudo guardar la reflexión');
     expect(screen.getByTestId('task-completion-reflection-input')).toHaveValue('Me costó empezar, pero lo terminé.');
     expect(screen.getByTestId('task-reflection-retry-btn')).toBeInTheDocument();
   });
@@ -183,7 +183,7 @@ describe('TaskModal reflection failure handling', () => {
     expect(onSaved).toHaveBeenCalled();
   });
 
-  test('shows an existing routine day reflection as readonly', async () => {
+  test('adds another reflection when a completed routine day already has one', async () => {
     const routine = {
       id: 'routine-1',
       title: 'Leer',
@@ -205,24 +205,123 @@ describe('TaskModal reflection failure handling', () => {
         created_at: '2026-06-26T08:00:00+00:00',
       }],
     });
+    reflectionsApi.create.mockResolvedValue({
+      data: {
+        id: 'new-routine-reflection',
+        reflection_type: 'routine',
+        routine_id: 'routine-1',
+        routine_occurrence_date: '2026-06-26',
+        content: 'Segundo comentario del día.',
+        created_at: '2026-06-26T10:00:00+00:00',
+      },
+    });
 
     render(
       <TaskModal
         open
         onClose={vi.fn()}
         task={routine}
-        occurrenceDate="2026-06-27T09:00:00"
+        occurrenceDate="2026-06-26T09:00:00"
         onSaved={vi.fn()}
         onDeleted={vi.fn()}
       />
     );
 
     fireEvent.click(await screen.findByTestId('task-mark-done-btn'));
-    fireEvent.change(await screen.findByTestId('routine-completion-at-input'), {
-      target: { value: '2026-06-26T09:00' },
+    fireEvent.change(await screen.findByTestId('routine-completion-reflection-input'), {
+      target: { value: 'Segundo comentario del día.' },
+    });
+    fireEvent.click(screen.getByTestId('routine-complete-confirm-btn'));
+
+    await waitFor(() => expect(reflectionsApi.create).toHaveBeenCalledWith(expect.objectContaining({
+      content: 'Segundo comentario del día.',
+      reflection_type: 'routine',
+      routine_id: 'routine-1',
+      routine_occurrence_date: '2026-06-26',
+    })));
+    expect(screen.queryByTestId('routine-completion-reflection-readonly')).not.toBeInTheDocument();
+  });
+
+  test('saves a comment from routine editing without marking the occurrence done', async () => {
+    const routine = {
+      id: 'routine-1',
+      title: 'Leer',
+      description: 'Leer 10 minutos',
+      domain: 'Aprendizaje',
+      task_kind: 'routine',
+      status: 'in_progress',
+      is_complete: false,
+      progress_percent: 100,
+      date_start: '2026-06-26T09:00:00+00:00',
+      date_end: '2026-06-26T09:10:00+00:00',
+      recurrence_rule: { type: 'daily', interval: 1 },
+      routine_completed_dates: [],
+    };
+    reflectionsApi.create.mockResolvedValue({
+      data: {
+        id: 'routine-comment-1',
+        reflection_type: 'routine',
+        routine_id: 'routine-1',
+        routine_occurrence_date: '2026-06-26',
+        content: 'Hoy no pude hacerla porque dormí mal.',
+        created_at: '2026-06-26T20:00:00+00:00',
+      },
     });
 
-    expect(await screen.findByTestId('routine-completion-reflection-readonly')).toHaveValue('Ya escribí esta reflexión.');
-    expect(screen.getByTestId('routine-complete-confirm-btn')).toBeDisabled();
+    render(
+      <TaskModal
+        open
+        onClose={vi.fn()}
+        task={routine}
+        occurrenceDate="2026-06-26T09:00:00"
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    );
+
+    fireEvent.change(await screen.findByTestId('task-completion-reflection-input'), {
+      target: { value: 'Hoy no pude hacerla porque dormí mal.' },
+    });
+    fireEvent.click(screen.getByTestId('task-save-btn'));
+
+    await waitFor(() => expect(reflectionsApi.create).toHaveBeenCalledWith(expect.objectContaining({
+      content: 'Hoy no pude hacerla porque dormí mal.',
+      reflection_type: 'routine',
+      routine_id: 'routine-1',
+      routine_occurrence_date: '2026-06-26',
+    })));
+    expect(tasksApi.markRoutineToday).not.toHaveBeenCalled();
+  });
+
+  test('disables routine comments for future occurrences', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const futureIso = tomorrow.toISOString();
+    const routine = {
+      ...task,
+      id: 'routine-future',
+      task_kind: 'routine',
+      status: 'in_progress',
+      is_complete: false,
+      date_start: futureIso,
+      date_end: new Date(tomorrow.getTime() + 10 * 60 * 1000).toISOString(),
+      recurrence_rule: { type: 'daily', interval: 1 },
+      routine_completed_dates: [],
+    };
+
+    render(
+      <TaskModal
+        open
+        onClose={vi.fn()}
+        task={routine}
+        occurrenceDate={futureIso}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByTestId('task-completion-reflection-input')).toBeDisabled();
+    expect(screen.getByTestId('routine-future-reflection-help')).toBeInTheDocument();
+    expect(screen.queryByTestId('task-mark-done-btn')).not.toBeInTheDocument();
   });
 });

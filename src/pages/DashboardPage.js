@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import Layout from '../components/Layout';
+import TaskModal from '../components/TaskModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { CheckCircle2, Clock, Target, ListTodo } from 'lucide-react';
 import { useDashboard } from '../presentation/viewmodels/useDashboard';
 import { KPICard } from '../presentation/components/dashboard/KPICard';
+import { TaskListDialog } from '../presentation/components/dashboard/TaskListDialog';
 import { ChallengesCard } from '../presentation/components/dashboard/ChallengesCard';
 import { StatusDistributionChart } from '../presentation/components/dashboard/StatusDistributionChart';
 import { StatusBarChart } from '../presentation/components/dashboard/StatusBarChart';
@@ -13,8 +16,19 @@ import { ProfileHeroCard } from '../presentation/components/profile-theme/Profil
 import { KPI_TOKENS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
 
+const KPI_LIST_TITLES = {
+  total: 'Total tareas',
+  completed: 'Tareas completadas',
+  in_progress: 'Tareas en progreso',
+  overdue: 'Tareas vencidas',
+};
+
 export default function DashboardPageRefactored() {
   const { theme } = useProfileTheme();
+  const [listCategory, setListCategory] = useState(null);
+  const [listOpen, setListOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
   const {
     summary,
     timeseries,
@@ -22,6 +36,9 @@ export default function DashboardPageRefactored() {
     range,
     setRange,
     rangeOptions,
+    getTasksByCategory,
+    allTasks,
+    refreshStats,
     totalStatsHistory,
     statsInfo,
     totalStatsRange,
@@ -37,6 +54,42 @@ export default function DashboardPageRefactored() {
     setFrictionsRange,
     acknowledgeFriction,
   } = useDashboard();
+
+  const openTaskList = (category) => {
+    setListCategory(category);
+    setListOpen(true);
+  };
+
+  const handleTaskListItemClick = (item) => {
+    let task = item;
+    if (item._isMission) {
+      task = allTasks.find((t) => t.id === item._linkedTaskId);
+      if (!task) return;
+    }
+    setListOpen(false);
+    setEditingTask(task);
+    setTaskModalOpen(true);
+  };
+
+  const handleTaskModalClose = () => {
+    setTaskModalOpen(false);
+    setEditingTask(null);
+    setListOpen(true);
+  };
+
+  const handleTaskModalSaved = async () => {
+    setTaskModalOpen(false);
+    setEditingTask(null);
+    await refreshStats();
+    setListOpen(true);
+  };
+
+  const handleTaskModalDeleted = async () => {
+    setTaskModalOpen(false);
+    setEditingTask(null);
+    await refreshStats();
+    setListOpen(true);
+  };
 
   return (
     <Layout ambient>
@@ -80,6 +133,7 @@ export default function DashboardPageRefactored() {
                 iconColor={KPI_TOKENS.total.color}
                 iconBg={KPI_TOKENS.total.background}
                 testId="kpi-total"
+                onClick={() => openTaskList('total')}
               />
               <KPICard
                 title="Completadas"
@@ -89,6 +143,7 @@ export default function DashboardPageRefactored() {
                 iconColor={KPI_TOKENS.completed.color}
                 iconBg={KPI_TOKENS.completed.background}
                 testId="kpi-completed"
+                onClick={() => openTaskList('completed')}
               />
               <KPICard
                 title="En Progreso"
@@ -97,6 +152,7 @@ export default function DashboardPageRefactored() {
                 iconColor={KPI_TOKENS.inProgress.color}
                 iconBg={KPI_TOKENS.inProgress.background}
                 testId="kpi-in-progress"
+                onClick={() => openTaskList('in_progress')}
               />
               <KPICard
                 title="Vencidas"
@@ -106,6 +162,7 @@ export default function DashboardPageRefactored() {
                 iconColor={KPI_TOKENS.overdue.color}
                 iconBg={KPI_TOKENS.overdue.background}
                 testId="kpi-overdue"
+                onClick={() => openTaskList('overdue')}
               />
             </div>
 
@@ -142,6 +199,22 @@ export default function DashboardPageRefactored() {
           </div>
         )}
       </div>
+
+      <TaskListDialog
+        open={listOpen}
+        onClose={() => setListOpen(false)}
+        title={KPI_LIST_TITLES[listCategory] || ''}
+        tasks={listCategory ? getTasksByCategory(listCategory) : []}
+        onTaskClick={handleTaskListItemClick}
+      />
+
+      <TaskModal
+        open={taskModalOpen}
+        onClose={handleTaskModalClose}
+        task={editingTask}
+        onSaved={handleTaskModalSaved}
+        onDeleted={handleTaskModalDeleted}
+      />
     </Layout>
   );
 }

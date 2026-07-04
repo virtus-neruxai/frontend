@@ -61,7 +61,7 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
             const Icon = STAT_ICONS[statKey] || Flame;
             const color = getStatColor(statKey);
             const label = formatStatLabel(statKey, statsInfo);
-            const percentage = Math.min((value / 100) * 100, 100);
+            const percentage = Math.min((value / 10) * 100, 100);
 
             return (
               <div key={statKey} className="space-y-2">
@@ -85,7 +85,7 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
                     className="text-sm font-bold" 
                     style={{ color }}
                   >
-                    {value}/100
+                    {value}/10
                   </span>
                 </div>
                 <div className="relative h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: `${color}20` }}>
@@ -107,7 +107,7 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Total Stats</span>
             <span className="font-bold text-primary">
-              {Object.values(character.stats || {}).reduce((sum, val) => sum + val, 0)}/500
+              {Object.values(character.stats || {}).reduce((sum, val) => sum + val, 0)}/50
             </span>
           </div>
         </div>

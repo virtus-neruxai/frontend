@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { statsApi, characterApi } from '../../lib/api';
+import { statsApi, characterApi, tasksApi, missionsApi } from '../../lib/api';
 import { buildRelativeDateRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 
@@ -24,6 +24,10 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState('30');
 
+  // Raw tasks/missions backing the KPI cards, so a card click can show the matching list.
+  const [allTasks, setAllTasks] = useState([]);
+  const [allMissions, setAllMissions] = useState([]);
+
   // Total stats evolution state (missions + reflections)
   const [totalStatsHistory, setTotalStatsHistory] = useState([]);
   const [statsInfo, setStatsInfo] = useState({});
@@ -44,13 +48,17 @@ export function useDashboard() {
       const fromDate = new Date();
       fromDate.setDate(fromDate.getDate() - days);
 
-      const [summaryRes, timeseriesRes] = await Promise.all([
+      const [summaryRes, timeseriesRes, tasksRes, missionsRes] = await Promise.all([
         statsApi.getSummary({ from_date: fromDate.toISOString() }),
-        statsApi.getTimeseries(days)
+        statsApi.getTimeseries(days),
+        tasksApi.getAll({}),
+        missionsApi.getAll({}),
       ]);
 
       setSummary(summaryRes.data);
       setTimeseries(timeseriesRes.data);
+      setAllTasks(tasksRes.data || []);
+      setAllMissions(missionsRes.data || []);
     } catch (error) {
       toast.error('Error al cargar estadísticas');
       console.error('Error fetching stats:', error);
@@ -58,6 +66,49 @@ export function useDashboard() {
       setLoading(false);
     }
   }, [range]);
+
+  // Mirrors the backend's /stats/summary bucketing so the drill-down list matches the KPI count.
+  const getTasksByCategory = useCallback((category) => {
+    const days = parseInt(range);
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+    const now = new Date();
+    // Tasks get a 1-day grace period past date_end before counting as overdue; missions don't.
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const inRange = allTasks.filter((task) => !task.date_start || new Date(task.date_start) >= fromDate);
+
+    switch (category) {
+      case 'completed':
+        return inRange.filter((task) => task.status === 'done' || task.is_complete);
+      case 'in_progress':
+        return inRange.filter((task) => task.status === 'in_progress');
+      case 'overdue': {
+        // Only in-progress/blocked tasks (routines excluded — their date_end isn't a real deadline).
+        const overdueTasks = inRange.filter((task) => (
+          task.task_kind !== 'routine'
+          && ['in_progress', 'blocked'].includes(task.status)
+          && task.date_end
+          && new Date(task.date_end) < oneDayAgo
+        ));
+        // Missions past their expiration that weren't completed successfully.
+        const overdueMissions = allMissions
+          .filter((mission) => mission.expires_at && new Date(mission.expires_at) < now && mission.status !== 'completed')
+          .map((mission) => ({
+            id: `mission-${mission.id}`,
+            title: mission.title,
+            status: mission.status,
+            date_end: mission.expires_at,
+            _isMission: true,
+            _linkedTaskId: mission.linked_task_id || null,
+          }));
+        return [...overdueMissions, ...overdueTasks];
+      }
+      case 'total':
+      default:
+        return inRange;
+    }
+  }, [allTasks, allMissions, range]);
 
   const fetchTotalStatsData = useCallback(async () => {
     setTotalStatsLoading(true);
@@ -134,6 +185,8 @@ export function useDashboard() {
     range,
     setRange,
     rangeOptions: RANGE_OPTIONS,
+    getTasksByCategory,
+    allTasks,
     totalStatsHistory,
     statsInfo,
     totalStatsRange,
