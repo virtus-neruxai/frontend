@@ -2,6 +2,17 @@
 
 # This changelog is a reference for the changes made to the frontend that need to be applied to the mobile app in the future.
 
+## [Sprint-7] Notificaciones del Mentor — 2026-07-05
+
+- Replaced the inactive proactive auto-apply setting with `Notificaciones del Mentor`.
+- Added `mentor_notifications_enabled` to the user settings contract.
+- The switch controls LLM-generated automatic notifications such as NightlyReview and reflection follow-ups, without affecting task or mission reminders.
+- `proactive-orchestrator-service` has been retired; mission expiry reminders now come from `scheduler-service` during the final hour before `expires_at`.
+- Scheduled notifications are withheld for users whose latest successful login is older than three days.
+- Mobile should expose the same preference and default it to enabled when the field is absent.
+
+---
+
 ## [Sprint-6] Mentor Background Dashboard — 2026-03-27
 
 ### Summary

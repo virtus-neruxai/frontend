@@ -85,6 +85,10 @@ El selector compartido `EmotionPicker` se muestra en el Diario y en los flujos d
 
 Las reflexiones vinculadas conservan el perfil activo en el momento de escritura, que determina su análisis y estadísticas. El área Diario filtra por ese perfil de forma explícita. Al editar una tarea o misión se muestran todas sus reflexiones vinculadas sin filtrar por perfil; en rutinas se mantiene además el filtro por la fecha de ocurrencia seleccionada.
 
+## Notificaciones del Mentor
+
+`SettingsPage` permite activar o desactivar `mentor_notifications_enabled`. La preferencia controla únicamente notificaciones automáticas cuyo contenido genera el Mentor mediante IA, actualmente `NIGHTLY_REVIEW_SUMMARY` y `REFLECTION_NEGATIVE_FOLLOWUP_24H`. Los avisos operativos de tareas y misiones siguen dependiendo de la configuración general de notificaciones.
+
 ## 🔒 Aislamiento por Perfil (Mentor + Misiones + RAG)
 
 Cada perfil (`stoic`, `calm`, `spiritual`, `performance`, `student`) tiene datos completamente aislados: el Mentor solo ve conversaciones e historial del perfil activo, y las misiones generadas solo aparecen en el perfil en que se crearon.

@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Switch } from './ui/switch';
 
-export default function ProactiveSettings({
+export default function MentorNotificationSettings({
   enabled,
   loading,
   saving,
@@ -15,41 +15,41 @@ export default function ProactiveSettings({
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">Cargando ajustes proactivos...</p>
+          <p className="text-sm text-muted-foreground">Cargando notificaciones del Mentor...</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card data-testid="proactive-settings-card">
+    <Card data-testid="mentor-notification-settings-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bot className="w-5 h-5" />
-          Orquestador proactivo
+          Notificaciones del Mentor
         </CardTitle>
         <CardDescription>
-          Por defecto las sugerencias quedan en borrador. Activa esta opción solo si quieres permitir que el sistema aplique cambios proactivos compatibles automáticamente.
+          Controla las notificaciones automáticas cuyo contenido genera el Mentor mediante IA.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium">Permitir auto-apply proactivo</p>
+            <p className="text-sm font-medium">Recibir notificaciones del Mentor</p>
             <p className="text-xs text-muted-foreground">
-              Solo habilita la ejecución automática cuando el servicio la soporte y los guardrails la permitan.
+              Incluye el resumen NightlyReview y los seguimientos de reflexiones. No afecta a los avisos de tareas o misiones.
             </p>
           </div>
           <Switch
             checked={enabled}
             onCheckedChange={onToggle}
-            data-testid="toggle-proactive-auto-apply"
+            data-testid="toggle-mentor-notifications"
           />
         </div>
 
         <div className="flex justify-end">
-          <Button onClick={onSave} disabled={saving} data-testid="save-proactive-settings-btn">
-            {saving ? 'Guardando...' : 'Guardar ajuste proactivo'}
+          <Button onClick={onSave} disabled={saving} data-testid="save-mentor-notifications-btn">
+            {saving ? 'Guardando...' : 'Guardar preferencia'}
           </Button>
         </div>
       </CardContent>

@@ -37,9 +37,15 @@ vi.mock('../components/NotificationSettings', () => ({
   },
 }));
 
-vi.mock('../components/ProactiveSettings', () => ({
-  default: function MockProactiveSettings() {
-    return <div data-testid="proactive-settings" />;
+vi.mock('../components/MentorNotificationSettings', () => ({
+  default: function MockMentorNotificationSettings({ enabled, onToggle, onSave }) {
+    return (
+      <div data-testid="mentor-notification-settings">
+        <span data-testid="mentor-notifications-value">{String(enabled)}</span>
+        <button type="button" onClick={() => onToggle(!enabled)}>toggle mentor notifications</button>
+        <button type="button" onClick={onSave}>save mentor notifications</button>
+      </div>
+    );
   },
 }));
 
@@ -61,11 +67,12 @@ describe('profile theme', () => {
     window.localStorage.clear();
     document.documentElement.dataset.profileTheme = 'stoic';
     notificationsApi.getSettings.mockResolvedValue({ data: {} });
+    userSettingsApi.saveSettings.mockResolvedValue({ data: {} });
     userSettingsApi.getSettings.mockResolvedValue({
       data: {
         prompt_profile: 'stoic',
         resolved_prompt_profile: 'stoic',
-        auto_apply_proactive_changes: false,
+        mentor_notifications_enabled: true,
       },
     });
   });
@@ -154,6 +161,25 @@ describe('profile theme', () => {
       expect(document.documentElement.dataset.profileTheme).toBe('stoic');
     });
     expect(window.localStorage.getItem('prompt_profile')).toBe('stoic');
+  });
+
+  test('settings persist the Mentor notification preference', async () => {
+    render(
+      <ProfileThemeProvider>
+        <SettingsPage />
+      </ProfileThemeProvider>
+    );
+
+    expect(await screen.findByTestId('mentor-notifications-value')).toHaveTextContent('true');
+    fireEvent.click(screen.getByText('toggle mentor notifications'));
+    expect(screen.getByTestId('mentor-notifications-value')).toHaveTextContent('false');
+    fireEvent.click(screen.getByText('save mentor notifications'));
+
+    await waitFor(() => {
+      expect(userSettingsApi.saveSettings).toHaveBeenCalledWith({
+        mentor_notifications_enabled: false,
+      });
+    });
   });
 
   test('profile empty state renders with the active profile context', () => {

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import NotificationSettings from '../components/NotificationSettings';
 import PromptProfileSettings from '../components/PromptProfileSettings';
-import ProactiveSettings from '../components/ProactiveSettings';
+import MentorNotificationSettings from '../components/MentorNotificationSettings';
 import { notificationsApi, userSettingsApi } from '../lib/api';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { getProfileTheme } from '../theme/profileThemeUtils';
@@ -40,8 +40,8 @@ export default function SettingsPage() {
   const [persistedPromptProfile, setPersistedPromptProfile] = useState(profileId);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
-  const [autoApplyProactiveChanges, setAutoApplyProactiveChanges] = useState(false);
-  const [proactiveSaving, setProactiveSaving] = useState(false);
+  const [mentorNotificationsEnabled, setMentorNotificationsEnabled] = useState(true);
+  const [mentorNotificationsSaving, setMentorNotificationsSaving] = useState(false);
   const persistedPromptProfileRef = useRef(profileId);
   const selectedProfileTheme = getProfileTheme(promptProfile);
 
@@ -83,11 +83,11 @@ export default function SettingsPage() {
       try {
         const response = await userSettingsApi.getSettings();
         const resolved = response?.data?.resolved_prompt_profile || response?.data?.prompt_profile || 'stoic';
-        const autoApply = Boolean(response?.data?.auto_apply_proactive_changes);
+        const mentorNotifications = response?.data?.mentor_notifications_enabled !== false;
         setPromptProfile(resolved);
         setPersistedPromptProfile(resolved);
         syncPersistedProfile(resolved);
-        setAutoApplyProactiveChanges(autoApply);
+        setMentorNotificationsEnabled(mentorNotifications);
       } catch (error) {
         const fallbackProfile = persistedPromptProfileRef.current;
         setPromptProfile(fallbackProfile);
@@ -212,17 +212,17 @@ export default function SettingsPage() {
     }
   };
 
-  const saveProactiveSettings = async () => {
-    setProactiveSaving(true);
+  const saveMentorNotificationSettings = async () => {
+    setMentorNotificationsSaving(true);
     try {
       await userSettingsApi.saveSettings({
-        auto_apply_proactive_changes: autoApplyProactiveChanges,
+        mentor_notifications_enabled: mentorNotificationsEnabled,
       });
-      toast.success('Ajuste proactivo guardado');
+      toast.success('Notificaciones del Mentor actualizadas');
     } catch (error) {
-      toast.error('Error al guardar el ajuste proactivo');
+      toast.error('Error al guardar las notificaciones del Mentor');
     } finally {
-      setProactiveSaving(false);
+      setMentorNotificationsSaving(false);
     }
   };
 
@@ -249,12 +249,12 @@ export default function SettingsPage() {
           onSave={savePromptProfile}
         />
 
-        <ProactiveSettings
-          enabled={autoApplyProactiveChanges}
+        <MentorNotificationSettings
+          enabled={mentorNotificationsEnabled}
           loading={profileLoading}
-          saving={proactiveSaving}
-          onToggle={setAutoApplyProactiveChanges}
-          onSave={saveProactiveSettings}
+          saving={mentorNotificationsSaving}
+          onToggle={setMentorNotificationsEnabled}
+          onSave={saveMentorNotificationSettings}
         />
 
         <NotificationSettings

@@ -315,6 +315,8 @@ export function buildNotificationFromWsData(data) {
     payload = {
       mission_id: data.mission_id,
       mission_title: data.mission_title,
+      expires_at: data.expires_at,
+      minutes_left: data.minutes_left,
       message: data.message || `Recuerda tu misión: ${data.mission_title || ''}`,
       priority: data.priority || 'medium',
       context: data.context || {},
