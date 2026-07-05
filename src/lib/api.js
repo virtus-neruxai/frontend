@@ -59,6 +59,10 @@ export const statsApi = {
   getFrictions: (params = {}) => api.get('/stats/frictions', { params }),
   acknowledgeFriction: (friction, data) => api.patch(`/stats/frictions/${friction}/acknowledge`, data),
   getResolvedFrictions: () => api.get('/stats/frictions/resolved'),
+  getEmotionalPatterns: (params = {}) => api.get('/stats/emotional-patterns', { params }),
+  acknowledgeEmotionalPattern: (patternKey, data) =>
+    api.patch(`/stats/emotional-patterns/${encodeURIComponent(patternKey)}/acknowledge`, data),
+  getResolvedEmotionalPatterns: () => api.get('/stats/emotional-patterns/resolved'),
 };
 
 // Character API

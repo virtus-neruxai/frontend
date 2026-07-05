@@ -13,6 +13,7 @@ import { TimeseriesChart } from '../presentation/components/dashboard/Timeseries
 import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/TotalStatsEvolutionChart';
 import { DomainDistributionChart } from '../presentation/components/dashboard/DomainDistributionChart';
 import { DetectedPatternsPanel } from '../presentation/components/dashboard/DetectedPatternsPanel';
+import { EmotionalPatternsPanel } from '../presentation/components/dashboard/EmotionalPatternsPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -57,6 +58,11 @@ export default function DashboardPageRefactored() {
     frictionsRange,
     setFrictionsRange,
     acknowledgeFriction,
+    emotionalPatterns,
+    emotionalPatternsLoading,
+    emotionalPatternsRange,
+    setEmotionalPatternsRange,
+    acknowledgeEmotionalPattern,
   } = useDashboard();
 
   const openTaskList = (category) => {
@@ -214,6 +220,15 @@ export default function DashboardPageRefactored() {
               range={frictionsRange}
               onRangeChange={setFrictionsRange}
               onAcknowledge={acknowledgeFriction}
+            />
+
+            {/* Emotional Patterns Panel */}
+            <EmotionalPatternsPanel
+              data={emotionalPatterns}
+              loading={emotionalPatternsLoading}
+              range={emotionalPatternsRange}
+              onRangeChange={setEmotionalPatternsRange}
+              onAcknowledge={acknowledgeEmotionalPattern}
             />
           </div>
         )}

@@ -14,6 +14,12 @@ const FRICTIONS_RANGE_OPTIONS = [
   { value: '90', label: 'Últimos 90 días' },
 ];
 
+const EMOTIONAL_PATTERNS_RANGE_OPTIONS = [
+  { value: '7',  label: 'Últimos 7 días' },
+  { value: '30', label: 'Últimos 30 días' },
+  { value: '90', label: 'Últimos 90 días' },
+];
+
 const RANGE_OPTIONS = [
   { value: '7', label: 'Últimos 7 días' },
   { value: '30', label: 'Últimos 30 días' },
@@ -45,6 +51,11 @@ export function useDashboard() {
   const [frictions, setFrictions] = useState(null);
   const [frictionsLoading, setFrictionsLoading] = useState(false);
   const [frictionsRange, setFrictionsRange] = useState('7');
+
+  // Emotional patterns state
+  const [emotionalPatterns, setEmotionalPatterns] = useState(null);
+  const [emotionalPatternsLoading, setEmotionalPatternsLoading] = useState(false);
+  const [emotionalPatternsRange, setEmotionalPatternsRange] = useState('7');
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -152,6 +163,23 @@ export function useDashboard() {
     await fetchFrictions();
   }, [fetchFrictions]);
 
+  const fetchEmotionalPatterns = useCallback(async () => {
+    setEmotionalPatternsLoading(true);
+    try {
+      const res = await statsApi.getEmotionalPatterns({ days: parseInt(emotionalPatternsRange), limit: 500 });
+      setEmotionalPatterns(res.data);
+    } catch (error) {
+      console.error('Error fetching emotional patterns:', error);
+    } finally {
+      setEmotionalPatternsLoading(false);
+    }
+  }, [emotionalPatternsRange]);
+
+  const acknowledgeEmotionalPattern = useCallback(async (patternKey, data) => {
+    await statsApi.acknowledgeEmotionalPattern(patternKey, data);
+    await fetchEmotionalPatterns();
+  }, [fetchEmotionalPatterns]);
+
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -163,6 +191,10 @@ export function useDashboard() {
   useEffect(() => {
     fetchFrictions();
   }, [fetchFrictions]);
+
+  useEffect(() => {
+    fetchEmotionalPatterns();
+  }, [fetchEmotionalPatterns]);
 
   return {
     summary,
@@ -194,5 +226,12 @@ export function useDashboard() {
     frictionsRangeOptions: FRICTIONS_RANGE_OPTIONS,
     acknowledgeFriction,
     refreshFrictions: fetchFrictions,
+    emotionalPatterns,
+    emotionalPatternsLoading,
+    emotionalPatternsRange,
+    setEmotionalPatternsRange,
+    emotionalPatternsRangeOptions: EMOTIONAL_PATTERNS_RANGE_OPTIONS,
+    acknowledgeEmotionalPattern,
+    refreshEmotionalPatterns: fetchEmotionalPatterns,
   };
 }
