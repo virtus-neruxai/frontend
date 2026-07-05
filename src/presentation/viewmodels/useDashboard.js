@@ -1,7 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { statsApi, characterApi, tasksApi, missionsApi } from '../../lib/api';
 import { buildRelativeDateRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
+import {
+  filterTasksByDomain,
+  getDashboardItemsByCategory,
+  getTasksByDomain,
+} from '../../lib/dashboardTaskFilters';
 
 const FRICTIONS_RANGE_OPTIONS = [
   { value: '7',  label: 'Últimos 7 días' },
@@ -67,48 +72,29 @@ export function useDashboard() {
     }
   }, [range]);
 
-  // Mirrors the backend's /stats/summary bucketing so the drill-down list matches the KPI count.
   const getTasksByCategory = useCallback((category) => {
-    const days = parseInt(range);
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - days);
-    const now = new Date();
-    // Tasks get a 1-day grace period past date_end before counting as overdue; missions don't.
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    const inRange = allTasks.filter((task) => !task.date_start || new Date(task.date_start) >= fromDate);
-
-    switch (category) {
-      case 'completed':
-        return inRange.filter((task) => task.status === 'done' || task.is_complete);
-      case 'in_progress':
-        return inRange.filter((task) => task.status === 'in_progress');
-      case 'overdue': {
-        // Only in-progress/blocked tasks (routines excluded — their date_end isn't a real deadline).
-        const overdueTasks = inRange.filter((task) => (
-          task.task_kind !== 'routine'
-          && ['in_progress', 'blocked'].includes(task.status)
-          && task.date_end
-          && new Date(task.date_end) < oneDayAgo
-        ));
-        // Missions past their expiration that weren't completed successfully.
-        const overdueMissions = allMissions
-          .filter((mission) => mission.expires_at && new Date(mission.expires_at) < now && mission.status !== 'completed')
-          .map((mission) => ({
-            id: `mission-${mission.id}`,
-            title: mission.title,
-            status: mission.status,
-            date_end: mission.expires_at,
-            _isMission: true,
-            _linkedTaskId: mission.linked_task_id || null,
-          }));
-        return [...overdueMissions, ...overdueTasks];
-      }
-      case 'total':
-      default:
-        return inRange;
-    }
+    return getDashboardItemsByCategory({
+      category,
+      tasks: allTasks,
+      missions: allMissions,
+      rangeDays: parseInt(range, 10),
+    });
   }, [allTasks, allMissions, range]);
+
+  const overdueCount = useMemo(
+    () => getTasksByCategory('overdue').length,
+    [getTasksByCategory]
+  );
+
+  const domainData = useMemo(
+    () => getTasksByDomain(allTasks, parseInt(range, 10)),
+    [allTasks, range]
+  );
+
+  const getTasksForDomain = useCallback(
+    (domain) => filterTasksByDomain(allTasks, domain, parseInt(range, 10)),
+    [allTasks, range]
+  );
 
   const fetchTotalStatsData = useCallback(async () => {
     setTotalStatsLoading(true);
@@ -186,6 +172,9 @@ export function useDashboard() {
     setRange,
     rangeOptions: RANGE_OPTIONS,
     getTasksByCategory,
+    getTasksForDomain,
+    domainData,
+    overdueCount,
     allTasks,
     totalStatsHistory,
     statsInfo,

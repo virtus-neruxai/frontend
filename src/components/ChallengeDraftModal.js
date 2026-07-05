@@ -5,8 +5,10 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Repeat, Clock, Brain, TrendingUp } from 'lucide-react';
 import { formatStatLabel } from '../lib/statUtils';
+import { normalizeTaskDomain, TASK_DOMAIN_OPTIONS } from '../lib/taskDomains';
 
 const CHALLENGE_TYPE_LABELS = {
   daily: 'Diario (cada día)',
@@ -40,7 +42,7 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
       setEditedData({
         title: d.title || '',
         description: d.description || '',
-        domain: d.domain || 'Hábitos',
+        domain: normalizeTaskDomain(d.domain, 'Hábitos'),
         target_stats: d.target_stats || [],
         stat_rewards: d.stat_rewards || {},
         recurrence_rule: {
@@ -67,6 +69,7 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
       : [...current, value].sort((a, b) => a - b);
     setEditedData({
       ...editedData,
+      domain: normalizeTaskDomain(editedData.domain, 'Hábitos'),
       recurrence_rule: { ...editedData.recurrence_rule, weekdays: next },
     });
   };
@@ -136,6 +139,23 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
               onChange={(e) => setEditedData({ ...editedData, description: e.target.value })}
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="challenge-domain">Dominio *</Label>
+            <Select
+              value={editedData.domain || 'Hábitos'}
+              onValueChange={(value) => setEditedData({ ...editedData, domain: value })}
+            >
+              <SelectTrigger id="challenge-domain" data-testid="challenge-domain-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_DOMAIN_OPTIONS.map((domain) => (
+                  <SelectItem key={domain} value={domain}>{domain}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Weekdays (weekly only) */}

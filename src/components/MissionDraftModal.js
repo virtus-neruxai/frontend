@@ -12,6 +12,7 @@ import { formatStatLabel } from '../lib/statUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { useDndSettings } from '../hooks/useDndSettings';
 import { snapLocalStringOutOfDnd } from '../lib/dnd';
+import { normalizeTaskDomain, TASK_DOMAIN_OPTIONS } from '../lib/taskDomains';
 
 const MISSION_TYPE_LABELS = {
   daily: 'Diaria',
@@ -69,6 +70,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
         estimated_minutes: draftData.data.estimated_minutes || 30,
         target_stats: draftData.data.target_stats || [],
         stat_rewards: draftData.data.stat_rewards || {},
+        domain: normalizeTaskDomain(draftData.data.domain, 'Hábitos'),
         addToCalendar: draftData.data.addToCalendar !== false,
         start_date: draftData.data.start_date ? formatDateTimeLocal(draftData.data.start_date) : '',
         due_date: draftData.data.due_date
@@ -118,6 +120,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
       // Convert datetime-local to ISO strings
       const payload = {
         ...editedData,
+        domain: normalizeTaskDomain(editedData.domain, 'Hábitos'),
         start_date: editedData.start_date ? new Date(editedData.start_date).toISOString() : null,
         due_date: editedData.due_date ? new Date(editedData.due_date).toISOString() : null,
       };
@@ -264,6 +267,23 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mission_domain">Dominio *</Label>
+            <Select
+              value={editedData.domain || 'Hábitos'}
+              onValueChange={(value) => setEditedData({ ...editedData, domain: value })}
+            >
+              <SelectTrigger id="mission_domain" data-testid="mission-domain-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_DOMAIN_OPTIONS.map((domain) => (
+                  <SelectItem key={domain} value={domain}>{domain}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Estimated Time */}

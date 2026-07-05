@@ -82,6 +82,9 @@ export function TaskListDialog({ open, onClose, title, tasks = [], onTaskClick }
                       {isMission && (
                         <span className="text-[10px] text-muted-foreground">Misión</span>
                       )}
+                      {task.domain && (
+                        <span className="text-[10px] text-muted-foreground">{task.domain}</span>
+                      )}
                       {statusLabel && (
                         <span className="text-[11px] font-medium" style={{ color: statusColor }}>
                           {isMission ? '· ' : ''}{statusLabel}

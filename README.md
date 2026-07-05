@@ -197,11 +197,14 @@ Manages Dashboard state including friction patterns:
 ```javascript
 const {
   summary, timeseries, loading, range, setRange,
+  overdueCount, domainData, getTasksForDomain,
   frictions, frictionsLoading, frictionsRange, setFrictionsRange,
   acknowledgeFriction,   // PATCH /stats/frictions/{friction}/acknowledge
   refreshFrictions,
 } = useDashboard();
 ```
+
+El KPI `Vencidas` y su diálogo comparten el mismo filtro: tareas no rutinarias en estado `in_progress`/`blocked`, con 24 horas de margen tras `date_end`, más misiones no completadas cuya `expires_at` ya pasó. `DomainDistributionChart` agrupa las tareas del rango por el catálogo canónico de dominios; al pulsar un total abre exactamente ese subconjunto.
 
 `frictionsRange` defaults to `'7'` (últimos 7 días). `acknowledgeFriction(friction, data)` hace PATCH y recarga los datos automáticamente.
 

@@ -26,6 +26,7 @@ import { getProfileName, getProfileEmoji } from '../lib/profileUtils';
 import EmotionPicker from './EmotionPicker';
 import EmotionBadge from './EmotionBadge';
 import EmotionDiscardAlert from './EmotionDiscardAlert';
+import { TASK_DOMAIN_OPTIONS } from '../lib/taskDomains';
 
 const STATUS_OPTIONS = [
   { value: 'todo', label: 'Pendiente', color: TASK_STATUS_COLORS.todo },
@@ -34,23 +35,6 @@ const STATUS_OPTIONS = [
   { value: 'blocked', label: 'Bloqueada', color: TASK_STATUS_COLORS.blocked }
   // 'failed' se establece automáticamente (revisión nocturna o misión agotada)
 ];
-
-const DOMAIN_OPTIONS = [
-  'Personal',
-  'Propósito',
-  'Mental',
-  'Hábitos',
-  'Salud',
-  'Relaciones',
-  'Social',
-  'Trabajo',
-  'Finanzas',
-  'Aprendizaje',
-  'Hogar',
-  'Ocio',
-  'Otro'
-];
-
 
 const WEEKDAY_OPTIONS = [
   { value: 1, label: 'Lunes' },
@@ -791,7 +775,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                 <SelectValue placeholder="Selecciona un dominio" />
               </SelectTrigger>
               <SelectContent>
-                {DOMAIN_OPTIONS.map((domain) => (
+                {TASK_DOMAIN_OPTIONS.map((domain) => (
                   <SelectItem key={domain} value={domain}>
                     {domain}
                   </SelectItem>

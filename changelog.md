@@ -2,6 +2,15 @@
 
 # This changelog is a reference for the changes made to the frontend that need to be applied to the mobile app in the future.
 
+## [Sprint-8] Dashboard por dominio y dominios de drafts — 2026-07-05
+
+- Added the first Dashboard chart, `Tareas totales por dominio`, with clickable totals that open the matching task list.
+- Fixed the overdue KPI/list mismatch by sharing one filter instead of mixing backend and frontend definitions.
+- Domain names are normalized to the canonical taxonomy, including accent variants; missing values are grouped as `Otro`.
+- Task, mission and challenge/routine draft forms now always carry an editable, validated domain.
+
+---
+
 ## [Sprint-7] Notificaciones del Mentor — 2026-07-05
 
 - Replaced the inactive proactive auto-apply setting with `Notificaciones del Mentor`.

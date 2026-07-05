@@ -11,6 +11,7 @@ import { StatusDistributionChart } from '../presentation/components/dashboard/St
 import { StatusBarChart } from '../presentation/components/dashboard/StatusBarChart';
 import { TimeseriesChart } from '../presentation/components/dashboard/TimeseriesChart';
 import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/TotalStatsEvolutionChart';
+import { DomainDistributionChart } from '../presentation/components/dashboard/DomainDistributionChart';
 import { DetectedPatternsPanel } from '../presentation/components/dashboard/DetectedPatternsPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
@@ -37,6 +38,9 @@ export default function DashboardPageRefactored() {
     setRange,
     rangeOptions,
     getTasksByCategory,
+    getTasksForDomain,
+    domainData,
+    overdueCount,
     allTasks,
     refreshStats,
     totalStatsHistory,
@@ -59,6 +63,18 @@ export default function DashboardPageRefactored() {
     setListCategory(category);
     setListOpen(true);
   };
+
+  const openDomainTaskList = (domain) => {
+    setListCategory(`domain:${domain}`);
+    setListOpen(true);
+  };
+
+  const listTasks = listCategory?.startsWith('domain:')
+    ? getTasksForDomain(listCategory.slice('domain:'.length))
+    : (listCategory ? getTasksByCategory(listCategory) : []);
+  const listTitle = listCategory?.startsWith('domain:')
+    ? `Tareas · ${listCategory.slice('domain:'.length)}`
+    : (KPI_LIST_TITLES[listCategory] || '');
 
   const handleTaskListItemClick = (item) => {
     let task = item;
@@ -156,8 +172,8 @@ export default function DashboardPageRefactored() {
               />
               <KPICard
                 title="Vencidas"
-                value={summary?.overdue || 0}
-                subtitle="Tareas con fecha pasada"
+                value={overdueCount}
+                subtitle="Filtro de vencimiento aplicado"
                 icon={Target}
                 iconColor={KPI_TOKENS.overdue.color}
                 iconBg={KPI_TOKENS.overdue.background}
@@ -165,6 +181,9 @@ export default function DashboardPageRefactored() {
                 onClick={() => openTaskList('overdue')}
               />
             </div>
+
+            {/* First chart: task totals grouped by domain */}
+            <DomainDistributionChart data={domainData} onDomainClick={openDomainTaskList} />
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -203,8 +222,8 @@ export default function DashboardPageRefactored() {
       <TaskListDialog
         open={listOpen}
         onClose={() => setListOpen(false)}
-        title={KPI_LIST_TITLES[listCategory] || ''}
-        tasks={listCategory ? getTasksByCategory(listCategory) : []}
+        title={listTitle}
+        tasks={listTasks}
         onTaskClick={handleTaskListItemClick}
       />
 

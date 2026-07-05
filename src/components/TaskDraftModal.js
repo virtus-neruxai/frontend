@@ -12,12 +12,7 @@ import { getProfileName } from '../lib/profileUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { useDndSettings } from '../hooks/useDndSettings';
 import { snapLocalStringOutOfDnd } from '../lib/dnd';
-
-const DOMAIN_OPTIONS = [
-  'Personal', 'Propósito', 'Mental', 'Hábitos', 'Salud',
-  'Relaciones', 'Social', 'Trabajo', 'Finanzas', 'Aprendizaje',
-  'Hogar', 'Ocio', 'Otro'
-];
+import { normalizeTaskDomain, TASK_DOMAIN_OPTIONS } from '../lib/taskDomains';
 
 const WEEKDAY_OPTIONS = [
   { value: 1, label: 'Lunes' },
@@ -122,7 +117,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
           : computeEndFromDuration(draftData.data.date_start, draftData.data.estimated_duration_minutes),
         estimated_duration_minutes: draftData.data.estimated_duration_minutes || 30,
         difficulty: inferDifficulty(draftData.data.difficulty, draftData.data.estimated_duration_minutes),
-        domain: draftData.data.domain || 'Personal',
+        domain: normalizeTaskDomain(draftData.data.domain, 'Personal'),
         task_kind: taskKind,
         recurrence_type: recurrenceType,
         recurrence_interval: isRoutineDraft ? Number(recurrence?.interval || 1) : 1,
@@ -190,6 +185,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
       // Convert datetime-local to ISO strings
       const payload = {
         ...editedData,
+        domain: normalizeTaskDomain(editedData.domain, 'Personal'),
         date_start: editedData.date_start ? new Date(editedData.date_start).toISOString() : null,
         date_end: editedData.date_end ? new Date(editedData.date_end).toISOString() : null,
         estimated_duration_minutes:
@@ -428,7 +424,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DOMAIN_OPTIONS.map(domain => (
+                  {TASK_DOMAIN_OPTIONS.map(domain => (
                     <SelectItem key={domain} value={domain}>{domain}</SelectItem>
                   ))}
                 </SelectContent>
