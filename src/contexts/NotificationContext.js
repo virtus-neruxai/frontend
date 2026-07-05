@@ -24,6 +24,10 @@ function getNotificationKey(notification) {
     if (notification.user_id && payload.occurred_at) return `reflection-followup-fallback:${notification.user_id}:${payload.occurred_at}`;
   }
 
+  if (notification.type === 'NIGHTLY_REVIEW_SUMMARY') {
+    if (payload.review_date) return `nightly-review:${payload.review_date}`;
+  }
+
   if (payload.task_id) return `task:${payload.task_id}:${notification.type}`;
   if (notification.user_id && notification.type && notification.timestamp) {
     return `fallback:${notification.user_id}:${notification.type}:${notification.timestamp}`;

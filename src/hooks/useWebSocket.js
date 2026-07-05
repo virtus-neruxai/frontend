@@ -219,10 +219,12 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
     const isReflectionFollowup = notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
     const isMissionReminder = notification.type === 'MISSION_REMINDER';
+    const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
 
     let title;
     if (isReflectionFollowup) title = '🫶 Seguimiento de reflexión';
     else if (isMissionReminder) title = '🎯 Recordatorio de misión';
+    else if (isNightlyReview) title = '🌙 Resumen nocturno';
     else title = '⏰ Tarea por empezar';
 
     let body = '';
@@ -232,6 +234,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
         `Hace casi 24 horas escribiste una reflexión marcada como ${String(payload.emotion || 'señal emocional').toLowerCase()}.`;
     } else if (isMissionReminder) {
       body = payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`;
+    } else if (isNightlyReview) {
+      body = payload.summary || payload.message || 'Tu resumen nocturno está disponible.';
     } else {
       body = `"${payload.task_title}" empieza en ${payload.minutes_left} minutos`;
       if (payload.task_progress !== undefined) {
@@ -243,6 +247,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       ? `reflection-followup-${payload.reflection_id || notification.id}`
       : isMissionReminder
       ? `mission-${payload.mission_id || notification.id}`
+      : isNightlyReview
+      ? `nightly-review-${payload.review_date || notification.id}`
       : payload.task_id;
 
     const options = {
@@ -265,28 +271,31 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
 
     n.onclick = () => {
       window.focus();
-      if (isReflectionFollowup) window.location.href = '/character';
-      else if (isMissionReminder) window.location.href = '/character';
+      if (isReflectionFollowup || isMissionReminder || isNightlyReview) window.location.href = '/character';
       else window.location.href = '/calendar';
     };
   }
 }
 
-function isSupportedNotificationType(type) {
+export function isSupportedNotificationType(type) {
   return (
     type === 'TASK_DUE_SOON' ||
     type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H' ||
-    type === 'MISSION_REMINDER'
+    type === 'MISSION_REMINDER' ||
+    type === 'NIGHTLY_REVIEW_SUMMARY'
   );
 }
 
-function buildNotificationFromWsData(data) {
+export function buildNotificationFromWsData(data) {
   const isReflectionFollowup = data.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
   const isMissionReminder = data.type === 'MISSION_REMINDER';
+  const isNightlyReview = data.type === 'NIGHTLY_REVIEW_SUMMARY';
   const baseId = isReflectionFollowup
     ? data.reflection_id || data.notification_id
     : isMissionReminder
     ? data.mission_id || data.notification_id
+    : isNightlyReview
+    ? data.review_date || data.notification_id
     : data.task_id;
 
   let payload;
@@ -308,6 +317,16 @@ function buildNotificationFromWsData(data) {
       mission_title: data.mission_title,
       message: data.message || `Recuerda tu misión: ${data.mission_title || ''}`,
       priority: data.priority || 'medium',
+      context: data.context || {},
+    };
+  } else if (isNightlyReview) {
+    payload = {
+      review_date: data.review_date,
+      summary: data.summary || data.message,
+      message: data.message || data.summary,
+      tasks_completed: data.tasks_completed || 0,
+      tasks_failed: data.tasks_failed || 0,
+      priority: data.priority || 'low',
       context: data.context || {},
     };
   } else {

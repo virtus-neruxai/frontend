@@ -258,6 +258,10 @@ export const NotificationPanel = ({ onClose }) => {
                         item.task_title ||
                         item.context?.support_message,
                       occurred_at: item.context?.occurred_at,
+                      review_date: item.context?.review_date,
+                      summary: item.context?.summary,
+                      tasks_completed: item.context?.tasks_completed,
+                      tasks_failed: item.context?.tasks_failed,
                       context: item.context || {},
                     },
                     read: item.status === 'read',
@@ -280,6 +284,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const [showTodayTasks, setShowTodayTasks] = useState(false);
   const isReflectionFollowup = notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
+  const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
 
   // Priority colors
   const getPriorityConfig = (priority) => {
@@ -329,8 +334,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
     if (!read) {
       onMarkAsRead(notification.id);
     }
-    if (isReflectionFollowup) window.location.href = '/character';
-    else if (isMissionReminder) window.location.href = '/character';
+    if (isReflectionFollowup || isMissionReminder || isNightlyReview) window.location.href = '/character';
     else window.location.href = '/calendar';
   };
 
@@ -358,6 +362,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                 ? `Seguimiento de reflexión: ${payload.emotion || 'Emoción'}`
                 : isMissionReminder
                 ? `🎯 ${payload.mission_title || 'Recordatorio de misión'}`
+                : isNightlyReview
+                ? '🌙 Resumen nocturno'
                 : payload.task_title}
             </p>
             {!read && (
@@ -365,7 +371,16 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
             )}
           </div>
 
-          {isReflectionFollowup ? (
+          {isNightlyReview ? (
+            <>
+              <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
+                {payload.summary || payload.message || 'Tu resumen nocturno está disponible.'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {payload.tasks_completed || 0} completadas · {payload.tasks_failed || 0} fallidas
+              </p>
+            </>
+          ) : isReflectionFollowup ? (
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
               {payload.message || 'Recordatorio de seguimiento emocional a las 24 horas.'}
             </p>
