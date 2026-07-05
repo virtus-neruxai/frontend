@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { tasksApi, missionsApi, reflectionsApi } from '../lib/api';
 import { toast } from 'sonner';
 import {
@@ -23,6 +23,9 @@ import { Trash2, CheckCircle2, Target, AlertTriangle, RotateCcw } from 'lucide-r
 import { TASK_STATUS_COLORS } from '../theme/semanticTokens';
 import { PROFILE_THEMES } from '../theme/profileThemes';
 import { getProfileName, getProfileEmoji } from '../lib/profileUtils';
+import EmotionPicker from './EmotionPicker';
+import EmotionBadge from './EmotionBadge';
+import EmotionDiscardAlert from './EmotionDiscardAlert';
 
 const STATUS_OPTIONS = [
   { value: 'todo', label: 'Pendiente', color: TASK_STATUS_COLORS.todo },
@@ -85,6 +88,11 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
   const [linkedMission, setLinkedMission] = useState(null);
   const [missionActionLoading, setMissionActionLoading] = useState(false);
   const [completionReflection, setCompletionReflection] = useState('');
+  const [completionEmotionSnapshot, setCompletionEmotionSnapshot] = useState(null);
+  const [emotionDiscardPrompt, setEmotionDiscardPrompt] = useState(null);
+  const ignoreRepeatedEmotionCloseRef = useRef(false);
+  const completionReflectionRef = useRef(null);
+  const routineCompletionReflectionRef = useRef(null);
   const [reflectionSaveFailed, setReflectionSaveFailed] = useState(false);
   const [routineCompletionAt, setRoutineCompletionAt] = useState('');
   const [showRoutineCompleteDialog, setShowRoutineCompleteDialog] = useState(false);
@@ -189,6 +197,8 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
       }
       setDeleteConfirm(false);
       setCompletionReflection('');
+      setCompletionEmotionSnapshot(null);
+      setEmotionDiscardPrompt(null);
       setReflectionSaveFailed(false);
       setDomainError('');
       setDateError('');
@@ -272,8 +282,49 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const hasEmotionWithoutReflection = !!completionEmotionSnapshot && !completionReflection.trim();
+
+  const requestEmotionDiscardConfirmation = (action, confirmLabel = 'Continuar sin guardar') => {
+    if (!hasEmotionWithoutReflection) {
+      action();
+      return;
+    }
+    setEmotionDiscardPrompt({ action, confirmLabel });
+  };
+
+  const confirmEmotionDiscard = () => {
+    const pendingAction = emotionDiscardPrompt?.action;
+    setCompletionEmotionSnapshot(null);
+    setEmotionDiscardPrompt(null);
+    pendingAction?.();
+  };
+
+  const handleEmotionDiscardOpenChange = (nextOpen) => {
+    if (!nextOpen) setEmotionDiscardPrompt(null);
+  };
+
+  const cancelEmotionDiscard = () => {
+    // Radix can emit a second close request while restoring focus to the
+    // underlying dialog. Ignore requests only until the next event loop.
+    ignoreRepeatedEmotionCloseRef.current = true;
+    setEmotionDiscardPrompt(null);
+    setTimeout(() => {
+      const reflectionInput = showRoutineCompleteDialog
+        ? routineCompletionReflectionRef.current
+        : completionReflectionRef.current;
+      reflectionInput?.focus();
+      setTimeout(() => {
+        ignoreRepeatedEmotionCloseRef.current = false;
+      }, 0);
+    }, 0);
+  };
+
+  const shouldIgnoreRepeatedEmotionClose = () => {
+    return ignoreRepeatedEmotionCloseRef.current;
+  };
+
+  const handleSubmit = async (e, skipEmotionDiscardConfirmation = false) => {
+    e?.preventDefault();
     if (!isEditing && !formData.domain) {
       setDomainError('Selecciona un dominio.');
       return;
@@ -318,6 +369,14 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
       toast.error('No puedes comentar una ocurrencia futura');
       return;
     }
+
+    if (!skipEmotionDiscardConfirmation && hasEmotionWithoutReflection) {
+      requestEmotionDiscardConfirmation(
+        () => handleSubmit(null, true),
+        'Guardar sin emoción',
+      );
+      return;
+    }
     
     setLoading(true);
 
@@ -358,7 +417,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
 
       if (isEditing) {
         await tasksApi.patch(task.id, payload);
-        if (completionReflection.trim()) {
+        if (completionReflection.trim() || completionEmotionSnapshot) {
           const reflectionType = isRoutine
             ? 'routine'
             : (linkedMission || task?.linked_mission_id) ? 'mission' : 'task';
@@ -402,6 +461,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
   const saveCompletionReflection = async (reflectionType, options = {}) => {
     const content = completionReflection.trim();
     if (!content || !task?.id) {
+      setCompletionEmotionSnapshot(null);
       setReflectionSaveFailed(false);
       return true;
     }
@@ -421,6 +481,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
         reflection_type: reflectionType,
         source_item_title: sourceTitle,
         source_prompt: sourcePrompt,
+        ...(completionEmotionSnapshot ? { emotion_snapshot: completionEmotionSnapshot } : {}),
       };
       if (isRoutineReflection) {
         payload.routine_id = task.id;
@@ -435,6 +496,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
         setLinkedItemReflections((prev) => [response.data, ...prev]);
       }
       setCompletionReflection('');
+      setCompletionEmotionSnapshot(null);
       setReflectionSaveFailed(false);
       return true;
     } catch (error) {
@@ -470,8 +532,15 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     setShowRoutineCompleteDialog(true);
   };
 
-  const confirmRoutineCompletion = async () => {
+  const confirmRoutineCompletion = async (skipEmotionDiscardConfirmation = false) => {
     if (!task) return;
+    if (!skipEmotionDiscardConfirmation && hasEmotionWithoutReflection) {
+      requestEmotionDiscardConfirmation(
+        () => confirmRoutineCompletion(true),
+        'Completar sin emoción',
+      );
+      return;
+    }
     setLoading(true);
     try {
       const completionDate = routineCompletionAt ? new Date(routineCompletionAt) : new Date();
@@ -493,9 +562,17 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     }
   };
 
-  const handleMarkDone = async () => {
+  const handleMarkDone = async (skipEmotionDiscardConfirmation = false) => {
     if (task?.task_kind === 'routine') {
       openRoutineCompleteDialog();
+      return;
+    }
+
+    if (!skipEmotionDiscardConfirmation && hasEmotionWithoutReflection) {
+      requestEmotionDiscardConfirmation(
+        () => handleMarkDone(true),
+        'Completar sin emoción',
+      );
       return;
     }
 
@@ -539,8 +616,15 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     }
   };
 
-  const handleCompleteLinkedMission = async () => {
+  const handleCompleteLinkedMission = async (skipEmotionDiscardConfirmation = false) => {
     if (!linkedMission) return;
+    if (!skipEmotionDiscardConfirmation && hasEmotionWithoutReflection) {
+      requestEmotionDiscardConfirmation(
+        () => handleCompleteLinkedMission(true),
+        'Completar sin emoción',
+      );
+      return;
+    }
     setMissionActionLoading(true);
     try {
       await missionsApi.complete(linkedMission.id, { success: true, reflection: null });
@@ -586,8 +670,24 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg z-50 max-h-[90dvh] overflow-y-auto" data-testid="task-modal">
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !shouldIgnoreRepeatedEmotionClose()) {
+          requestEmotionDiscardConfirmation(onClose, 'Salir sin guardar');
+        }
+      }}
+    >
+      <DialogContent
+        className="sm:max-w-lg z-50 max-h-[90dvh] overflow-y-auto"
+        data-testid="task-modal"
+        onInteractOutside={(event) => {
+          if (emotionDiscardPrompt) event.preventDefault();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (emotionDiscardPrompt) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <DialogTitle
@@ -916,12 +1016,18 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                 {isRoutine ? `Comentario o reflexión · ${occurrenceKey}` : 'Comentario o reflexión'}
               </Label>
               <Textarea
+                ref={completionReflectionRef}
                 id="completion-reflection"
                 data-testid="task-completion-reflection-input"
                 value={completionReflection}
                 onChange={(e) => setCompletionReflection(e.target.value)}
                 placeholder="¿Qué observaste, aprendiste o sentiste al hacer esto?"
                 className="min-h-[88px] resize-none"
+                disabled={loading || missionActionLoading || (isRoutine && occurrenceIsFuture)}
+              />
+              <EmotionPicker
+                value={completionEmotionSnapshot}
+                onChange={setCompletionEmotionSnapshot}
                 disabled={loading || missionActionLoading || (isRoutine && occurrenceIsFuture)}
               />
               {isRoutine && occurrenceIsFuture && (
@@ -938,7 +1044,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={retrySaveCompletionReflection}
+                    onClick={() => retrySaveCompletionReflection()}
                     disabled={loading || missionActionLoading || !completionReflection.trim()}
                     className="rounded-full bg-background"
                     data-testid="task-reflection-retry-btn"
@@ -967,13 +1073,16 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                       <span className="text-xs text-muted-foreground">
                         {formatDeadline(reflection.created_at) || 'Sin fecha'}
                       </span>
-                      <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
-                        {reflection.reflection_type === 'mission'
-                          ? 'Misión'
-                          : reflection.reflection_type === 'routine'
-                          ? 'Rutina'
-                          : 'Tarea'}
-                      </Badge>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
+                          {reflection.reflection_type === 'mission'
+                            ? 'Misión'
+                            : reflection.reflection_type === 'routine'
+                            ? 'Rutina'
+                            : 'Tarea'}
+                        </Badge>
+                        <EmotionBadge emotionSnapshot={reflection.emotion_snapshot} />
+                      </div>
                     </div>
                     {reflection.reflection_type === 'routine' && reflection.routine_occurrence_date && (
                       <p className="mb-2 text-xs font-medium text-muted-foreground">
@@ -1000,7 +1109,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleCompleteLinkedMission}
+                    onClick={() => handleCompleteLinkedMission()}
                     disabled={loading || missionActionLoading}
                     className="rounded-full border-[hsl(var(--success))] text-[hsl(var(--success))] hover:bg-[hsl(var(--success-soft))]"
                     data-testid="task-complete-mission-btn"
@@ -1027,7 +1136,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleMarkDone}
+                    onClick={() => handleMarkDone()}
                     disabled={loading || missionActionLoading}
                     className="rounded-full border-[hsl(var(--success))] text-[hsl(var(--success))] hover:bg-[hsl(var(--success-soft))]"
                     data-testid="task-mark-done-btn"
@@ -1053,8 +1162,27 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     </Dialog>
 
     {/* Routine completion: confirm or edit the completion datetime */}
-    <Dialog open={showRoutineCompleteDialog} onOpenChange={setShowRoutineCompleteDialog}>
-      <DialogContent className="sm:max-w-md z-50" data-testid="routine-complete-dialog">
+    <Dialog
+      open={showRoutineCompleteDialog}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !shouldIgnoreRepeatedEmotionClose()) {
+          requestEmotionDiscardConfirmation(
+            () => setShowRoutineCompleteDialog(false),
+            'Salir sin guardar',
+          );
+        }
+      }}
+    >
+      <DialogContent
+        className="sm:max-w-md z-50"
+        data-testid="routine-complete-dialog"
+        onInteractOutside={(event) => {
+          if (emotionDiscardPrompt) event.preventDefault();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (emotionDiscardPrompt) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-[hsl(var(--success))]" />
@@ -1090,12 +1218,18 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
             Comentario o reflexión
           </Label>
           <Textarea
+            ref={routineCompletionReflectionRef}
             id="routine-completion-reflection"
             data-testid="routine-completion-reflection-input"
             value={completionReflection}
             onChange={(e) => setCompletionReflection(e.target.value)}
             placeholder="¿Qué observaste sobre este hábito hoy?"
             className="min-h-[88px] resize-none"
+            disabled={loading || selectedCompletionIsFuture}
+          />
+          <EmotionPicker
+            value={completionEmotionSnapshot}
+            onChange={setCompletionEmotionSnapshot}
             disabled={loading || selectedCompletionIsFuture}
           />
           {selectedRoutineReflections.length > 0 && (
@@ -1119,7 +1253,10 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           <Button
             type="button"
             variant="outline"
-            onClick={() => setShowRoutineCompleteDialog(false)}
+            onClick={() => requestEmotionDiscardConfirmation(
+              () => setShowRoutineCompleteDialog(false),
+              'Salir sin guardar',
+            )}
             disabled={loading}
             className="rounded-full"
           >
@@ -1127,7 +1264,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           </Button>
           <Button
             type="button"
-            onClick={confirmRoutineCompletion}
+            onClick={() => confirmRoutineCompletion()}
             disabled={loading || !routineCompletionAt || selectedCompletionIsFuture || (selectedDateCompleted && !completionReflection.trim())}
             className="bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.9)] rounded-full"
             data-testid="routine-complete-confirm-btn"
@@ -1137,6 +1274,13 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <EmotionDiscardAlert
+      open={!!emotionDiscardPrompt}
+      onOpenChange={handleEmotionDiscardOpenChange}
+      onConfirm={confirmEmotionDiscard}
+      onCancel={cancelEmotionDiscard}
+      confirmLabel={emotionDiscardPrompt?.confirmLabel}
+    />
     </>
   );
 }

@@ -79,6 +79,12 @@ src/
 
 Para añadir o modificar un perfil visual, editar `src/theme/profileThemes.js` y las variables asociadas en `src/index.css`. Los colores semánticos de éxito, error, warning, estados de tarea y gráficos viven en `src/theme/semanticTokens.js`.
 
+## Emociones en reflexiones
+
+El selector compartido `EmotionPicker` se muestra en el Diario y en los flujos de finalización de tareas, misiones y rutinas. La emoción es opcional y se guarda en `emotion_snapshot` únicamente cuando también existe texto de reflexión. Si el usuario intenta cerrar o completar el flujo con una emoción pero sin texto, `EmotionDiscardAlert` exige confirmar que desea continuar sin guardarla. `EmotionBadge` presenta este dato en los historiales con el formato `Emoción · intensidad/5`.
+
+Las reflexiones vinculadas conservan el perfil activo en el momento de escritura, que determina su análisis y estadísticas. El área Diario filtra por ese perfil de forma explícita. Al editar una tarea o misión se muestran todas sus reflexiones vinculadas sin filtrar por perfil; en rutinas se mantiene además el filtro por la fecha de ocurrencia seleccionada.
+
 ## 🔒 Aislamiento por Perfil (Mentor + Misiones + RAG)
 
 Cada perfil (`stoic`, `calm`, `spiritual`, `performance`, `student`) tiene datos completamente aislados: el Mentor solo ve conversaciones e historial del perfil activo, y las misiones generadas solo aparecen en el perfil en que se crearon.
@@ -149,20 +155,20 @@ El filtrado real ocurre en el servidor (`GET /v1/agent/interactions` filtra por 
 
 ### Comparison: Before vs After
 
-| Metric | CharacterPage | ArenaPage | DashboardPage | CalendarPage |
-|--------|---------------|-----------|---------------|--------------|
-| **Original lines** | 1,474 | 805 | 514 | 349 |
-| **Refactored lines** | 312 | 250 | 156 | 93 |
-| **Reduction** | -79% | -69% | -70% | -73% |
-| **Number of files** | 1 → 8 | 1 → 9 | 1 → 7 | 1 → 6 |
-| **Lines per file (avg)** | 1,474 → 95 | 805 → 90 | 514 → 90 | 349 → 75 |
-| **Testability** | ❌ → ✅ | ❌ → ✅ | ❌ → ✅ | ❌ → ✅ |
-| **Mobile portability** | 0% → 60-70% | 0% → 60-70% | 0% → 60-70% | 0% → 60-70% |
+| Metric | CharacterPage | DashboardPage | CalendarPage |
+|--------|---------------|---------------|--------------|
+| **Original lines** | 1,474 | 514 | 349 |
+| **Refactored lines** | 312 | 156 | 93 |
+| **Reduction** | -79% | -70% | -73% |
+| **Number of files** | 1 → 8 | 1 → 7 | 1 → 6 |
+| **Lines per file (avg)** | 1,474 → 95 | 514 → 90 | 349 → 75 |
+| **Testability** | ❌ → ✅ | ❌ → ✅ | ❌ → ✅ |
+| **Mobile portability** | 0% → 60-70% | 0% → 60-70% | 0% → 60-70% |
 
 **Total impact:**
-- **3,920 lines → 991 lines** (-75% reduction)
-- **5 monolithic files → 38 modular files**
-- **Average file size: 784 lines → 95 lines** (-88%)
+- **2,337 lines → 561 lines** (-76% reduction)
+- **3 monolithic files → 21 modular files**
+- **Average file size: 779 lines → 87 lines** (-89%)
 
 ## 📦 Custom Hooks (ViewModels)
 
@@ -426,14 +432,12 @@ Crea un archivo `.env` en `frontend/` con el prefijo `VITE_` (no `REACT_APP_`):
 
 ```bash
 VITE_BACKEND_URL=http://localhost:8001
-VITE_ARENA_BACKEND_URL=http://localhost:8004
 VITE_WS_URL=ws://localhost:8008/ws/notifications
 ```
 
 | Variable | Descripción | Valor local por defecto |
 |----------|-------------|------------------------|
 | `VITE_BACKEND_URL` | URL del backend REST | `http://localhost:8001` |
-| `VITE_ARENA_BACKEND_URL` | URL del agent-service | `http://localhost:8004` |
 | `VITE_WS_URL` | WebSocket del worker-service | `ws://localhost:8008/ws/notifications` |
 
 > En el código se accede como `import.meta.env.VITE_BACKEND_URL` (no `process.env.REACT_APP_*`).
@@ -504,7 +508,6 @@ Ver sección [Variables de entorno](#variables-de-entorno) más arriba. Resumen 
 ```bash
 # .env (frontend/)
 VITE_BACKEND_URL=http://localhost:8001
-VITE_ARENA_BACKEND_URL=http://localhost:8004
 VITE_WS_URL=ws://localhost:8008/ws/notifications
 ```
 

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import TaskModal from '../components/TaskModal';
 import { tasksApi, missionsApi, reflectionsApi } from '../lib/api';
 import { toast } from 'sonner';
@@ -70,7 +71,7 @@ describe('TaskModal reflection failure handling', () => {
     missionsApi.getAll.mockResolvedValue({ data: [] });
   });
 
-  test('keeps the reflection text visible when saving it fails after task completion', async () => {
+  test('keeps the reflection text and emotion when saving fails, then retries both', async () => {
     const onSaved = vi.fn();
 
     render(
@@ -85,6 +86,8 @@ describe('TaskModal reflection failure handling', () => {
 
     const textarea = await screen.findByTestId('task-completion-reflection-input');
     fireEvent.change(textarea, { target: { value: 'Me costó empezar, pero lo terminé.' } });
+    fireEvent.click(screen.getByRole('button', { name: '😔 Difícil' }));
+    fireEvent.click(screen.getByRole('button', { name: '😰 Ansiedad' }));
     fireEvent.click(screen.getByTestId('task-mark-done-btn'));
 
     await waitFor(() => expect(reflectionsApi.create).toHaveBeenCalledTimes(1));
@@ -98,6 +101,104 @@ describe('TaskModal reflection failure handling', () => {
     expect(toast.warning).toHaveBeenCalledWith('Los cambios se guardaron, pero no se pudo guardar la reflexión');
     expect(screen.getByTestId('task-completion-reflection-input')).toHaveValue('Me costó empezar, pero lo terminé.');
     expect(screen.getByTestId('task-reflection-retry-btn')).toBeInTheDocument();
+    expect(reflectionsApi.create).toHaveBeenLastCalledWith(expect.objectContaining({
+      emotion_snapshot: {
+        polarity: 'negative',
+        emotion: 'Ansiedad',
+        intensity: 3,
+        note: null,
+      },
+    }));
+
+    reflectionsApi.create.mockResolvedValue({
+      data: {
+        id: 'task-reflection-1',
+        reflection_type: 'task',
+        task_id: 'task-1',
+        content: 'Me costó empezar, pero lo terminé.',
+      },
+    });
+    fireEvent.click(screen.getByTestId('task-reflection-retry-btn'));
+
+    await waitFor(() => expect(reflectionsApi.create).toHaveBeenCalledTimes(2));
+    expect(reflectionsApi.create).toHaveBeenLastCalledWith(expect.objectContaining({
+      content: 'Me costó empezar, pero lo terminé.',
+      reflection_type: 'task',
+      task_id: 'task-1',
+      emotion_snapshot: {
+        polarity: 'negative',
+        emotion: 'Ansiedad',
+        intensity: 3,
+        note: null,
+      },
+    }));
+    await waitFor(() => expect(screen.getByTestId('task-completion-reflection-input')).toHaveValue(''));
+    expect(screen.queryByRole('button', { name: '😰 Ansiedad' })).not.toBeInTheDocument();
+  });
+
+  test('does not create a reflection when only an emotion is selected', async () => {
+    const onSaved = vi.fn();
+
+    render(
+      <TaskModal
+        open
+        onClose={vi.fn()}
+        task={task}
+        onSaved={onSaved}
+        onDeleted={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('task-completion-reflection-input');
+    fireEvent.click(screen.getByRole('button', { name: '😊 Positiva' }));
+    fireEvent.click(screen.getByRole('button', { name: '😄 Alegría' }));
+    fireEvent.click(screen.getByTestId('task-mark-done-btn'));
+
+    expect(await screen.findByTestId('emotion-discard-alert')).toBeInTheDocument();
+    expect(tasksApi.patch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Completar sin emoción' }));
+
+    await waitFor(() => expect(tasksApi.patch).toHaveBeenCalledTimes(1));
+    expect(reflectionsApi.create).not.toHaveBeenCalled();
+    expect(onSaved).toHaveBeenCalled();
+  });
+
+  test('requires confirmation before closing with an emotion and no reflection', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <TaskModal
+        open
+        onClose={onClose}
+        task={task}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('task-completion-reflection-input');
+    await user.click(screen.getByRole('button', { name: '😔 Difícil' }));
+    await user.click(screen.getByRole('button', { name: '😢 Tristeza' }));
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(await screen.findByText('Emoción sin reflexión')).toBeInTheDocument();
+    expect(screen.getByText(/Para registrar correctamente tu emoción/)).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Seguir escribiendo' }));
+    await waitFor(() => expect(screen.queryByTestId('emotion-discard-alert')).not.toBeInTheDocument());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '😢 Tristeza' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('task-completion-reflection-input')).toHaveFocus());
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByTestId('emotion-discard-alert')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.click(await screen.findByRole('button', { name: 'Salir sin guardar' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   test('deletes a task without asking for a deletion reason', async () => {
@@ -161,10 +262,19 @@ describe('TaskModal reflection failure handling', () => {
       />
     );
 
+    await waitFor(() => expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+      reflection_type: 'routine',
+      routine_id: 'routine-1',
+      routine_occurrence_date: '2026-06-26',
+    }));
     fireEvent.click(await screen.findByTestId('task-mark-done-btn'));
     fireEvent.change(await screen.findByTestId('routine-completion-reflection-input'), {
       target: { value: 'Hoy fui constante.' },
     });
+    const routineDialog = screen.getByTestId('routine-complete-dialog');
+    fireEvent.click(within(routineDialog).getByRole('button', { name: '😊 Positiva' }));
+    fireEvent.click(within(routineDialog).getByRole('button', { name: '🙏 Gratitud' }));
+    fireEvent.change(within(routineDialog).getByRole('slider'), { target: { value: '5' } });
     fireEvent.click(screen.getByTestId('routine-complete-confirm-btn'));
 
     await waitFor(() => expect(tasksApi.markRoutineToday).toHaveBeenCalledTimes(1));
@@ -178,6 +288,12 @@ describe('TaskModal reflection failure handling', () => {
       routine_occurrence_date: '2026-06-26',
       source_item_title: 'Leer',
       source_prompt: 'Leer 10 minutos',
+      emotion_snapshot: {
+        polarity: 'positive',
+        emotion: 'Gratitud',
+        intensity: 5,
+        note: null,
+      },
     }));
     expect(reflectionsApi.create.mock.calls[0][0]).not.toHaveProperty('task_id');
     expect(onSaved).toHaveBeenCalled();
@@ -290,6 +406,7 @@ describe('TaskModal reflection failure handling', () => {
       routine_id: 'routine-1',
       routine_occurrence_date: '2026-06-26',
     })));
+    expect(reflectionsApi.create.mock.calls[0][0]).not.toHaveProperty('emotion_snapshot');
     expect(tasksApi.markRoutineToday).not.toHaveBeenCalled();
   });
 
@@ -321,7 +438,102 @@ describe('TaskModal reflection failure handling', () => {
     );
 
     expect(await screen.findByTestId('task-completion-reflection-input')).toBeDisabled();
+    expect(screen.getByRole('button', { name: '😊 Positiva' })).toBeDisabled();
     expect(screen.getByTestId('routine-future-reflection-help')).toBeInTheDocument();
     expect(screen.queryByTestId('task-mark-done-btn')).not.toBeInTheDocument();
+  });
+
+  test('saves emotion and linked ids for a linked mission reflection', async () => {
+    const linkedTask = {
+      ...task,
+      linked_mission_id: 'mission-1',
+    };
+    missionsApi.getAll.mockResolvedValue({
+      data: [{
+        id: 'mission-1',
+        title: 'Cerrar la semana',
+        description: 'Finalizar el informe',
+        status: 'active',
+      }],
+    });
+    missionsApi.complete.mockResolvedValue({ data: {} });
+    reflectionsApi.create.mockResolvedValue({
+      data: {
+        id: 'mission-reflection-1',
+        reflection_type: 'mission',
+        mission_id: 'mission-1',
+        task_id: 'task-1',
+        content: 'Me siento satisfecho con el cierre.',
+      },
+    });
+
+    render(
+      <TaskModal
+        open
+        onClose={vi.fn()}
+        task={linkedTask}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    );
+
+    fireEvent.change(await screen.findByTestId('task-completion-reflection-input'), {
+      target: { value: 'Me siento satisfecho con el cierre.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '😐 Neutra' }));
+    fireEvent.click(screen.getByRole('button', { name: '🧠 Concentración' }));
+    fireEvent.click(screen.getByTestId('task-complete-mission-btn'));
+
+    await waitFor(() => expect(reflectionsApi.create).toHaveBeenCalledWith(expect.objectContaining({
+      content: 'Me siento satisfecho con el cierre.',
+      reflection_type: 'mission',
+      task_id: 'task-1',
+      mission_id: 'mission-1',
+      emotion_snapshot: {
+        polarity: 'neutral',
+        emotion: 'Concentración',
+        intensity: 3,
+        note: null,
+      },
+    })));
+  });
+
+  test('shows the emotion badge for a stored item reflection', async () => {
+    const calmTask = {
+      ...task,
+      prompt_profile: 'calm',
+    };
+    reflectionsApi.getAll.mockResolvedValue({
+      data: [{
+        id: 'task-reflection-1',
+        reflection_type: 'task',
+        task_id: 'task-1',
+        prompt_profile: 'spiritual',
+        content: 'Fue un cierre difícil.',
+        created_at: '2026-06-26T08:00:00+00:00',
+        emotion_snapshot: {
+          polarity: 'negative',
+          emotion: 'Tristeza',
+          intensity: 5,
+          note: null,
+        },
+      }],
+    });
+
+    render(
+      <TaskModal
+        open
+        onClose={vi.fn()}
+        task={calmTask}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText('Tristeza · 5/5')).toBeInTheDocument();
+    expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+      reflection_type: 'task',
+      task_id: 'task-1',
+    });
   });
 });

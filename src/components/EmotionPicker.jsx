@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const CATALOG = {
   positive: [
@@ -54,10 +54,15 @@ const POLARITY_STYLES = {
   },
 };
 
-export default function EmotionPicker({ value, onChange }) {
+export default function EmotionPicker({ value, onChange, disabled = false }) {
   const [activePolarity, setActivePolarity] = useState(value?.polarity || null);
 
+  useEffect(() => {
+    setActivePolarity(value?.polarity || null);
+  }, [value?.polarity]);
+
   const handleTogglePolarity = (polarity) => {
+    if (disabled) return;
     if (activePolarity === polarity) {
       setActivePolarity(null);
       if (value?.polarity === polarity) onChange(null);
@@ -67,6 +72,7 @@ export default function EmotionPicker({ value, onChange }) {
   };
 
   const handlePickEmotion = (polarity, label) => {
+    if (disabled) return;
     if (value?.emotion === label && value?.polarity === polarity) {
       onChange(null);
     } else {
@@ -75,7 +81,7 @@ export default function EmotionPicker({ value, onChange }) {
   };
 
   const handleIntensity = (e) => {
-    if (!value) return;
+    if (!value || disabled) return;
     onChange({ ...value, intensity: parseInt(e.target.value, 10) });
   };
 
@@ -93,9 +99,10 @@ export default function EmotionPicker({ value, onChange }) {
               <button
                 type="button"
                 onClick={() => handleTogglePolarity(polarity)}
+                disabled={disabled}
                 className={`w-full text-xs px-2 py-1.5 rounded border transition-colors ${
                   isOpen ? styles.tabActive : styles.tab
-                }`}
+                } disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {POLARITY_LABELS[polarity]}
               </button>
@@ -106,11 +113,12 @@ export default function EmotionPicker({ value, onChange }) {
                       key={label}
                       type="button"
                       onClick={() => handlePickEmotion(polarity, label)}
+                      disabled={disabled}
                       className={`text-xs px-2 py-1 rounded border transition-colors ${
                         value?.emotion === label && value?.polarity === polarity
                           ? styles.chipActive
                           : styles.chip
-                      }`}
+                      } disabled:cursor-not-allowed disabled:opacity-50`}
                     >
                       {emoji} {label}
                     </button>
@@ -130,13 +138,15 @@ export default function EmotionPicker({ value, onChange }) {
             max={5}
             value={value.intensity}
             onChange={handleIntensity}
-            className="flex-1 h-1 accent-[hsl(var(--primary))] cursor-pointer"
+            disabled={disabled}
+            className="flex-1 h-1 accent-[hsl(var(--primary))] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           />
           <span className="text-xs font-bold text-primary w-6 text-right">{value.intensity}/5</span>
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="text-xs text-muted-foreground hover:text-foreground"
+            disabled={disabled}
+            className="text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
             ✕
           </button>

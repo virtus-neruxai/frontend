@@ -5,6 +5,8 @@ import Layout from '../components/Layout';
 import TaskDraftModal from '../components/TaskDraftModal';
 import MissionDraftModal from '../components/MissionDraftModal';
 import EmotionPicker from '../components/EmotionPicker';
+import EmotionBadge from '../components/EmotionBadge';
+import EmotionDiscardAlert from '../components/EmotionDiscardAlert';
 import { CharacterStats } from '../presentation/components/character/CharacterStats';
 import { LevelStaircase } from '../presentation/components/character/LevelStaircase';
 import { MissionsList } from '../presentation/components/character/MissionsList';
@@ -111,7 +113,7 @@ export default function CharacterPageRefactored() {
     setShowMissionDraftModal,
   } = useDrafts();
 
-  const { theme } = useProfileTheme();
+  const { theme, persistedProfileId } = useProfileTheme();
   const profileName = theme.name;
 
   // Local state for reflections and mission completion
@@ -120,6 +122,11 @@ export default function CharacterPageRefactored() {
   const [selectedMission, setSelectedMission] = useState(null);
   const [reflectionText, setReflectionText] = useState('');
   const [missionReflectionText, setMissionReflectionText] = useState('');
+  const [missionEmotionSnapshot, setMissionEmotionSnapshot] = useState(null);
+  const [missionEmotionDiscardPrompt, setMissionEmotionDiscardPrompt] = useState(null);
+  const ignoreRepeatedMissionEmotionCloseRef = useRef(false);
+  const missionReflectionRef = useRef(null);
+  const [isCompletingMission, setIsCompletingMission] = useState(false);
   const [selectedDate, setSelectedDate] = useState(''); // For reflection filter
   const [reflectionHistoryMode, setReflectionHistoryMode] = useState('journal');
   const [aiResponse, setAiResponse] = useState(null); // AI mentor response
@@ -184,42 +191,42 @@ export default function CharacterPageRefactored() {
       
       const reflectionDateParams = selectedDate ? { date: selectedDate } : {};
       const [journalReflectionsRes, tasksRes] = await Promise.all([
-        reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'journal' }),
+        reflectionsApi.getAll({
+          ...reflectionDateParams,
+          reflection_type: 'journal',
+          prompt_profile: persistedProfileId,
+        }),
         tasksApi.getAll()
       ]);
 
-      const filterByActiveProfile = (items, activeStatsInfo) => {
-        const activeStatKeys = Object.keys(activeStatsInfo || {});
-        if (activeStatKeys.length === 0) return items;
-        return items.filter((r) => {
-          const changes = r.stat_changes || {};
-          return Object.keys(changes).length === 0 || Object.keys(changes).some((k) => activeStatKeys.includes(k));
-        });
-      };
-
-      let displayReflections = filterByActiveProfile(
-        [...(journalReflectionsRes.data || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        activeStatsInfo
-      );
+      let displayReflections = [...(journalReflectionsRes.data || [])]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       if (reflectionHistoryMode === 'linked') {
         const [taskReflectionsRes, missionReflectionsRes] = await Promise.all([
-          reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'task' }),
-          reflectionsApi.getAll({ ...reflectionDateParams, reflection_type: 'mission' }),
+          reflectionsApi.getAll({
+            ...reflectionDateParams,
+            reflection_type: 'task',
+            prompt_profile: persistedProfileId,
+          }),
+          reflectionsApi.getAll({
+            ...reflectionDateParams,
+            reflection_type: 'mission',
+            prompt_profile: persistedProfileId,
+          }),
         ]);
-        const merged = [
+        displayReflections = [
           ...(taskReflectionsRes.data || []),
           ...(missionReflectionsRes.data || []),
         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        displayReflections = filterByActiveProfile(merged, activeStatsInfo);
       } else if (reflectionHistoryMode === 'routine') {
         const routineDateParams = selectedDate ? { routine_occurrence_date: selectedDate } : {};
         const routineReflectionsRes = await reflectionsApi.getAll({
           ...routineDateParams,
           reflection_type: 'routine',
+          prompt_profile: persistedProfileId,
         });
-        const sorted = (routineReflectionsRes.data || [])
+        displayReflections = (routineReflectionsRes.data || [])
           .sort((a, b) => String(b.routine_occurrence_date || b.created_at).localeCompare(String(a.routine_occurrence_date || a.created_at)));
-        displayReflections = filterByActiveProfile(sorted, activeStatsInfo);
       }
 
       setReflections(displayReflections);
@@ -253,24 +260,69 @@ export default function CharacterPageRefactored() {
     statsToDate,
     missionFromDate,
     missionToDate,
+    persistedProfileId,
   ]);
 
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
 
+  const hasMissionEmotionWithoutReflection = !!missionEmotionSnapshot && !missionReflectionText.trim();
+
+  const requestMissionEmotionDiscardConfirmation = (action, confirmLabel = 'Continuar sin guardar') => {
+    if (!hasMissionEmotionWithoutReflection) {
+      action();
+      return;
+    }
+    setMissionEmotionDiscardPrompt({ action, confirmLabel });
+  };
+
+  const confirmMissionEmotionDiscard = () => {
+    const pendingAction = missionEmotionDiscardPrompt?.action;
+    setMissionEmotionSnapshot(null);
+    setMissionEmotionDiscardPrompt(null);
+    pendingAction?.();
+  };
+
+  const cancelMissionEmotionDiscard = () => {
+    ignoreRepeatedMissionEmotionCloseRef.current = true;
+    setMissionEmotionDiscardPrompt(null);
+    setTimeout(() => {
+      missionReflectionRef.current?.focus();
+      setTimeout(() => {
+        ignoreRepeatedMissionEmotionCloseRef.current = false;
+      }, 0);
+    }, 0);
+  };
+
+  const shouldIgnoreRepeatedMissionEmotionClose = () => {
+    return ignoreRepeatedMissionEmotionCloseRef.current;
+  };
+
   // Mission completion handler
-  const handleCompleteMission = async (success, reason = null) => {
+  const handleCompleteMission = async (success, reason = null, skipEmotionDiscardConfirmation = false) => {
     if (!selectedMission) return;
-    
+
+    if (!skipEmotionDiscardConfirmation && hasMissionEmotionWithoutReflection) {
+      requestMissionEmotionDiscardConfirmation(
+        () => handleCompleteMission(success, reason, true),
+        success ? 'Completar sin emoción' : 'Marcar fallida sin emoción',
+      );
+      return;
+    }
+
+    setIsCompletingMission(true);
     try {
       const missionSnapshot = selectedMission;
       const response = await completeMission(
         missionSnapshot.id,
         success,
-        missionReflectionText || null,
-        reason,
-        missionSnapshot
+        {
+          reflection: missionReflectionText || null,
+          emotionSnapshot: missionEmotionSnapshot,
+          reason,
+          missionContext: missionSnapshot,
+        },
       );
       
       if (response.new_stats) {
@@ -279,10 +331,13 @@ export default function CharacterPageRefactored() {
       
       setSelectedMission(null);
       setMissionReflectionText('');
+      setMissionEmotionSnapshot(null);
 
       await fetchAllData();
     } catch (error) {
       console.error('Error completing mission:', error);
+    } finally {
+      setIsCompletingMission(false);
     }
   };
 
@@ -559,6 +614,7 @@ export default function CharacterPageRefactored() {
                   onNightlyReview={performNightlyReview}
                   onSelectMission={(mission) => {
                     setMissionReflectionText('');
+                    setMissionEmotionSnapshot(null);
                     setSelectedMission(mission);
                   }}
                   onScheduleMission={openScheduleModal}
@@ -815,9 +871,12 @@ export default function CharacterPageRefactored() {
                                     <span className="text-xs font-medium text-muted-foreground">
                                       Día de rutina: {formatRoutineOccurrenceDate(reflection.routine_occurrence_date)}
                                     </span>
-                                    <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
-                                      Rutina
-                                    </Badge>
+                                    <div className="flex flex-wrap justify-end gap-2">
+                                      <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
+                                        Rutina
+                                      </Badge>
+                                      <EmotionBadge emotionSnapshot={reflection.emotion_snapshot} />
+                                    </div>
                                   </div>
                                   <p className="text-xs text-muted-foreground mb-2">
                                     Escrita: {new Date(reflection.created_at).toLocaleDateString('es-ES', {
@@ -888,20 +947,7 @@ export default function CharacterPageRefactored() {
                                   {getReflectionTypeLabel(reflection.reflection_type)}
                                 </Badge>
                               )}
-                              {reflection.emotion_snapshot && (
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    reflection.emotion_snapshot.polarity === 'positive'
-                                      ? 'bg-[hsl(var(--success-soft))] border-[hsl(var(--success))] text-[hsl(var(--success))]'
-                                      : reflection.emotion_snapshot.polarity === 'negative'
-                                      ? 'bg-[hsl(var(--destructive-soft))] border-destructive text-destructive'
-                                      : 'bg-[hsl(var(--info-soft))] border-[hsl(var(--info))] text-[hsl(var(--info))]'
-                                  }`}
-                                >
-                                  {reflection.emotion_snapshot.emotion} · {reflection.emotion_snapshot.intensity}/5
-                                </Badge>
-                              )}
+                              <EmotionBadge emotionSnapshot={reflection.emotion_snapshot} />
                             </div>
                           </div>
 
@@ -977,13 +1023,23 @@ export default function CharacterPageRefactored() {
         <Dialog
           open={!!selectedMission}
           onOpenChange={(open) => {
-            if (!open) {
-              setSelectedMission(null);
-              setMissionReflectionText('');
+            if (!open && !shouldIgnoreRepeatedMissionEmotionClose()) {
+              requestMissionEmotionDiscardConfirmation(() => {
+                setSelectedMission(null);
+                setMissionReflectionText('');
+                setMissionEmotionSnapshot(null);
+              }, 'Salir sin guardar');
             }
           }}
         >
-          <DialogContent>
+          <DialogContent
+            onInteractOutside={(event) => {
+              if (missionEmotionDiscardPrompt) event.preventDefault();
+            }}
+            onEscapeKeyDown={(event) => {
+              if (missionEmotionDiscardPrompt) event.preventDefault();
+            }}
+          >
             <DialogHeader>
               <DialogTitle>Completar Misión</DialogTitle>
             </DialogHeader>
@@ -993,15 +1049,23 @@ export default function CharacterPageRefactored() {
                 Comentario o reflexión
               </label>
               <Textarea
+                ref={missionReflectionRef}
                 placeholder="¿Qué observaste, aprendiste o sentiste al hacer esto?"
                 value={missionReflectionText}
                 onChange={(e) => setMissionReflectionText(e.target.value)}
+                disabled={isCompletingMission}
+              />
+              <EmotionPicker
+                value={missionEmotionSnapshot}
+                onChange={setMissionEmotionSnapshot}
+                disabled={isCompletingMission}
               />
             </div>
             <DialogFooter className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={() => handleCompleteMission(false)}
+                disabled={isCompletingMission}
                 className="flex-1"
               >
                 <XCircle className="w-4 h-4 mr-2" />
@@ -1009,6 +1073,7 @@ export default function CharacterPageRefactored() {
               </Button>
               <Button
                 onClick={() => handleCompleteMission(true)}
+                disabled={isCompletingMission}
                 className="flex-1 bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success)/0.9)]"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -1017,6 +1082,16 @@ export default function CharacterPageRefactored() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <EmotionDiscardAlert
+          open={!!missionEmotionDiscardPrompt}
+          onOpenChange={(open) => {
+            if (!open) setMissionEmotionDiscardPrompt(null);
+          }}
+          onConfirm={confirmMissionEmotionDiscard}
+          onCancel={cancelMissionEmotionDiscard}
+          confirmLabel={missionEmotionDiscardPrompt?.confirmLabel}
+        />
 
         {/* Schedule Mission Dialog */}
         <Dialog open={showScheduleModal} onOpenChange={setShowScheduleModal}>

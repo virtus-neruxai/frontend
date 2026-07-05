@@ -229,19 +229,25 @@ export const useMissions = () => {
    * Completes a mission with success or failure
    * @param {string} missionId - Mission ID
    * @param {boolean} success - Whether mission was successful
-   * @param {string} reflection - Optional reflection text
-   * @param {string} reason - Optional reason for failure
+   * @param {Object} options - Optional reflection and mission context
+   * @param {string|null} options.reflection - Optional reflection text
+   * @param {Object|null} options.emotionSnapshot - Optional structured emotion
+   * @param {string|null} options.reason - Optional reason for failure
+   * @param {Object} options.missionContext - Mission metadata for the reflection
    * @returns {Object} Updated character stats
    */
   const completeMission = useCallback(async (
     missionId,
     success,
-    reflection = null,
-    reason = null,
-    missionContext = {}
+    {
+      reflection = null,
+      emotionSnapshot = null,
+      reason = null,
+      missionContext = {},
+    } = {},
   ) => {
     try {
-      const response = await missionsApi.complete(missionId, { success });
+      const response = await missionsApi.complete(missionId, { success, reason });
       const reflectionContent = typeof reflection === 'string' ? reflection.trim() : '';
       if (reflectionContent) {
         try {
@@ -252,6 +258,7 @@ export const useMissions = () => {
             task_id: missionContext.linked_task_id || null,
             source_item_title: missionContext.title || null,
             source_prompt: missionContext.description || null,
+            ...(emotionSnapshot ? { emotion_snapshot: emotionSnapshot } : {}),
           });
         } catch (reflectionError) {
           toast.warning('La misión se registró, pero no se pudo guardar la reflexión');
