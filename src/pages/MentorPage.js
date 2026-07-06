@@ -9,6 +9,8 @@ import MissionDraftModal from '../components/MissionDraftModal';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Label } from '../components/ui/label';
+import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Textarea } from '../components/ui/textarea';
 import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
@@ -38,6 +40,8 @@ export default function MentorPage() {
     chatResponse,
     chatLoading,
     sessionId,
+    deepReasoning,
+    setDeepReasoning,
     sendMessage,
     setChatMessage,
     startNewConversation,
@@ -242,13 +246,30 @@ export default function MentorPage() {
                     className="min-h-[80px]"
                   />
                 </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="deep-reasoning-toggle">Razonar</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Responde con análisis profundo. No ejecuta acciones automáticamente.
+                    </p>
+                  </div>
+                  <Switch
+                    id="deep-reasoning-toggle"
+                    checked={deepReasoning}
+                    onCheckedChange={setDeepReasoning}
+                    disabled={chatLoading}
+                    data-testid="deep-reasoning-toggle"
+                  />
+                </div>
+
                 <Button
                   onClick={handleChat}
                   disabled={!chatMessage.trim() || chatLoading}
                   className="rounded-full w-full"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  {chatLoading ? 'Pensando...' : 'Enviar'}
+                  {chatLoading ? (deepReasoning ? 'Razonando en profundidad…' : 'Pensando...') : 'Enviar'}
                 </Button>
 
                 {pendingDraft && (

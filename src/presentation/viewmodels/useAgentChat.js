@@ -24,6 +24,7 @@ export const useAgentChat = (profileId = 'default') => {
   const [chatResponse, setChatResponse] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [deepReasoning, setDeepReasoning] = useState(false);
 
   // Re-initialize whenever the profile changes: restore that profile's last
   // session or create a fresh one.
@@ -74,7 +75,7 @@ export const useAgentChat = (profileId = 'default') => {
 
     setChatLoading(true);
     try {
-      const response = await agentApi.chat(message, sessionId);
+      const response = await agentApi.chat(message, sessionId, deepReasoning);
       setChatResponse(response.data.response);
       setChatMessage('');
 
@@ -101,7 +102,7 @@ export const useAgentChat = (profileId = 'default') => {
     } finally {
       setChatLoading(false);
     }
-  }, [sessionId]);
+  }, [sessionId, deepReasoning]);
 
   const clearResponse = useCallback(() => {
     setChatResponse('');
@@ -112,6 +113,8 @@ export const useAgentChat = (profileId = 'default') => {
     chatResponse,
     chatLoading,
     sessionId,
+    deepReasoning,
+    setDeepReasoning,
     sendMessage,
     setChatMessage,
     setChatResponse,

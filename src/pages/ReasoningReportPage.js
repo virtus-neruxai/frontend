@@ -66,6 +66,10 @@ export default function ReasoningReportPage() {
 
   const reportJson = report?.report_json || null;
   const reportId = report?.report_id || null;
+  // Prospective only: documents saved before schema_version existed have no
+  // such field anywhere (report, reportJson) — those are implicitly V1.
+  const schemaVersion = report?.schema_version || reportJson?.schema_version || '1';
+  const isV2 = schemaVersion === '2';
 
   const generate = useCallback(async () => {
     setGenerating(true);
@@ -197,7 +201,77 @@ export default function ReasoningReportPage() {
           <Card><CardContent className="whitespace-pre-wrap pt-6 text-sm">{report.report_markdown}</CardContent></Card>
         )}
 
-        {reportJson && (
+        {reportJson && isV2 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Tu informe</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {reportJson.main_reading && <p className="text-sm">{reportJson.main_reading}</p>}
+
+              {reportJson.evidence?.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">Evidencias</h3>
+                  <ul className="space-y-1">
+                    {reportJson.evidence.map((ev, i) => (
+                      <li key={i} className="text-sm">
+                        {ev.claim}
+                        {ev.dates?.length > 0 && (
+                          <span className="text-muted-foreground"> ({ev.dates.join(', ')})</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {reportJson.interpretation && (
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold">Interpretación</h3>
+                  <p className="text-sm text-muted-foreground">{reportJson.interpretation}</p>
+                </div>
+              )}
+
+              {reportJson.operational_risk && (
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold">Riesgo operativo</h3>
+                  <p className="text-sm text-muted-foreground">{reportJson.operational_risk}</p>
+                </div>
+              )}
+
+              {reportJson.priority && (
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold">Prioridad</h3>
+                  <p className="text-sm">{reportJson.priority}</p>
+                </div>
+              )}
+
+              {reportJson.action_today?.instruction && (
+                <div className="flex items-start justify-between gap-3 rounded-md border p-2">
+                  <div className="text-sm">
+                    <p className="font-medium">{reportJson.action_today.instruction}</p>
+                    {reportJson.action_today.rationale && (
+                      <p className="text-muted-foreground">{reportJson.action_today.rationale}</p>
+                    )}
+                  </div>
+                  {reportJson.action_today.suggested_task && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => convertToTask({
+                        title: reportJson.action_today.instruction,
+                        rationale: reportJson.action_today.rationale,
+                        suggested_task: reportJson.action_today.suggested_task,
+                      })}
+                    >
+                      <PlusCircle className="mr-1 h-4 w-4" /> Convertir en tarea
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {reportJson && !isV2 && (
           <Card>
             <CardHeader><CardTitle className="text-base">Tu informe</CardTitle></CardHeader>
             <CardContent className="space-y-4">
