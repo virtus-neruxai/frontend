@@ -89,6 +89,8 @@ Las reflexiones vinculadas conservan el perfil activo en el momento de escritura
 
 `SettingsPage` permite activar o desactivar `mentor_notifications_enabled`. La preferencia controla únicamente notificaciones automáticas cuyo contenido genera el Mentor mediante IA, actualmente `NIGHTLY_REVIEW_SUMMARY` y `REFLECTION_NEGATIVE_FOLLOWUP_24H`. Los avisos operativos de tareas y misiones siguen dependiendo de la configuración general de notificaciones.
 
+Las notificaciones `NIGHTLY_REVIEW_SUMMARY` pueden incluir `proposed_missions`. En ese caso el panel y el toast guardan temporalmente el payload, navegan a `/character?nightly_review=1` y `CharacterPage` hidrata el mismo estado que usa el botón de NightlyReview para mostrar el informe y abrir el modal de confirmación de misión existente.
+
 ## 🔒 Aislamiento por Perfil (Mentor + Misiones + RAG)
 
 Cada perfil (`stoic`, `calm`, `spiritual`, `performance`, `student`) tiene datos completamente aislados: el Mentor solo ve conversaciones e historial del perfil activo, y las misiones generadas solo aparecen en el perfil en que se crearon.

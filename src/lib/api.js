@@ -101,6 +101,7 @@ export const reflectionsApi = {
 export const notificationsApi = {
   getHistory: (params = {}) => api.get('/notifications/history', { params }),
   markRead: (data) => api.post('/notifications/read', data),
+  markNightlyReviewProposalStatus: (data) => api.post('/notifications/nightly-review/proposal-status', data),
   getAnalytics: (days = 7) => api.get('/notifications/analytics', { params: { days } }),
   getSettings: () => api.get('/notifications/settings'),
   saveSettings: (data) => api.post('/notifications/settings', data),

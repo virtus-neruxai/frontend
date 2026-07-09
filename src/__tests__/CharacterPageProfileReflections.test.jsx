@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import CharacterPage from '../pages/CharacterPage';
 import { reflectionsApi } from '../lib/api';
 
@@ -11,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   fetchCompletedMissions: vi.fn().mockResolvedValue([]),
   fetchMissionEvolution: vi.fn().mockResolvedValue([]),
   calculateReflectionKPIs: vi.fn(),
+  openDraftModal: vi.fn(),
+  hydrateNightlyReviewResult: vi.fn(),
 }));
 
 vi.mock('sonner', () => ({
@@ -29,6 +32,7 @@ vi.mock('../lib/api', () => ({
   tasksApi: {
     getAll: vi.fn().mockResolvedValue({ data: [] }),
   },
+  agentApi: {},
 }));
 
 vi.mock('../theme/useProfileTheme', () => ({
@@ -72,6 +76,7 @@ vi.mock('../presentation/viewmodels/useMissions', () => ({
     fetchCompletedMissions: mocks.fetchCompletedMissions,
     generateMissions: vi.fn(),
     performNightlyReview: vi.fn(),
+    hydrateNightlyReviewResult: mocks.hydrateNightlyReviewResult,
     confirmMissions: vi.fn(),
     rejectProposedMission: vi.fn(),
     completeMission: vi.fn(),
@@ -90,7 +95,7 @@ vi.mock('../presentation/viewmodels/useDrafts', () => ({
     showTaskDraftModal: false,
     showMissionDraftModal: false,
     currentDraftData: null,
-    openDraftModal: vi.fn(),
+    openDraftModal: mocks.openDraftModal,
     confirmTaskDraft: vi.fn(),
     rejectTaskDraft: vi.fn(),
     confirmMissionDraft: vi.fn(),
@@ -113,15 +118,23 @@ vi.mock('../presentation/components/character/FinishedList', () => ({ FinishedLi
 vi.mock('../presentation/components/profile-theme/ProfileEmptyState', () => ({ ProfileEmptyState: () => null }));
 vi.mock('../presentation/components/profile-theme/ProfileHeroCard', () => ({ ProfileHeroCard: () => null }));
 
+const renderCharacterPage = (initialEntries = ['/character']) =>
+  render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <CharacterPage />
+    </MemoryRouter>
+  );
+
 describe('CharacterPage reflection profile filtering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     reflectionsApi.getAll.mockResolvedValue({ data: [] });
   });
 
   test('queries every Diary history mode using the persisted active profile', async () => {
     const user = userEvent.setup();
-    render(<CharacterPage />);
+    renderCharacterPage();
 
     await waitFor(() => expect(reflectionsApi.getAll).toHaveBeenCalledWith({
       reflection_type: 'journal',
@@ -147,5 +160,35 @@ describe('CharacterPage reflection profile filtering', () => {
       reflection_type: 'routine',
       prompt_profile: 'spiritual',
     }));
+  });
+
+  test('hydrates a linked scheduled NightlyReview from the query string', async () => {
+    sessionStorage.setItem(
+      'nightly_review_notification_payload',
+      JSON.stringify({
+        review_date: '2026-07-05',
+        summary: 'Cerraste dos tareas y detectaste un patrón importante.',
+        tasks_completed: 2,
+        tasks_failed: 1,
+        proposed_missions: [
+          { title: 'Misión nocturna', description: 'Revisar el patrón importante.' },
+        ],
+      })
+    );
+
+    renderCharacterPage(['/character?nightly_review=1&review_date=2026-07-05']);
+
+    await waitFor(() => {
+      expect(mocks.hydrateNightlyReviewResult).toHaveBeenCalledWith({
+        review_date: '2026-07-05',
+        review_text: 'Cerraste dos tareas y detectaste un patrón importante.',
+        summary: 'Cerraste dos tareas y detectaste un patrón importante.',
+        tasks_completed: 2,
+        tasks_failed: 1,
+        proposed_missions: [
+          { title: 'Misión nocturna', description: 'Revisar el patrón importante.' },
+        ],
+      });
+    });
   });
 });

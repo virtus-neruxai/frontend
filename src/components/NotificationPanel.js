@@ -4,6 +4,12 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { notificationsApi } from '../lib/api';
+import {
+  buildNightlyReviewHref,
+  getNightlyReviewProposalStatus,
+  getNightlyReviewProposalStatusLabel,
+  storeNightlyReviewPayload,
+} from '../lib/nightlyReviewNotification';
 
 
 function getTaskNotificationBody(payload) {
@@ -262,6 +268,8 @@ export const NotificationPanel = ({ onClose }) => {
                       summary: item.context?.summary,
                       tasks_completed: item.context?.tasks_completed,
                       tasks_failed: item.context?.tasks_failed,
+                      proposed_missions: item.context?.proposed_missions || [],
+                      proposal_status: item.context?.proposal_status,
                       context: item.context || {},
                     },
                     read: item.status === 'read',
@@ -285,6 +293,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const isReflectionFollowup = notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
+  const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
+  const nightlyReviewProposalStatusLabel = getNightlyReviewProposalStatusLabel(nightlyReviewProposalStatus);
 
   // Priority colors
   const getPriorityConfig = (priority) => {
@@ -330,11 +340,35 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const config = getPriorityConfig(payload.priority);
   const Icon = config.icon;
 
+  const openNightlyReview = async () => {
+    if (nightlyReviewProposalStatus) {
+      if (onRemove) {
+        await onRemove(notification);
+      } else if (!read) {
+        await onMarkAsRead(notification.id);
+      }
+      window.location.href = '/character';
+      return;
+    }
+
+    storeNightlyReviewPayload(payload);
+    if (onRemove) {
+      await onRemove(notification);
+    } else if (!read) {
+      await onMarkAsRead(notification.id);
+    }
+    window.location.href = buildNightlyReviewHref(payload);
+  };
+
   const handleClick = () => {
+    if (isNightlyReview) {
+      openNightlyReview();
+      return;
+    }
     if (!read) {
       onMarkAsRead(notification.id);
     }
-    if (isReflectionFollowup || isMissionReminder || isNightlyReview) window.location.href = '/character';
+    if (isReflectionFollowup || isMissionReminder) window.location.href = '/character';
     else window.location.href = '/calendar';
   };
 
@@ -379,6 +413,23 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
               <p className="text-xs text-muted-foreground mt-1">
                 {payload.tasks_completed || 0} completadas · {payload.tasks_failed || 0} fallidas
               </p>
+              {nightlyReviewProposalStatusLabel ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {nightlyReviewProposalStatusLabel}
+                </p>
+              ) : (payload.proposed_missions || []).length > 0 && (
+                <a
+                  href={buildNightlyReviewHref(payload)}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await openNightlyReview();
+                  }}
+                  className="text-xs text-primary mt-1 hover:underline inline-block"
+                >
+                  Abrir propuesta →
+                </a>
+              )}
             </>
           ) : isReflectionFollowup ? (
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">

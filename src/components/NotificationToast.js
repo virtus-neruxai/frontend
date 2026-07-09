@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { X, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { notificationsApi } from '../lib/api';
+import {
+  buildNightlyReviewHref,
+  getNightlyReviewProposalStatus,
+  getNightlyReviewProposalStatusLabel,
+  storeNightlyReviewPayload,
+} from '../lib/nightlyReviewNotification';
 
 export const NotificationToast = () => {
   const { notifications, dismissNotification } = useNotificationContext();
@@ -49,6 +55,16 @@ const Toast = ({ notification, onDismiss }) => {
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
   const isRoutine = !isMissionReminder && !isNightlyReview && payload?.task_kind === 'routine';
+  const nightlyReviewHref = buildNightlyReviewHref(payload);
+  const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
+  const nightlyReviewProposalStatusLabel = getNightlyReviewProposalStatusLabel(nightlyReviewProposalStatus);
+
+  const handleNightlyReviewOpen = async (event) => {
+    event.preventDefault();
+    storeNightlyReviewPayload(payload);
+    await onDismiss();
+    window.location.href = nightlyReviewHref;
+  };
 
   const formatNextTaskTime = (nextTask) => {
     const dateStart = nextTask?.date_start;
@@ -145,9 +161,19 @@ const Toast = ({ notification, onDismiss }) => {
               <p className="text-xs text-muted-foreground mt-1">
                 {payload.tasks_completed || 0} completadas · {payload.tasks_failed || 0} fallidas
               </p>
-              <a href="/character" className="text-xs text-primary mt-1 hover:underline inline-block">
-                Ver revisión →
-              </a>
+              {nightlyReviewProposalStatusLabel ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {nightlyReviewProposalStatusLabel}
+                </p>
+              ) : (
+                <a
+                  href={nightlyReviewHref}
+                  onClick={handleNightlyReviewOpen}
+                  className="text-xs text-primary mt-1 hover:underline inline-block"
+                >
+                  {(payload.proposed_missions || []).length > 0 ? 'Abrir propuesta →' : 'Ver revisión →'}
+                </a>
+              )}
             </>
           ) : isReflectionFollowup ? (
             <>

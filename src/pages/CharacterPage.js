@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { tasksApi, reflectionsApi } from '../lib/api';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
@@ -22,6 +23,7 @@ import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { buildRelativeDateRange } from '../lib/dateRangeUtils';
 import { formatMentorResponseText } from '../lib/mentorTextFormat';
 import { formatStatLabel } from '../lib/statUtils';
+import { consumeNightlyReviewPayload } from '../lib/nightlyReviewNotification';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
@@ -57,6 +59,8 @@ import {
  * See MOBILE-MIGRATION.md for conversion guide
  */
 export default function CharacterPageRefactored() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linkedNightlyReview = searchParams.get('nightly_review') === '1';
   // Custom hooks for state management
   const {
     character,
@@ -88,6 +92,7 @@ export default function CharacterPageRefactored() {
     fetchCompletedMissions,
     generateMissions,
     performNightlyReview,
+    hydrateNightlyReviewResult,
     confirmMissions,
     rejectProposedMission,
     completeMission,
@@ -147,6 +152,29 @@ export default function CharacterPageRefactored() {
   const [missionRange, setMissionRange] = useState('30');
   const [missionFromDate, setMissionFromDate] = useState(initialMissionRange.fromDate);
   const [missionToDate, setMissionToDate] = useState(initialMissionRange.toDate);
+
+  useEffect(() => {
+    if (!linkedNightlyReview) return;
+
+    const payload = consumeNightlyReviewPayload();
+    if (payload) {
+      hydrateNightlyReviewResult({
+        review_date: payload.review_date,
+        review_text: payload.review_text || payload.summary || payload.message,
+        summary: payload.summary || payload.message,
+        tasks_completed: payload.tasks_completed || 0,
+        tasks_failed: payload.tasks_failed || 0,
+        proposed_missions: payload.proposed_missions || [],
+      });
+    } else {
+      toast.info('La revisión nocturna ya no está disponible en esta sesión.');
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('nightly_review');
+    nextParams.delete('review_date');
+    setSearchParams(nextParams, { replace: true });
+  }, [linkedNightlyReview, hydrateNightlyReviewResult, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!pendingReflectionDraft) return undefined;

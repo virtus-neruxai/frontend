@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { buildNightlyReviewHref, storeNightlyReviewPayload } from '../lib/nightlyReviewNotification';
 
 export const useWebSocket = ({
   url,
@@ -271,7 +272,10 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
 
     n.onclick = () => {
       window.focus();
-      if (isReflectionFollowup || isMissionReminder || isNightlyReview) window.location.href = '/character';
+      if (isNightlyReview) {
+        storeNightlyReviewPayload(payload);
+        window.location.href = buildNightlyReviewHref(payload);
+      } else if (isReflectionFollowup || isMissionReminder || isNightlyReview) window.location.href = '/character';
       else window.location.href = '/calendar';
     };
   }
@@ -328,6 +332,8 @@ export function buildNotificationFromWsData(data) {
       message: data.message || data.summary,
       tasks_completed: data.tasks_completed || 0,
       tasks_failed: data.tasks_failed || 0,
+      proposed_missions: data.proposed_missions || [],
+      proposal_status: data.proposal_status || data.context?.proposal_status,
       priority: data.priority || 'low',
       context: data.context || {},
     };

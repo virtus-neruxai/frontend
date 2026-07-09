@@ -15,6 +15,9 @@ describe('NightlyReview frontend notifications', () => {
       summary: 'Cerraste dos tareas y detectaste un patrón importante.',
       tasks_completed: 2,
       tasks_failed: 1,
+      proposed_missions: [
+        { title: 'Misión nocturna', description: 'Revisar el patrón importante.' },
+      ],
       priority: 'low',
     });
 
@@ -25,6 +28,9 @@ describe('NightlyReview frontend notifications', () => {
       summary: 'Cerraste dos tareas y detectaste un patrón importante.',
       tasks_completed: 2,
       tasks_failed: 1,
+      proposed_missions: [
+        { title: 'Misión nocturna', description: 'Revisar el patrón importante.' },
+      ],
       priority: 'low',
     });
   });

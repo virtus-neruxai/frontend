@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { missionsApi, statsApi, tasksApi, reflectionsApi } from '../../lib/api';
+import { missionsApi, statsApi, tasksApi, reflectionsApi, notificationsApi } from '../../lib/api';
+import { markNightlyReviewProposalConsumed } from '../../lib/nightlyReviewNotification';
 import { toast } from 'sonner';
 
 const sortMissionsByCreatedAt = (items = []) => [...items].sort((a, b) => {
@@ -67,6 +68,7 @@ export const useMissions = () => {
   const [generatingMissions, setGeneratingMissions] = useState(false);
   const [nightlyReviewLoading, setNightlyReviewLoading] = useState(false);
   const [nightlyReviewResult, setNightlyReviewResult] = useState(null);
+  const [activeNightlyReviewDate, setActiveNightlyReviewDate] = useState(null);
   const [missionStatsHistory, setMissionStatsHistory] = useState([]);
   const [missionStatsLoading, setMissionStatsLoading] = useState(false);
   
@@ -143,24 +145,46 @@ export const useMissions = () => {
   }, []);
 
   /**
+   * Hydrates the NightlyReview result into the same state used by the manual button flow.
+   */
+  const hydrateNightlyReviewResult = useCallback((result) => {
+    if (!result) return [];
+    setNightlyReviewResult(result);
+    setActiveNightlyReviewDate(result.review_date || null);
+
+    const missionsWithDates = (result.proposed_missions || []).map(m => ({
+      ...m,
+      addToCalendar: true,
+      scheduled_datetime: m.suggested_datetime
+    }));
+
+    setProposedMissions(missionsWithDates);
+    setShowConfirmModal(missionsWithDates.length > 0);
+    return missionsWithDates;
+  }, []);
+
+  const markActiveNightlyReviewProposalStatus = useCallback(async (status) => {
+    if (!activeNightlyReviewDate) return;
+
+    markNightlyReviewProposalConsumed(activeNightlyReviewDate, status);
+    try {
+      await notificationsApi.markNightlyReviewProposalStatus({
+        review_date: activeNightlyReviewDate,
+        status,
+      });
+    } catch (error) {
+      console.error('Error updating NightlyReview proposal status:', error);
+    }
+  }, [activeNightlyReviewDate]);
+
+  /**
    * Performs nightly review and generates proposed missions
    */
   const performNightlyReview = useCallback(async () => {
     setNightlyReviewLoading(true);
     try {
       const response = await missionsApi.nightlyReview();
-      setNightlyReviewResult(response.data);
-      
-      const missionsWithDates = (response.data.proposed_missions || []).map(m => ({
-        ...m,
-        addToCalendar: true,
-        scheduled_datetime: m.suggested_datetime
-      }));
-      
-      if (missionsWithDates.length > 0) {
-        setProposedMissions(missionsWithDates);
-        setShowConfirmModal(true);
-      }
+      hydrateNightlyReviewResult(response.data);
       
       toast.success('Revisión nocturna completada');
       return response.data;
@@ -170,7 +194,7 @@ export const useMissions = () => {
     } finally {
       setNightlyReviewLoading(false);
     }
-  }, []);
+  }, [hydrateNightlyReviewResult]);
 
   /**
    * Confirms and creates proposed missions
@@ -204,6 +228,7 @@ export const useMissions = () => {
 
       const remainingMissions = proposedMissions.slice(1);
       toast.success('Misión creada');
+      await markActiveNightlyReviewProposalStatus('confirmed');
       setProposedMissions(remainingMissions);
       setShowConfirmModal(remainingMissions.length > 0);
 
@@ -216,14 +241,15 @@ export const useMissions = () => {
     } finally {
       setConfirmingMissions(false);
     }
-  }, [proposedMissions, fetchMissions]);
+  }, [proposedMissions, fetchMissions, markActiveNightlyReviewProposalStatus]);
 
   const rejectProposedMission = useCallback(async () => {
     const remainingMissions = proposedMissions.slice(1);
+    await markActiveNightlyReviewProposalStatus('rejected');
     setProposedMissions(remainingMissions);
     setShowConfirmModal(remainingMissions.length > 0);
     toast.info('Misión rechazada');
-  }, [proposedMissions]);
+  }, [proposedMissions, markActiveNightlyReviewProposalStatus]);
 
   /**
    * Completes a mission with success or failure
@@ -402,6 +428,7 @@ export const useMissions = () => {
     fetchCompletedMissions,
     generateMissions,
     performNightlyReview,
+    hydrateNightlyReviewResult,
     confirmMissions,
     rejectProposedMission,
     completeMission,
