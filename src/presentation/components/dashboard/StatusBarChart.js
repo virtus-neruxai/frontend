@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 import { CHART_SURFACE, TASK_STATUS_COLORS } from '../../../theme/semanticTokens';
+import { PROFILE_THEME_IDS, PROFILE_THEMES } from '../../../theme/profileThemes';
 import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 const CustomTooltip = ({ active, payload }) => {
@@ -17,7 +19,7 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-export function StatusBarChart({ summary }) {
+export function StatusBarChart({ summary, profile, onProfileChange }) {
   const barData = summary ? [
     { name: 'Completadas', value: summary.completed, fill: TASK_STATUS_COLORS.done },
     { name: 'En Progreso', value: summary.in_progress, fill: TASK_STATUS_COLORS.in_progress },
@@ -25,13 +27,30 @@ export function StatusBarChart({ summary }) {
     { name: 'Bloqueadas', value: summary.blocked, fill: TASK_STATUS_COLORS.blocked }
   ] : [];
   const hasBarData = barData.some((item) => Number(item.value || 0) > 0);
+  const profileName = PROFILE_THEMES[profile]?.name || '';
 
   return (
     <Card data-testid="status-bar-chart">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
-          Tareas por Estado
-        </CardTitle>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
+            Tareas por Estado{profileName ? ` del perfil ${profileName}` : ''}
+          </CardTitle>
+          {onProfileChange && (
+            <Select value={profile || ''} onValueChange={onProfileChange}>
+              <SelectTrigger className="w-40 rounded-full" data-testid="status-bar-profile-selector">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROFILE_THEME_IDS.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {PROFILE_THEMES[id].name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {hasBarData ? (

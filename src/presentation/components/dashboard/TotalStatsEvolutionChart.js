@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
 import { StatsDateRangeControls } from '../stats/StatsDateRangeControls';
 import { CHART_COLORS, CHART_SURFACE } from '../../../theme/semanticTokens';
+import { PROFILE_THEME_IDS, PROFILE_THEMES } from '../../../theme/profileThemes';
 import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
 
 export function combineTotalStatsData(history = [], statsInfo = {}) {
@@ -59,7 +61,9 @@ export function TotalStatsEvolutionChart({
   onFromDateChange,
   onToDateChange,
   loading = false,
-  statsInfo = {}
+  statsInfo = {},
+  profile,
+  onProfileChange,
 }) {
   const rangeOptions = [
     { value: '7', label: '7d' },
@@ -69,23 +73,40 @@ export function TotalStatsEvolutionChart({
   ];
   const chartData = combineTotalStatsData(data, statsInfo);
   const statKeys = chartData.length > 0 ? Object.keys(chartData[0]).filter(k => k !== 'date') : [];
+  const profileName = PROFILE_THEMES[profile]?.name || '';
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
-            Evolución Total de Stats (Misiones + Reflexiones)
+            Evolución Total de Stats (Misiones + Reflexiones){profileName ? ` del perfil ${profileName}` : ''}
           </CardTitle>
-          <StatsDateRangeControls
-            range={range}
-            onRangeChange={onRangeChange}
-            fromDate={fromDate}
-            toDate={toDate}
-            onFromDateChange={onFromDateChange}
-            onToDateChange={onToDateChange}
-            rangeOptions={rangeOptions}
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            {onProfileChange && (
+              <Select value={profile || ''} onValueChange={onProfileChange}>
+                <SelectTrigger className="w-40 rounded-full" data-testid="evolution-profile-selector">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROFILE_THEME_IDS.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {PROFILE_THEMES[id].name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <StatsDateRangeControls
+              range={range}
+              onRangeChange={onRangeChange}
+              fromDate={fromDate}
+              toDate={toDate}
+              onFromDateChange={onFromDateChange}
+              onToDateChange={onToDateChange}
+              rangeOptions={rangeOptions}
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent>

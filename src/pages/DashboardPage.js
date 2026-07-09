@@ -26,7 +26,7 @@ const KPI_LIST_TITLES = {
 };
 
 export default function DashboardPageRefactored() {
-  const { theme } = useProfileTheme();
+  const { theme, persistedProfileId } = useProfileTheme();
   const [listCategory, setListCategory] = useState(null);
   const [listOpen, setListOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -44,12 +44,17 @@ export default function DashboardPageRefactored() {
     overdueCount,
     allTasks,
     refreshStats,
+    statusSummary,
+    statusProfile,
+    setStatusProfile,
     totalStatsHistory,
     statsInfo,
     totalStatsRange,
     totalStatsFromDate,
     totalStatsToDate,
     totalStatsLoading,
+    evolutionProfile,
+    setEvolutionProfile,
     handleTotalStatsRangeChange,
     handleTotalStatsFromDateChange,
     handleTotalStatsToDateChange,
@@ -63,7 +68,7 @@ export default function DashboardPageRefactored() {
     emotionalPatternsRange,
     setEmotionalPatternsRange,
     acknowledgeEmotionalPattern,
-  } = useDashboard();
+  } = useDashboard(persistedProfileId);
 
   const openTaskList = (category) => {
     setListCategory(category);
@@ -194,7 +199,11 @@ export default function DashboardPageRefactored() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <StatusDistributionChart summary={summary} />
-              <StatusBarChart summary={summary} />
+              <StatusBarChart
+                summary={statusSummary}
+                profile={statusProfile}
+                onProfileChange={setStatusProfile}
+              />
             </div>
 
             {/* Timeseries Chart */}
@@ -211,6 +220,8 @@ export default function DashboardPageRefactored() {
               onFromDateChange={handleTotalStatsFromDateChange}
               onToDateChange={handleTotalStatsToDateChange}
               loading={totalStatsLoading}
+              profile={evolutionProfile}
+              onProfileChange={setEvolutionProfile}
             />
 
             {/* Detected Patterns Panel */}

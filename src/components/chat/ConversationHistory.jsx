@@ -39,7 +39,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
     }
     setLoading(true);
     try {
-      const response = await conversationsApi.getAll();
+      const response = await conversationsApi.getAll({ prompt_profile: persistedProfileId });
       const data = response.data;
       setConversations(Array.isArray(data) ? data : []);
       setLoadError(false);
@@ -60,7 +60,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
         toast.error('Error al cargar el historial');
       }
     }
-  }, []);
+  }, [persistedProfileId]);
 
   // forceSelect: true when the user explicitly clicks a conversation or after
   // sending a message (so the panel always shows); false for auto-loads on
@@ -220,7 +220,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
               </button>
             </div>
           ) : conversations.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No hay conversaciones guardadas</p>
+            <p className="text-muted-foreground text-sm">No tienes conversaciones con este mentor todavía. Empieza una nueva conversación arriba.</p>
           ) : (
             conversations.map((conv) => {
               const isActive = conv.session_id === activeSessionId;

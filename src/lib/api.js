@@ -68,7 +68,7 @@ export const statsApi = {
 // Character API
 export const characterApi = {
   get: () => api.get('/character'),
-  getStatsInfo: () => api.get('/character/stats-info'),
+  getStatsInfo: (params = {}) => api.get('/character/stats-info', { params }),
   getStatsHistory: (days = 30) => api.get('/character/stats-history', { params: { days } }),
 };
 

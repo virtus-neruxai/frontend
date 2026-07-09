@@ -26,7 +26,7 @@ const RANGE_OPTIONS = [
   { value: '90', label: 'Últimos 90 días' }
 ];
 
-export function useDashboard() {
+export function useDashboard(initialProfile) {
   const initialTotalStatsRange = buildRelativeDateRange(30);
 
   // Stats state
@@ -39,13 +39,22 @@ export function useDashboard() {
   const [allTasks, setAllTasks] = useState([]);
   const [allMissions, setAllMissions] = useState([]);
 
-  // Total stats evolution state (missions + reflections)
+  // "Tareas por Estado" card has its own profile filter, independent from the
+  // rest of the Dashboard (KPI cards + "Distribución por Estado" stay unfiltered).
+  // Defaults to the settings-active profile but can be switched locally.
+  const [statusProfile, setStatusProfile] = useState(initialProfile || null);
+  const [statusSummary, setStatusSummary] = useState(null);
+  const [statusSummaryLoading, setStatusSummaryLoading] = useState(true);
+
+  // Total stats evolution state (missions + reflections) — also has its own
+  // independent profile filter, decoupled from "Tareas por Estado".
   const [totalStatsHistory, setTotalStatsHistory] = useState([]);
   const [statsInfo, setStatsInfo] = useState({});
   const [totalStatsRange, setTotalStatsRange] = useState('30');
   const [totalStatsFromDate, setTotalStatsFromDate] = useState(initialTotalStatsRange.fromDate);
   const [totalStatsToDate, setTotalStatsToDate] = useState(initialTotalStatsRange.toDate);
   const [totalStatsLoading, setTotalStatsLoading] = useState(false);
+  const [evolutionProfile, setEvolutionProfile] = useState(initialProfile || null);
 
   // Friction patterns state
   const [frictions, setFrictions] = useState(null);
@@ -83,6 +92,26 @@ export function useDashboard() {
     }
   }, [range]);
 
+  const fetchStatusSummary = useCallback(async () => {
+    setStatusSummaryLoading(true);
+    try {
+      const days = parseInt(range);
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - days);
+
+      const res = await statsApi.getSummary({
+        from_date: fromDate.toISOString(),
+        profile: statusProfile || undefined,
+      });
+      setStatusSummary(res.data);
+    } catch (error) {
+      toast.error('Error al cargar tareas por estado');
+      console.error('Error fetching status summary:', error);
+    } finally {
+      setStatusSummaryLoading(false);
+    }
+  }, [range, statusProfile]);
+
   const getTasksByCategory = useCallback((category) => {
     return getDashboardItemsByCategory({
       category,
@@ -115,8 +144,9 @@ export function useDashboard() {
           source: 'all',
           from_date: totalStatsFromDate,
           to_date: totalStatsToDate,
+          profile: evolutionProfile || undefined,
         }),
-        characterApi.getStatsInfo(),
+        characterApi.getStatsInfo({ profile: evolutionProfile || undefined }),
       ]);
 
       setTotalStatsHistory(historyRes.data.history || []);
@@ -127,7 +157,7 @@ export function useDashboard() {
     } finally {
       setTotalStatsLoading(false);
     }
-  }, [totalStatsFromDate, totalStatsToDate]);
+  }, [totalStatsFromDate, totalStatsToDate, evolutionProfile]);
 
   const handleTotalStatsRangeChange = useCallback((newRange) => {
     const nextRange = buildRelativeDateRange(parseInt(newRange, 10));
@@ -185,6 +215,10 @@ export function useDashboard() {
   }, [fetchStats]);
 
   useEffect(() => {
+    fetchStatusSummary();
+  }, [fetchStatusSummary]);
+
+  useEffect(() => {
     fetchTotalStatsData();
   }, [fetchTotalStatsData]);
 
@@ -208,12 +242,18 @@ export function useDashboard() {
     domainData,
     overdueCount,
     allTasks,
+    statusSummary,
+    statusSummaryLoading,
+    statusProfile,
+    setStatusProfile,
     totalStatsHistory,
     statsInfo,
     totalStatsRange,
     totalStatsFromDate,
     totalStatsToDate,
     totalStatsLoading,
+    evolutionProfile,
+    setEvolutionProfile,
     refreshStats: fetchStats,
     refreshTotalStats: fetchTotalStatsData,
     handleTotalStatsRangeChange,
