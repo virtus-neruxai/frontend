@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { missionsApi, statsApi, tasksApi, reflectionsApi, notificationsApi } from '../../lib/api';
-import { markNightlyReviewProposalConsumed } from '../../lib/nightlyReviewNotification';
 import { toast } from 'sonner';
 
 const sortMissionsByCreatedAt = (items = []) => [...items].sort((a, b) => {
@@ -166,7 +165,6 @@ export const useMissions = () => {
   const markActiveNightlyReviewProposalStatus = useCallback(async (status) => {
     if (!activeNightlyReviewDate) return;
 
-    markNightlyReviewProposalConsumed(activeNightlyReviewDate, status);
     try {
       await notificationsApi.markNightlyReviewProposalStatus({
         review_date: activeNightlyReviewDate,

@@ -5,6 +5,7 @@ import NotificationSettings from '../components/NotificationSettings';
 import PromptProfileSettings from '../components/PromptProfileSettings';
 import MentorNotificationSettings from '../components/MentorNotificationSettings';
 import { notificationsApi, userSettingsApi } from '../lib/api';
+import { cacheNotificationSettings } from '../hooks/useWebSocket';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { getProfileTheme } from '../theme/profileThemeUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -168,15 +169,7 @@ export default function SettingsPage() {
         });
       }
 
-      localStorage.setItem(
-        'notification_settings',
-        JSON.stringify({
-          enabled: payload.enabled,
-          sound_enabled: payload.sound_enabled,
-          priority_preferences: payload.priority_preferences,
-          do_not_disturb: payload.do_not_disturb,
-        })
-      );
+      cacheNotificationSettings(payload);
 
       toast.success('Configuración guardada');
     } catch (error) {

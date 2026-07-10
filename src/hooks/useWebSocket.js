@@ -368,9 +368,11 @@ export function buildNotificationFromWsData(data) {
   };
 }
 
+const NOTIFICATION_SETTINGS_KEY = 'notification_settings';
+
 function getNotificationSettings() {
   try {
-    const raw = localStorage.getItem('notification_settings');
+    const raw = localStorage.getItem(NOTIFICATION_SETTINGS_KEY);
     if (!raw) {
       return { enabled: true, sound_enabled: true };
     }
@@ -381,5 +383,22 @@ function getNotificationSettings() {
     };
   } catch (error) {
     return { enabled: true, sound_enabled: true };
+  }
+}
+
+// Mirror the backend notification settings into the local cache that gates
+// sound/browser popups. Without a fresh sync on app load, a browser that never
+// opened Settings (or where they changed on another device) would fall back to
+// the permissive defaults and honk for notifications the user disabled.
+export function cacheNotificationSettings(settings = {}) {
+  try {
+    localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify({
+      enabled: settings.enabled,
+      sound_enabled: settings.sound_enabled,
+      priority_preferences: settings.priority_preferences,
+      do_not_disturb: settings.do_not_disturb,
+    }));
+  } catch {
+    // Visual/gating cache only: a write failure must not block the app.
   }
 }

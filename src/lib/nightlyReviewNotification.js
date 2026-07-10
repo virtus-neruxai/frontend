@@ -1,10 +1,4 @@
 const STORAGE_KEY = 'nightly_review_notification_payload';
-const PROPOSAL_STATUS_PREFIX = 'nightly_review_proposal_status';
-
-function getReviewDate(payloadOrDate = {}) {
-  if (typeof payloadOrDate === 'string') return payloadOrDate;
-  return payloadOrDate.review_date || payloadOrDate.context?.review_date || null;
-}
 
 export function buildNightlyReviewHref(payload = {}) {
   const params = new URLSearchParams();
@@ -34,28 +28,12 @@ export function consumeNightlyReviewPayload() {
 }
 
 export function getNightlyReviewProposalStatus(payload = {}) {
-  const status = payload.proposal_status || payload.context?.proposal_status;
-  if (status) return status;
-
-  const reviewDate = getReviewDate(payload);
-  if (!reviewDate) return null;
-
-  try {
-    return localStorage.getItem(`${PROPOSAL_STATUS_PREFIX}:${reviewDate}`);
-  } catch {
-    return null;
-  }
-}
-
-export function markNightlyReviewProposalConsumed(payloadOrDate, status = 'confirmed') {
-  const reviewDate = getReviewDate(payloadOrDate);
-  if (!reviewDate) return;
-
-  try {
-    localStorage.setItem(`${PROPOSAL_STATUS_PREFIX}:${reviewDate}`, status);
-  } catch {
-    // Best effort: backend status is still attempted by the caller.
-  }
+  // Backend truth only, scoped to THIS notification. A previous localStorage
+  // fallback keyed by review_date leaked a "confirmed" state onto every
+  // nightly-review notification for the same day — including drafts the user
+  // never acted on (e.g. a manual review confirmed before the scheduled
+  // notification even existed, so its backend update matched nothing).
+  return payload.proposal_status || payload.context?.proposal_status || null;
 }
 
 export function getNightlyReviewProposalStatusLabel(status) {

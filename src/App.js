@@ -13,7 +13,8 @@ import { NotificationSystem } from "./components/NotificationSystem";
 import { ThemeProvider } from "./components/theme-provider";
 import { ProfileThemeProvider } from "./presentation/components/profile-theme/ProfileThemeProvider";
 import { useProfileTheme } from "./theme/useProfileTheme";
-import { userSettingsApi } from "./lib/api";
+import { userSettingsApi, notificationsApi } from "./lib/api";
+import { cacheNotificationSettings } from "./hooks/useWebSocket";
 import { useEffect } from "react";
 import "./App.css";
 
@@ -144,6 +145,29 @@ function ProfileSettingsSync() {
   return null;
 }
 
+function NotificationSettingsSync() {
+  const { isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    if (loading || !isAuthenticated) return undefined;
+
+    let cancelled = false;
+    notificationsApi.getSettings()
+      .then((response) => {
+        if (!cancelled && response?.data) cacheNotificationSettings(response.data);
+      })
+      .catch(() => {
+        // Settings sync should never block the authenticated app shell.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, loading]);
+
+  return null;
+}
+
 function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="virtus-theme">
@@ -152,6 +176,7 @@ function App() {
           <NotificationSystem>
             <BrowserRouter>
               <ProfileSettingsSync />
+              <NotificationSettingsSync />
               <AppRoutes />
               <Toaster position="top-right" richColors />
             </BrowserRouter>
