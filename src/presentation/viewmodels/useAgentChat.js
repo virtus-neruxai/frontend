@@ -22,6 +22,7 @@ export const useAgentChat = (profileId = 'default') => {
 
   const [chatMessage, setChatMessage] = useState('');
   const [chatResponse, setChatResponse] = useState('');
+  const [chatMetadata, setChatMetadata] = useState(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [deepReasoning, setDeepReasoning] = useState(false);
@@ -40,6 +41,7 @@ export const useAgentChat = (profileId = 'default') => {
     // Clear the visible response when switching profiles so old content
     // from a different profile doesn't bleed through.
     setChatResponse('');
+    setChatMetadata(null);
     setChatMessage('');
   }, [storageKey]);
 
@@ -51,6 +53,7 @@ export const useAgentChat = (profileId = 'default') => {
     setSessionId(newId);
     localStorage.setItem(storageKey, newId);
     setChatResponse('');
+    setChatMetadata(null);
     setChatMessage('');
     toast.success('Nueva conversación iniciada');
   }, [storageKey]);
@@ -63,6 +66,7 @@ export const useAgentChat = (profileId = 'default') => {
     setSessionId(newSessionId);
     localStorage.setItem(storageKey, newSessionId);
     setChatResponse('');
+    setChatMetadata(null);
   }, [storageKey]);
 
   /**
@@ -77,6 +81,7 @@ export const useAgentChat = (profileId = 'default') => {
     try {
       const response = await agentApi.chat(message, sessionId, deepReasoning);
       setChatResponse(response.data.response);
+      setChatMetadata(response.data.metadata || null);
       setChatMessage('');
 
       if (response.data.draft_id && response.data.ui_action) {
@@ -111,6 +116,7 @@ export const useAgentChat = (profileId = 'default') => {
   return {
     chatMessage,
     chatResponse,
+    chatMetadata,
     chatLoading,
     sessionId,
     deepReasoning,

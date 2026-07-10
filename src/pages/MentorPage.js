@@ -38,6 +38,7 @@ export default function MentorPage() {
   const {
     chatMessage,
     chatResponse,
+    chatMetadata,
     chatLoading,
     sessionId,
     deepReasoning,
@@ -186,6 +187,20 @@ export default function MentorPage() {
                 {chatResponse && (
                   <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-foreground whitespace-pre-wrap">{chatResponse}</p>
+                  </div>
+                )}
+
+                {chatResponse && chatMetadata?.deep_reasoning_active && chatMetadata?.degraded_sources?.length > 0 && (
+                  <div
+                    className="p-3 border border-[hsl(var(--warning))] bg-[hsl(var(--warning-soft))] rounded-lg flex items-start gap-3"
+                    data-testid="deep-reasoning-partial-context"
+                  >
+                    <Badge variant="outline" className="text-foreground border-[hsl(var(--warning))] bg-background shrink-0">
+                      Contexto parcial
+                    </Badge>
+                    <p className="text-xs text-muted-foreground">
+                      Algunas fuentes de contexto no estaban disponibles; el análisis puede estar incompleto.
+                    </p>
                   </div>
                 )}
 
