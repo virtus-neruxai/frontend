@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { tasksApi, reflectionsApi } from '../lib/api';
 import { toast } from 'sonner';
@@ -30,12 +30,32 @@ import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 import { SEMANTIC_COLORS } from '../theme/semanticTokens';
+import { getProfileEmoji, getProfileName } from '../lib/profileUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
+import { PROFILE_THEME_IDS, PROFILE_THEMES } from '../theme/profileThemes';
 import {
   Target, Scroll,
   XCircle, CheckCircle2, Clock
 } from 'lucide-react';
+
+const dedupeReflections = (items = []) => {
+  const map = new Map();
+  items.forEach((item) => {
+    const key = item?.id || `${item?.prompt_profile || 'unknown'}-${item?.created_at || ''}-${item?.content || ''}`;
+    if (key) map.set(key, item);
+  });
+  return Array.from(map.values());
+};
 
 /**
  * CharacterPage - Refactored Version
@@ -66,6 +86,7 @@ export default function CharacterPageRefactored() {
     character,
     statsInfo,
     statsHistory,
+    cumulativeTotals,
     reflectionKPIs,
     loading,
     historyLoading,
@@ -74,6 +95,7 @@ export default function CharacterPageRefactored() {
     fetchCharacter,
     fetchStatsInfo,
     fetchStatsHistory,
+    fetchCumulativeTotals,
     calculateReflectionKPIs
   } = useCharacter();
   const {
@@ -119,6 +141,7 @@ export default function CharacterPageRefactored() {
   } = useDrafts();
 
   const { theme, persistedProfileId } = useProfileTheme();
+  const activeReflectionProfile = persistedProfileId || 'stoic';
   const profileName = theme.name;
 
   // Local state for reflections and mission completion
@@ -134,6 +157,8 @@ export default function CharacterPageRefactored() {
   const [isCompletingMission, setIsCompletingMission] = useState(false);
   const [selectedDate, setSelectedDate] = useState(''); // For reflection filter
   const [reflectionHistoryMode, setReflectionHistoryMode] = useState('journal');
+  const [selectedReflectionProfiles, setSelectedReflectionProfiles] = useState(() => [activeReflectionProfile]);
+  const lastActiveReflectionProfileRef = useRef(activeReflectionProfile);
   const [aiResponse, setAiResponse] = useState(null); // AI mentor response
   const [statChanges, setStatChanges] = useState(null); // Character stat changes
   const [dailyReflectionsCount, setDailyReflectionsCount] = useState(0); // Today's reflection count
@@ -152,6 +177,91 @@ export default function CharacterPageRefactored() {
   const [missionRange, setMissionRange] = useState('30');
   const [missionFromDate, setMissionFromDate] = useState(initialMissionRange.fromDate);
   const [missionToDate, setMissionToDate] = useState(initialMissionRange.toDate);
+
+  useEffect(() => {
+    const previousActiveProfile = lastActiveReflectionProfileRef.current;
+    setSelectedReflectionProfiles((currentProfiles) => {
+      const validProfiles = currentProfiles.filter((profile) => PROFILE_THEME_IDS.includes(profile));
+      if (validProfiles.length === 0) return [activeReflectionProfile];
+      if (
+        validProfiles.length === 1
+        && validProfiles[0] === previousActiveProfile
+        && previousActiveProfile !== activeReflectionProfile
+      ) {
+        return [activeReflectionProfile];
+      }
+      return validProfiles;
+    });
+    lastActiveReflectionProfileRef.current = activeReflectionProfile;
+  }, [activeReflectionProfile]);
+
+  const reflectionProfileFilters = useMemo(
+    () => selectedReflectionProfiles.filter((profile) => PROFILE_THEME_IDS.includes(profile)),
+    [selectedReflectionProfiles]
+  );
+  const effectiveReflectionProfiles = useMemo(
+    () => (reflectionProfileFilters.length > 0 ? reflectionProfileFilters : [activeReflectionProfile]),
+    [activeReflectionProfile, reflectionProfileFilters]
+  );
+  const allReflectionProfilesSelected = effectiveReflectionProfiles.length === PROFILE_THEME_IDS.length;
+  const shouldShowReflectionProfileBadges = effectiveReflectionProfiles.length > 1;
+
+  const reflectionProfileFilterLabel = (() => {
+    if (allReflectionProfilesSelected) return 'Todos los perfiles';
+    if (effectiveReflectionProfiles.length === 1) {
+      return `${getProfileEmoji(effectiveReflectionProfiles[0])} ${getProfileName(effectiveReflectionProfiles[0])}`;
+    }
+    return `${effectiveReflectionProfiles.length} perfiles`;
+  })();
+
+  const toggleReflectionProfile = (profileId) => {
+    setSelectedReflectionProfiles((currentProfiles) => {
+      const currentSet = new Set(currentProfiles.filter((profile) => PROFILE_THEME_IDS.includes(profile)));
+      if (currentSet.has(profileId)) {
+        if (currentSet.size === 1) return currentProfiles;
+        currentSet.delete(profileId);
+      } else {
+        currentSet.add(profileId);
+      }
+      return PROFILE_THEME_IDS.filter((profile) => currentSet.has(profile));
+    });
+  };
+
+  const selectAllReflectionProfiles = () => {
+    setSelectedReflectionProfiles([...PROFILE_THEME_IDS]);
+  };
+
+  const resetReflectionProfilesToActive = () => {
+    setSelectedReflectionProfiles([activeReflectionProfile]);
+  };
+
+  const fetchReflectionsForSelectedProfiles = useCallback(async (params) => {
+    const responses = await Promise.all(
+      effectiveReflectionProfiles.map((promptProfile) => reflectionsApi.getAll({
+        ...params,
+        prompt_profile: promptProfile,
+      }))
+    );
+    return dedupeReflections(responses.flatMap((response) => response.data || []));
+  }, [effectiveReflectionProfiles]);
+
+  const renderReflectionProfileBadge = (profileId) => {
+    if (!shouldShowReflectionProfileBadges || !profileId || !PROFILE_THEMES[profileId]) return null;
+    const profileTheme = PROFILE_THEMES[profileId];
+    return (
+      <Badge
+        variant="outline"
+        className="text-xs"
+        style={{
+          color: profileTheme.primary,
+          borderColor: profileTheme.primary,
+          backgroundColor: profileTheme.soft,
+        }}
+      >
+        {getProfileEmoji(profileId)} {getProfileName(profileId)}
+      </Badge>
+    );
+  };
 
   useEffect(() => {
     if (!linkedNightlyReview) return;
@@ -215,45 +325,54 @@ export default function CharacterPageRefactored() {
         fetchCompletedMissions(),
         fetchStatsHistory({ fromDate: statsFromDate, toDate: statsToDate }),
         fetchMissionEvolution({ fromDate: missionFromDate, toDate: missionToDate }),
+        fetchCumulativeTotals(),
       ]);
       
       const reflectionDateParams = selectedDate ? { date: selectedDate } : {};
-      const [journalReflectionsRes, tasksRes] = await Promise.all([
-        reflectionsApi.getAll({
-          ...reflectionDateParams,
-          reflection_type: 'journal',
-          prompt_profile: persistedProfileId,
-        }),
+      const activeJournalRequest = reflectionsApi.getAll({
+        ...reflectionDateParams,
+        reflection_type: 'journal',
+        prompt_profile: activeReflectionProfile,
+      });
+      const selectedJournalRequest = (
+        effectiveReflectionProfiles.length === 1
+        && effectiveReflectionProfiles[0] === activeReflectionProfile
+      )
+        ? activeJournalRequest.then((response) => dedupeReflections(response.data || []))
+        : fetchReflectionsForSelectedProfiles({
+            ...reflectionDateParams,
+            reflection_type: 'journal',
+          });
+      const [activeJournalReflectionsRes, selectedJournalReflections, tasksRes] = await Promise.all([
+        activeJournalRequest,
+        selectedJournalRequest,
         tasksApi.getAll()
       ]);
 
-      let displayReflections = [...(journalReflectionsRes.data || [])]
+      let displayReflections = [...selectedJournalReflections]
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       if (reflectionHistoryMode === 'linked') {
-        const [taskReflectionsRes, missionReflectionsRes] = await Promise.all([
-          reflectionsApi.getAll({
+        const [taskReflections, missionReflections] = await Promise.all([
+          fetchReflectionsForSelectedProfiles({
             ...reflectionDateParams,
             reflection_type: 'task',
-            prompt_profile: persistedProfileId,
           }),
-          reflectionsApi.getAll({
+          fetchReflectionsForSelectedProfiles({
             ...reflectionDateParams,
             reflection_type: 'mission',
-            prompt_profile: persistedProfileId,
           }),
         ]);
         displayReflections = [
-          ...(taskReflectionsRes.data || []),
-          ...(missionReflectionsRes.data || []),
+          ...taskReflections,
+          ...missionReflections,
         ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       } else if (reflectionHistoryMode === 'routine') {
         const routineDateParams = selectedDate ? { routine_occurrence_date: selectedDate } : {};
-        const routineReflectionsRes = await reflectionsApi.getAll({
+        const routineReflections = await fetchReflectionsForSelectedProfiles({
           ...routineDateParams,
           reflection_type: 'routine',
-          prompt_profile: persistedProfileId,
         });
-        displayReflections = (routineReflectionsRes.data || [])
+        displayReflections = routineReflections
           .sort((a, b) => String(b.routine_occurrence_date || b.created_at).localeCompare(String(a.routine_occurrence_date || a.created_at)));
       }
 
@@ -261,12 +380,12 @@ export default function CharacterPageRefactored() {
       setTasks(tasksRes.data);
       
       // Calculate diary KPIs only from journal reflections.
-      calculateReflectionKPIs(journalReflectionsRes.data, activeStatsInfo || {});
+      calculateReflectionKPIs(activeJournalReflectionsRes.data, activeStatsInfo || {});
       
       // Count today's reflections (without date filter)
       if (!selectedDate) {
         const today = new Date().toISOString().split('T')[0];
-        const todayReflections = journalReflectionsRes.data.filter(r =>
+        const todayReflections = activeJournalReflectionsRes.data.filter(r =>
           r.created_at.split('T')[0] === today
         );
         setDailyReflectionsCount(todayReflections.length);
@@ -281,6 +400,7 @@ export default function CharacterPageRefactored() {
     fetchCompletedMissions,
     fetchStatsHistory,
     fetchMissionEvolution,
+    fetchCumulativeTotals,
     calculateReflectionKPIs,
     selectedDate,
     reflectionHistoryMode,
@@ -288,7 +408,9 @@ export default function CharacterPageRefactored() {
     statsToDate,
     missionFromDate,
     missionToDate,
-    persistedProfileId,
+    activeReflectionProfile,
+    effectiveReflectionProfiles,
+    fetchReflectionsForSelectedProfiles,
   ]);
 
   useEffect(() => {
@@ -564,7 +686,7 @@ export default function CharacterPageRefactored() {
         />
 
         {/* Character Stats Component */}
-        <CharacterStats character={character} statsInfo={statsInfo} />
+        <CharacterStats character={character} statsInfo={statsInfo} cumulativeTotals={cumulativeTotals} />
 
         {/* Level Staircase — gamified level progress */}
         <LevelStaircase
@@ -678,6 +800,7 @@ export default function CharacterPageRefactored() {
             
             {/* Stats History Chart */}
             <StatsHistoryChart
+              title="Evolución de Cambios Acumulados (Diario)"
               data={statsHistory}
               range={statsRange}
               onRangeChange={handleStatsRangeChange}
@@ -853,25 +976,88 @@ export default function CharacterPageRefactored() {
                       </Button>
                     </div>
                   </div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Filtrar por fecha:
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    {selectedDate && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedDate('')}
-                        size="sm"
-                      >
-                        Ver Todas
-                      </Button>
-                    )}
+                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Filtrar por fecha:
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        {selectedDate && (
+                          <Button
+                            variant="outline"
+                            onClick={() => setSelectedDate('')}
+                            size="sm"
+                          >
+                            Ver Todas
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Filtrar por perfil:
+                      </label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-between md:w-56"
+                            data-testid="reflection-profile-filter-trigger"
+                          >
+                            <span className="truncate">{reflectionProfileFilterLabel}</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                          <DropdownMenuLabel>Perfiles visibles</DropdownMenuLabel>
+                          <DropdownMenuCheckboxItem
+                            checked={allReflectionProfilesSelected}
+                            onSelect={(event) => event.preventDefault()}
+                            onCheckedChange={(checked) => {
+                              if (checked) selectAllReflectionProfiles();
+                              else resetReflectionProfilesToActive();
+                            }}
+                          >
+                            Todos los perfiles
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuSeparator />
+                          {PROFILE_THEME_IDS.map((profileId) => {
+                            const profileTheme = PROFILE_THEMES[profileId];
+                            const isChecked = effectiveReflectionProfiles.includes(profileId);
+                            return (
+                              <DropdownMenuCheckboxItem
+                                key={profileId}
+                                checked={isChecked}
+                                onSelect={(event) => event.preventDefault()}
+                                onCheckedChange={() => toggleReflectionProfile(profileId)}
+                              >
+                                <span className="mr-2">{getProfileEmoji(profileId)}</span>
+                                <span>{getProfileName(profileId)}</span>
+                                {profileId === activeReflectionProfile && (
+                                  <span
+                                    className="ml-auto text-[11px] font-medium"
+                                    style={{ color: profileTheme.primary }}
+                                  >
+                                    activo
+                                  </span>
+                                )}
+                              </DropdownMenuCheckboxItem>
+                            );
+                          })}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={resetReflectionProfilesToActive}>
+                            Ver solo perfil activo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
 
@@ -903,6 +1089,7 @@ export default function CharacterPageRefactored() {
                                       <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
                                         Rutina
                                       </Badge>
+                                      {renderReflectionProfileBadge(reflection.prompt_profile)}
                                       <EmotionBadge emotionSnapshot={reflection.emotion_snapshot} />
                                     </div>
                                   </div>
@@ -975,6 +1162,7 @@ export default function CharacterPageRefactored() {
                                   {getReflectionTypeLabel(reflection.reflection_type)}
                                 </Badge>
                               )}
+                              {renderReflectionProfileBadge(reflection.prompt_profile)}
                               <EmotionBadge emotionSnapshot={reflection.emotion_snapshot} />
                             </div>
                           </div>

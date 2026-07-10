@@ -132,10 +132,11 @@ agentApiInstance.interceptors.response.use(
 );
 
 export const agentApi = {
-  chat: (message, sessionId, deepReasoning = false) => agentApiInstance.post('/agent/chat', {
+  chat: (message, sessionId, deepReasoning = false, userDataQa = false) => agentApiInstance.post('/agent/chat', {
     message,
     session_id: sessionId,
-    deep_reasoning: deepReasoning
+    deep_reasoning: deepReasoning,
+    user_data_qa: userDataQa
   }),
   confirmDraft: (data) => agentApiInstance.post('/agent/draft/confirm', data),
 };

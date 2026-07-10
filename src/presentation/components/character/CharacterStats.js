@@ -28,7 +28,7 @@ const STAT_ICONS = {
  * @param {Object} props.character.stats - Character stats object
  * @param {Object} props.statsInfo - Stat metadata { statKey: { name, description } }
  */
-export const CharacterStats = ({ character, statsInfo = {} }) => {
+export const CharacterStats = ({ character, statsInfo = {}, cumulativeTotals = {} }) => {
   if (!character) return null;
 
   return (
@@ -81,11 +81,18 @@ export const CharacterStats = ({ character, statsInfo = {} }) => {
                       {label}
                     </span>
                   </div>
-                  <span 
-                    className="text-sm font-bold" 
-                    style={{ color }}
-                  >
-                    {value}/10
+                  <span className="flex items-baseline gap-1.5">
+                    <span
+                      className="text-sm font-bold"
+                      style={{ color }}
+                    >
+                      {value}/10
+                    </span>
+                    {cumulativeTotals[statKey] != null && (
+                      <span className="text-xs text-muted-foreground" title="Total acumulado (misiones + diario)">
+                        · acum. {cumulativeTotals[statKey]}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="relative h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: `${color}20` }}>

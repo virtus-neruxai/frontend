@@ -152,7 +152,8 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
     return format(date, "d 'de' MMMM, HH:mm", { locale: es });
   };
 
-  const getFrictionBadge = (friction) => {
+  const getFrictionBadge = (friction, mode) => {
+    if (mode === 'USER_DATA_QA') return null;
     if (!friction || friction === 'none') return null;
 
     const colors = {
@@ -310,7 +311,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
                       <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
                       {msg.friction && (
                         <div className="mt-2">
-                          {getFrictionBadge(msg.friction)}
+                          {getFrictionBadge(msg.friction, msg.mode)}
                         </div>
                       )}
                       {msg.mode && (

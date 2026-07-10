@@ -25,7 +25,22 @@ export const useAgentChat = (profileId = 'default') => {
   const [chatMetadata, setChatMetadata] = useState(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
-  const [deepReasoning, setDeepReasoning] = useState(false);
+  const [deepReasoning, setDeepReasoningState] = useState(false);
+  const [userDataQa, setUserDataQaState] = useState(false);
+
+  const setDeepReasoning = useCallback((checked) => {
+    setDeepReasoningState(Boolean(checked));
+    if (checked) {
+      setUserDataQaState(false);
+    }
+  }, []);
+
+  const setUserDataQa = useCallback((checked) => {
+    setUserDataQaState(Boolean(checked));
+    if (checked) {
+      setDeepReasoningState(false);
+    }
+  }, []);
 
   // Re-initialize whenever the profile changes: restore that profile's last
   // session or create a fresh one.
@@ -79,7 +94,7 @@ export const useAgentChat = (profileId = 'default') => {
 
     setChatLoading(true);
     try {
-      const response = await agentApi.chat(message, sessionId, deepReasoning);
+      const response = await agentApi.chat(message, sessionId, deepReasoning, userDataQa);
       setChatResponse(response.data.response);
       setChatMetadata(response.data.metadata || null);
       setChatMessage('');
@@ -107,7 +122,7 @@ export const useAgentChat = (profileId = 'default') => {
     } finally {
       setChatLoading(false);
     }
-  }, [sessionId, deepReasoning]);
+  }, [sessionId, deepReasoning, userDataQa]);
 
   const clearResponse = useCallback(() => {
     setChatResponse('');
@@ -121,6 +136,8 @@ export const useAgentChat = (profileId = 'default') => {
     sessionId,
     deepReasoning,
     setDeepReasoning,
+    userDataQa,
+    setUserDataQa,
     sendMessage,
     setChatMessage,
     setChatResponse,

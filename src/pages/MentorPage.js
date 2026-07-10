@@ -43,6 +43,8 @@ export default function MentorPage() {
     sessionId,
     deepReasoning,
     setDeepReasoning,
+    userDataQa,
+    setUserDataQa,
     sendMessage,
     setChatMessage,
     startNewConversation,
@@ -86,6 +88,12 @@ export default function MentorPage() {
       toast.info('La propuesta del mentor ha expirado');
     }
   }, [pendingDraft, draftNowTick]);
+
+  useEffect(() => {
+    if (pendingDraft && userDataQa) {
+      setUserDataQa(false);
+    }
+  }, [pendingDraft, userDataQa, setUserDataQa]);
 
   const formatDraftType = (type) => {
     if (type === 'task') return 'tarea';
@@ -139,6 +147,11 @@ export default function MentorPage() {
   const convPreview = activeConversation?.preview
     ? `"${activeConversation.preview.slice(0, 80)}${activeConversation.preview.length > 80 ? '…' : ''}"`
     : null;
+  const sendButtonLabel = userDataQa
+    ? 'Consultando tus datos…'
+    : deepReasoning
+      ? 'Razonando en profundidad…'
+      : 'Pensando...';
 
   return (
     <Layout ambient>
@@ -273,8 +286,24 @@ export default function MentorPage() {
                     id="deep-reasoning-toggle"
                     checked={deepReasoning}
                     onCheckedChange={setDeepReasoning}
-                    disabled={chatLoading}
+                    disabled={chatLoading || userDataQa}
                     data-testid="deep-reasoning-toggle"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="user-data-qa-toggle">Datos de la app</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Responde consultando tus tareas, misiones, stats, diario y challenges.
+                    </p>
+                  </div>
+                  <Switch
+                    id="user-data-qa-toggle"
+                    checked={userDataQa}
+                    onCheckedChange={setUserDataQa}
+                    disabled={chatLoading || deepReasoning || Boolean(pendingDraft)}
+                    data-testid="user-data-qa-toggle"
                   />
                 </div>
 
@@ -284,7 +313,7 @@ export default function MentorPage() {
                   className="rounded-full w-full"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  {chatLoading ? (deepReasoning ? 'Razonando en profundidad…' : 'Pensando...') : 'Enviar'}
+                  {chatLoading ? sendButtonLabel : 'Enviar'}
                 </Button>
 
                 {pendingDraft && (

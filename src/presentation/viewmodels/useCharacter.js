@@ -26,6 +26,8 @@ export const useCharacter = () => {
   const [character, setCharacter] = useState(null);
   const [statsInfo, setStatsInfo] = useState({});
   const [statsHistory, setStatsHistory] = useState([]);
+  // Uncapped cumulative stat totals combining missions + diary, per stat.
+  const [cumulativeTotals, setCumulativeTotals] = useState({});
   const [reflectionKPIs, setReflectionKPIs] = useState({
     totalReflections: 0,
     pointsGained: 0,
@@ -102,6 +104,24 @@ export const useCharacter = () => {
   }, []);
 
   /**
+   * Fetches the all-time cumulative stat totals combining missions + diary
+   * (uncapped net_changes), shown alongside the capped 0/10 stats.
+   */
+  const fetchCumulativeTotals = useCallback(async () => {
+    try {
+      // Wide range approximates "all time"; source=all combines missions and
+      // standalone diary reflections (mission-linked reflections are excluded
+      // server-side to avoid double counting).
+      const response = await statsApi.getEvolution({ source: 'all', days: 3650 });
+      setCumulativeTotals(response.data?.summary?.net_changes || {});
+      return response.data;
+    } catch (error) {
+      // Non-critical: the capped stats still render without the cumulative badge.
+      console.error('Error fetching cumulative totals:', error);
+    }
+  }, []);
+
+  /**
    * Calculates KPIs from reflections data
    * @param {Array} reflections - Array of reflection objects with stat_changes
    */
@@ -113,6 +133,7 @@ export const useCharacter = () => {
     character,
     statsInfo,
     statsHistory,
+    cumulativeTotals,
     reflectionKPIs,
     loading,
     historyLoading,
@@ -121,6 +142,7 @@ export const useCharacter = () => {
     fetchCharacter,
     fetchStatsInfo,
     fetchStatsHistory,
+    fetchCumulativeTotals,
     calculateReflectionKPIs,
   };
 };

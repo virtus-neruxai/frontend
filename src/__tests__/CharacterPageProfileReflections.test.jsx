@@ -162,6 +162,53 @@ describe('CharacterPage reflection profile filtering', () => {
     }));
   });
 
+  test('allows selecting multiple profiles for Diary history', async () => {
+    const user = userEvent.setup();
+    renderCharacterPage();
+
+    await waitFor(() => expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+      reflection_type: 'journal',
+      prompt_profile: 'spiritual',
+    }));
+
+    await user.click(screen.getByRole('tab', { name: 'Diario' }));
+    await user.click(screen.getByTestId('reflection-profile-filter-trigger'));
+    await user.click(await screen.findByRole('menuitemcheckbox', { name: /Calma/ }));
+
+    await waitFor(() => {
+      expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+        reflection_type: 'journal',
+        prompt_profile: 'spiritual',
+      });
+      expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+        reflection_type: 'journal',
+        prompt_profile: 'calm',
+      });
+    });
+
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Tareas y misiones' }));
+
+    await waitFor(() => {
+      expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+        reflection_type: 'task',
+        prompt_profile: 'spiritual',
+      });
+      expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+        reflection_type: 'task',
+        prompt_profile: 'calm',
+      });
+      expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+        reflection_type: 'mission',
+        prompt_profile: 'spiritual',
+      });
+      expect(reflectionsApi.getAll).toHaveBeenCalledWith({
+        reflection_type: 'mission',
+        prompt_profile: 'calm',
+      });
+    });
+  });
+
   test('hydrates a linked scheduled NightlyReview from the query string', async () => {
     sessionStorage.setItem(
       'nightly_review_notification_payload',
