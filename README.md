@@ -142,7 +142,7 @@ El filtrado real ocurre en el servidor (`GET /v1/agent/interactions` filtra por 
 
 - Tareas del calendario (`item_type=task`)
 - Enunciado de misión vital / estrella norte (`goal_statement`, `goal_description`)
-- Mission statement lenses (se generan por perfil, pero el enunciado principal es universal)
+- Mission statement lenses (se generan por perfil, pero el enunciado principal es universal). El Dashboard las muestra en `MissionLensesPanel` leyendo `GET /api/v1/profile/mission-lenses`; no dispara extracción LLM.
 
 ---
 
@@ -203,12 +203,19 @@ const {
   frictions, frictionsLoading, frictionsRange, setFrictionsRange,
   acknowledgeFriction,   // PATCH /stats/frictions/{friction}/acknowledge
   refreshFrictions,
+  coherenceSignals, coherenceSignalsLoading, coherenceSignalsRange,
+  setCoherenceSignalsRange, refreshCoherenceSignals,
+  missionLenses, missionLensesLoading, refreshMissionLenses,
 } = useDashboard();
 ```
 
 El KPI `Vencidas` y su diálogo comparten el mismo filtro: tareas no rutinarias en estado `in_progress`/`blocked`, con 24 horas de margen tras `date_end`, más misiones no completadas cuya `expires_at` ya pasó. `DomainDistributionChart` agrupa las tareas del rango por el catálogo canónico de dominios; al pulsar un total abre exactamente ese subconjunto.
 
 `frictionsRange` defaults to `'7'` (últimos 7 días). `acknowledgeFriction(friction, data)` hace PATCH y recarga los datos automáticamente.
+
+`coherenceSignals` alimenta `CoherenceSignalsPanel`, un panel solo lectura con rangos 7/30/90. Consume `GET /stats/coherence-signals` y no tiene flujo de reconocimiento/progreso en V1.
+
+`missionLenses` alimenta el panel superior del Dashboard, encima de Desafíos. Es una lectura de las lentes ya materializadas por backend/graph-sync en OpenSearch (`identity`, `direction`, `transcendence`), por lo que no añade coste LLM al abrir la pantalla.
 
 ### useMissions
 Manages missions state and operations:

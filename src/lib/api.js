@@ -63,6 +63,7 @@ export const statsApi = {
   acknowledgeEmotionalPattern: (patternKey, data) =>
     api.patch(`/stats/emotional-patterns/${encodeURIComponent(patternKey)}/acknowledge`, data),
   getResolvedEmotionalPatterns: () => api.get('/stats/emotional-patterns/resolved'),
+  getCoherenceSignals: (params = {}) => api.get('/stats/coherence-signals', { params }),
 };
 
 // Character API
@@ -249,6 +250,7 @@ export const conversationsApi = {
 export const profileApi = {
   getTemplate: () => api.get('/profile/template'),
   getProfile: () => api.get('/profile'),
+  getMissionLenses: () => api.get('/profile/mission-lenses'),
   saveProfile: (data) => api.post('/profile', data),
 };
 

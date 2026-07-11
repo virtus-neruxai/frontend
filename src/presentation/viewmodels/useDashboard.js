@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { statsApi, characterApi, tasksApi, missionsApi } from '../../lib/api';
+import { statsApi, characterApi, tasksApi, missionsApi, profileApi } from '../../lib/api';
 import { buildRelativeDateRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 import {
@@ -16,6 +16,12 @@ const FRICTIONS_RANGE_OPTIONS = [
 ];
 
 const EMOTIONAL_PATTERNS_RANGE_OPTIONS = [
+  { value: '7',  label: 'Últimos 7 días' },
+  { value: '30', label: 'Últimos 30 días' },
+  { value: '90', label: 'Últimos 90 días' },
+];
+
+const COHERENCE_SIGNALS_RANGE_OPTIONS = [
   { value: '7',  label: 'Últimos 7 días' },
   { value: '30', label: 'Últimos 30 días' },
   { value: '90', label: 'Últimos 90 días' },
@@ -66,6 +72,15 @@ export function useDashboard(initialProfile) {
   const [emotionalPatterns, setEmotionalPatterns] = useState(null);
   const [emotionalPatternsLoading, setEmotionalPatternsLoading] = useState(false);
   const [emotionalPatternsRange, setEmotionalPatternsRange] = useState('7');
+
+  // Vital coherence signals state — read-only dashboard timeline.
+  const [coherenceSignals, setCoherenceSignals] = useState(null);
+  const [coherenceSignalsLoading, setCoherenceSignalsLoading] = useState(false);
+  const [coherenceSignalsRange, setCoherenceSignalsRange] = useState('7');
+
+  // Mission lenses state — materialized semantic lenses derived from the profile.
+  const [missionLenses, setMissionLenses] = useState(null);
+  const [missionLensesLoading, setMissionLensesLoading] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -227,6 +242,31 @@ export function useDashboard(initialProfile) {
     await fetchEmotionalPatterns();
   }, [fetchEmotionalPatterns]);
 
+  const fetchCoherenceSignals = useCallback(async () => {
+    setCoherenceSignalsLoading(true);
+    try {
+      const res = await statsApi.getCoherenceSignals({ days: parseInt(coherenceSignalsRange), limit: 500 });
+      setCoherenceSignals(res.data);
+    } catch (error) {
+      console.error('Error fetching coherence signals:', error);
+    } finally {
+      setCoherenceSignalsLoading(false);
+    }
+  }, [coherenceSignalsRange]);
+
+  const fetchMissionLenses = useCallback(async () => {
+    setMissionLensesLoading(true);
+    try {
+      const res = await profileApi.getMissionLenses();
+      setMissionLenses(res.data || null);
+    } catch (error) {
+      console.error('Error fetching mission lenses:', error);
+      setMissionLenses(null);
+    } finally {
+      setMissionLensesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -246,6 +286,14 @@ export function useDashboard(initialProfile) {
   useEffect(() => {
     fetchEmotionalPatterns();
   }, [fetchEmotionalPatterns]);
+
+  useEffect(() => {
+    fetchCoherenceSignals();
+  }, [fetchCoherenceSignals]);
+
+  useEffect(() => {
+    fetchMissionLenses();
+  }, [fetchMissionLenses]);
 
   return {
     summary,
@@ -292,5 +340,14 @@ export function useDashboard(initialProfile) {
     emotionalPatternsRangeOptions: EMOTIONAL_PATTERNS_RANGE_OPTIONS,
     acknowledgeEmotionalPattern,
     refreshEmotionalPatterns: fetchEmotionalPatterns,
+    coherenceSignals,
+    coherenceSignalsLoading,
+    coherenceSignalsRange,
+    setCoherenceSignalsRange,
+    coherenceSignalsRangeOptions: COHERENCE_SIGNALS_RANGE_OPTIONS,
+    refreshCoherenceSignals: fetchCoherenceSignals,
+    missionLenses,
+    missionLensesLoading,
+    refreshMissionLenses: fetchMissionLenses,
   };
 }

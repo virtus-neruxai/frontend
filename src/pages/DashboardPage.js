@@ -7,6 +7,7 @@ import { useDashboard } from '../presentation/viewmodels/useDashboard';
 import { KPICard } from '../presentation/components/dashboard/KPICard';
 import { TaskListDialog } from '../presentation/components/dashboard/TaskListDialog';
 import { ChallengesCard } from '../presentation/components/dashboard/ChallengesCard';
+import { MissionLensesPanel } from '../presentation/components/dashboard/MissionLensesPanel';
 import { StatusDistributionChart } from '../presentation/components/dashboard/StatusDistributionChart';
 import { StatusBarChart } from '../presentation/components/dashboard/StatusBarChart';
 import { TimeseriesChart } from '../presentation/components/dashboard/TimeseriesChart';
@@ -14,6 +15,7 @@ import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/T
 import { DomainDistributionChart } from '../presentation/components/dashboard/DomainDistributionChart';
 import { DetectedPatternsPanel } from '../presentation/components/dashboard/DetectedPatternsPanel';
 import { EmotionalPatternsPanel } from '../presentation/components/dashboard/EmotionalPatternsPanel';
+import { CoherenceSignalsPanel } from '../presentation/components/dashboard/CoherenceSignalsPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -75,6 +77,12 @@ export default function DashboardPageRefactored() {
     emotionalPatternsRange,
     setEmotionalPatternsRange,
     acknowledgeEmotionalPattern,
+    coherenceSignals,
+    coherenceSignalsLoading,
+    coherenceSignalsRange,
+    setCoherenceSignalsRange,
+    missionLenses,
+    missionLensesLoading,
   } = useDashboard(persistedProfileId);
 
   const openTaskList = (category) => {
@@ -150,6 +158,9 @@ export default function DashboardPageRefactored() {
             </Select>
           }
         />
+
+        {/* Mission lenses — lecturas semánticas de la misión */}
+        <MissionLensesPanel data={missionLenses} loading={missionLensesLoading} />
 
         {/* Challenges — seguimiento de cumplimiento de desafíos */}
         <ChallengesCard />
@@ -296,6 +307,14 @@ export default function DashboardPageRefactored() {
               range={emotionalPatternsRange}
               onRangeChange={setEmotionalPatternsRange}
               onAcknowledge={acknowledgeEmotionalPattern}
+            />
+
+            {/* Coherence Signals Panel */}
+            <CoherenceSignalsPanel
+              data={coherenceSignals}
+              loading={coherenceSignalsLoading}
+              range={coherenceSignalsRange}
+              onRangeChange={setCoherenceSignalsRange}
             />
           </div>
         )}
