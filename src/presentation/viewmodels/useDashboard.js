@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import {
   filterTasksByDomain,
   getDashboardItemsByCategory,
+  getDashboardMissionsByCategory,
   getTasksByDomain,
 } from '../../lib/dashboardTaskFilters';
 
@@ -77,7 +78,7 @@ export function useDashboard(initialProfile) {
         statsApi.getSummary({ from_date: fromDate.toISOString() }),
         statsApi.getTimeseries(days),
         tasksApi.getAll({}),
-        missionsApi.getAll({}),
+        missionsApi.getAll({ all_profiles: true }),
       ]);
 
       setSummary(summaryRes.data);
@@ -116,15 +117,31 @@ export function useDashboard(initialProfile) {
     return getDashboardItemsByCategory({
       category,
       tasks: allTasks,
+      rangeDays: parseInt(range, 10),
+    });
+  }, [allTasks, range]);
+
+  const getMissionsByCategory = useCallback((category) => {
+    return getDashboardMissionsByCategory({
+      category,
       missions: allMissions,
       rangeDays: parseInt(range, 10),
     });
-  }, [allTasks, allMissions, range]);
+  }, [allMissions, range]);
 
-  const overdueCount = useMemo(
-    () => getTasksByCategory('overdue').length,
-    [getTasksByCategory]
-  );
+  const taskKpiCounts = useMemo(() => ({
+    total: getTasksByCategory('total').length,
+    completed: getTasksByCategory('completed').length,
+    in_progress: getTasksByCategory('in_progress').length,
+    blocked: getTasksByCategory('blocked').length,
+  }), [getTasksByCategory]);
+
+  const missionKpiCounts = useMemo(() => ({
+    total: getMissionsByCategory('total').length,
+    completed: getMissionsByCategory('completed').length,
+    in_progress: getMissionsByCategory('in_progress').length,
+    overdue: getMissionsByCategory('overdue').length,
+  }), [getMissionsByCategory]);
 
   const domainData = useMemo(
     () => getTasksByDomain(allTasks, parseInt(range, 10)),
@@ -238,9 +255,11 @@ export function useDashboard(initialProfile) {
     setRange,
     rangeOptions: RANGE_OPTIONS,
     getTasksByCategory,
+    getMissionsByCategory,
     getTasksForDomain,
     domainData,
-    overdueCount,
+    taskKpiCounts,
+    missionKpiCounts,
     allTasks,
     statusSummary,
     statusSummaryLoading,

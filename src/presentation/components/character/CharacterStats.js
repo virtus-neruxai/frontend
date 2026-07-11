@@ -28,8 +28,11 @@ const STAT_ICONS = {
  * @param {Object} props.character.stats - Character stats object
  * @param {Object} props.statsInfo - Stat metadata { statKey: { name, description } }
  */
-export const CharacterStats = ({ character, statsInfo = {}, cumulativeTotals = {} }) => {
+export const CharacterStats = ({ character, statsInfo = {}, cumulativeTotals = {}, missionTotals = null }) => {
   if (!character) return null;
+
+  const completedMissions = missionTotals?.completed ?? character.missions_completed ?? 0;
+  const failedMissions = missionTotals?.failed ?? character.missions_failed ?? 0;
 
   return (
     <Card className="shadow-sm">
@@ -127,7 +130,7 @@ export const CharacterStats = ({ character, statsInfo = {}, cumulativeTotals = {
               <span>Misiones Completadas</span>
             </div>
             <span className="font-bold" style={{ color: SEMANTIC_COLORS.success }}>
-              {character.missions_completed || 0}
+              {completedMissions}
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
@@ -136,7 +139,7 @@ export const CharacterStats = ({ character, statsInfo = {}, cumulativeTotals = {
               <span>Misiones Falladas</span>
             </div>
             <span className="font-bold" style={{ color: SEMANTIC_COLORS.destructive }}>
-              {character.missions_failed || 0}
+              {failedMissions}
             </span>
           </div>
         </div>

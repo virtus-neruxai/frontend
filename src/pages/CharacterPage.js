@@ -101,6 +101,7 @@ export default function CharacterPageRefactored() {
   const {
     missions,
     completedMissions,
+    failedMissions,
     generatingMissions,
     nightlyReviewLoading,
     nightlyReviewResult,
@@ -112,6 +113,7 @@ export default function CharacterPageRefactored() {
     missionStatsLoading,
     fetchMissions,
     fetchCompletedMissions,
+    fetchFailedMissions,
     generateMissions,
     performNightlyReview,
     hydrateNightlyReviewResult,
@@ -323,6 +325,7 @@ export default function CharacterPageRefactored() {
         fetchStatsInfo(),
         fetchMissions(),
         fetchCompletedMissions(),
+        fetchFailedMissions(),
         fetchStatsHistory({ fromDate: statsFromDate, toDate: statsToDate }),
         fetchMissionEvolution({ fromDate: missionFromDate, toDate: missionToDate }),
         fetchCumulativeTotals(),
@@ -398,6 +401,7 @@ export default function CharacterPageRefactored() {
     fetchStatsInfo,
     fetchMissions,
     fetchCompletedMissions,
+    fetchFailedMissions,
     fetchStatsHistory,
     fetchMissionEvolution,
     fetchCumulativeTotals,
@@ -658,6 +662,11 @@ export default function CharacterPageRefactored() {
         .sort((a, b) => String(b.latest).localeCompare(String(a.latest)))
     : [];
 
+  const activeProfileMissionStats = useMemo(() => ({
+    completed: completedMissions.length,
+    failed: failedMissions.length,
+  }), [completedMissions, failedMissions]);
+
   if (loading) {
     return (
       <Layout ambient>
@@ -686,7 +695,12 @@ export default function CharacterPageRefactored() {
         />
 
         {/* Character Stats Component */}
-        <CharacterStats character={character} statsInfo={statsInfo} cumulativeTotals={cumulativeTotals} />
+        <CharacterStats
+          character={character}
+          statsInfo={statsInfo}
+          cumulativeTotals={cumulativeTotals}
+          missionTotals={activeProfileMissionStats}
+        />
 
         {/* Level Staircase — gamified level progress */}
         <LevelStaircase

@@ -19,11 +19,6 @@ function getNotificationKey(notification) {
     if (payload.mission_id) return `mission:${payload.mission_id}`;
   }
 
-  if (notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H') {
-    if (payload.reflection_id) return `reflection-followup:${payload.reflection_id}`;
-    if (notification.user_id && payload.occurred_at) return `reflection-followup-fallback:${notification.user_id}:${payload.occurred_at}`;
-  }
-
   if (notification.type === 'NIGHTLY_REVIEW_SUMMARY') {
     if (payload.review_date) return `nightly-review:${payload.review_date}`;
   }

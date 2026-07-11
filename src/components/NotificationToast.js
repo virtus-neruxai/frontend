@@ -51,7 +51,6 @@ export const NotificationToast = () => {
 
 const Toast = ({ notification, onDismiss }) => {
   const { payload } = notification;
-  const isReflectionFollowup = notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
   const isRoutine = !isMissionReminder && !isNightlyReview && payload?.task_kind === 'routine';
@@ -143,9 +142,7 @@ const Toast = ({ notification, onDismiss }) => {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-foreground text-sm">
-            {isReflectionFollowup
-              ? '🫶 Seguimiento de reflexión'
-              : isMissionReminder
+            {isMissionReminder
               ? '🎯 Recordatorio de misión'
               : isNightlyReview
               ? '🌙 Resumen nocturno'
@@ -175,15 +172,6 @@ const Toast = ({ notification, onDismiss }) => {
                 </a>
               )}
             </>
-          ) : isReflectionFollowup ? (
-            <>
-              <p className="text-sm text-foreground mt-1 truncate">
-                {payload.emotion || 'Emoción'}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {payload.message || 'Han pasado casi 24 horas desde tu reflexión con emoción.'}
-              </p>
-            </>
           ) : isMissionReminder ? (
             <>
               <p className="text-sm text-foreground mt-1 line-clamp-2">
@@ -207,7 +195,7 @@ const Toast = ({ notification, onDismiss }) => {
             </>
           )}
 
-          {!isReflectionFollowup && !isMissionReminder && !isNightlyReview && !isRoutine && payload.task_progress !== undefined && (
+          {!isMissionReminder && !isNightlyReview && !isRoutine && payload.task_progress !== undefined && (
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                 <span>Progreso</span>
@@ -223,7 +211,7 @@ const Toast = ({ notification, onDismiss }) => {
           )}
 
           {/* Sprint 2.1: Show next task */}
-          {!isReflectionFollowup && !isMissionReminder && !isNightlyReview && payload.context?.next_task && (
+          {!isMissionReminder && !isNightlyReview && payload.context?.next_task && (
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <span className="font-medium">Siguiente:</span>
               <span className="truncate">{payload.context.next_task.title}</span>
@@ -231,7 +219,7 @@ const Toast = ({ notification, onDismiss }) => {
             </p>
           )}
 
-          {!isReflectionFollowup && !isMissionReminder && !isNightlyReview && payload.task_domain && (
+          {!isMissionReminder && !isNightlyReview && payload.task_domain && (
             <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground">
               {payload.task_domain}
             </span>

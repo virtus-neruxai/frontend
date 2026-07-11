@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Layout from '../components/Layout';
 import TaskModal from '../components/TaskModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { CheckCircle2, Clock, Target, ListTodo } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, CircleSlash, Clock, Flag, ListTodo, Target } from 'lucide-react';
 import { useDashboard } from '../presentation/viewmodels/useDashboard';
 import { KPICard } from '../presentation/components/dashboard/KPICard';
 import { TaskListDialog } from '../presentation/components/dashboard/TaskListDialog';
@@ -22,7 +22,12 @@ const KPI_LIST_TITLES = {
   total: 'Total tareas',
   completed: 'Tareas completadas',
   in_progress: 'Tareas en progreso',
+  blocked: 'Tareas bloqueadas',
   overdue: 'Tareas vencidas',
+  'mission:total': 'Total misiones',
+  'mission:completed': 'Misiones completadas',
+  'mission:in_progress': 'Misiones en progreso',
+  'mission:overdue': 'Misiones vencidas',
 };
 
 export default function DashboardPageRefactored() {
@@ -39,9 +44,11 @@ export default function DashboardPageRefactored() {
     setRange,
     rangeOptions,
     getTasksByCategory,
+    getMissionsByCategory,
     getTasksForDomain,
     domainData,
-    overdueCount,
+    taskKpiCounts,
+    missionKpiCounts,
     allTasks,
     refreshStats,
     statusSummary,
@@ -82,6 +89,8 @@ export default function DashboardPageRefactored() {
 
   const listTasks = listCategory?.startsWith('domain:')
     ? getTasksForDomain(listCategory.slice('domain:'.length))
+    : listCategory?.startsWith('mission:')
+    ? getMissionsByCategory(listCategory.slice('mission:'.length))
     : (listCategory ? getTasksByCategory(listCategory) : []);
   const listTitle = listCategory?.startsWith('domain:')
     ? `Tareas · ${listCategory.slice('domain:'.length)}`
@@ -152,45 +161,92 @@ export default function DashboardPageRefactored() {
         ) : (
           <div className="space-y-6">
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <KPICard
-                title="Total Tareas"
-                value={summary?.total || 0}
-                icon={ListTodo}
-                iconColor={KPI_TOKENS.total.color}
-                iconBg={KPI_TOKENS.total.background}
-                testId="kpi-total"
-                onClick={() => openTaskList('total')}
-              />
-              <KPICard
-                title="Completadas"
-                value={summary?.completed || 0}
-                subtitle={`${summary?.completion_rate || 0}% del total`}
-                icon={CheckCircle2}
-                iconColor={KPI_TOKENS.completed.color}
-                iconBg={KPI_TOKENS.completed.background}
-                testId="kpi-completed"
-                onClick={() => openTaskList('completed')}
-              />
-              <KPICard
-                title="En Progreso"
-                value={summary?.in_progress || 0}
-                icon={Clock}
-                iconColor={KPI_TOKENS.inProgress.color}
-                iconBg={KPI_TOKENS.inProgress.background}
-                testId="kpi-in-progress"
-                onClick={() => openTaskList('in_progress')}
-              />
-              <KPICard
-                title="Vencidas"
-                value={overdueCount}
-                subtitle="Filtro de vencimiento aplicado"
-                icon={Target}
-                iconColor={KPI_TOKENS.overdue.color}
-                iconBg={KPI_TOKENS.overdue.background}
-                testId="kpi-overdue"
-                onClick={() => openTaskList('overdue')}
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tareas</p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <KPICard
+                    title="Total Tareas"
+                    value={taskKpiCounts.total}
+                    icon={ListTodo}
+                    iconColor={KPI_TOKENS.total.color}
+                    iconBg={KPI_TOKENS.total.background}
+                    testId="kpi-total"
+                    onClick={() => openTaskList('total')}
+                  />
+                  <KPICard
+                    title="Completadas"
+                    value={taskKpiCounts.completed}
+                    subtitle={`${summary?.completion_rate || 0}% del total`}
+                    icon={CheckCircle2}
+                    iconColor={KPI_TOKENS.completed.color}
+                    iconBg={KPI_TOKENS.completed.background}
+                    testId="kpi-completed"
+                    onClick={() => openTaskList('completed')}
+                  />
+                  <KPICard
+                    title="En Progreso"
+                    value={taskKpiCounts.in_progress}
+                    icon={Clock}
+                    iconColor={KPI_TOKENS.inProgress.color}
+                    iconBg={KPI_TOKENS.inProgress.background}
+                    testId="kpi-in-progress"
+                    onClick={() => openTaskList('in_progress')}
+                  />
+                  <KPICard
+                    title="Bloqueadas"
+                    value={taskKpiCounts.blocked}
+                    icon={CircleSlash}
+                    iconColor={KPI_TOKENS.blocked.color}
+                    iconBg={KPI_TOKENS.blocked.background}
+                    testId="kpi-blocked"
+                    onClick={() => openTaskList('blocked')}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Misiones · todos los perfiles</p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <KPICard
+                    title="Total Misiones"
+                    value={missionKpiCounts.total}
+                    icon={Flag}
+                    iconColor={KPI_TOKENS.total.color}
+                    iconBg={KPI_TOKENS.total.background}
+                    testId="kpi-missions-total"
+                    onClick={() => openTaskList('mission:total')}
+                  />
+                  <KPICard
+                    title="Completadas"
+                    value={missionKpiCounts.completed}
+                    icon={CheckCircle2}
+                    iconColor={KPI_TOKENS.completed.color}
+                    iconBg={KPI_TOKENS.completed.background}
+                    testId="kpi-missions-completed"
+                    onClick={() => openTaskList('mission:completed')}
+                  />
+                  <KPICard
+                    title="En Progreso"
+                    value={missionKpiCounts.in_progress}
+                    icon={Target}
+                    iconColor={KPI_TOKENS.inProgress.color}
+                    iconBg={KPI_TOKENS.inProgress.background}
+                    testId="kpi-missions-in-progress"
+                    onClick={() => openTaskList('mission:in_progress')}
+                  />
+                  <KPICard
+                    title="Vencidas"
+                    value={missionKpiCounts.overdue}
+                    subtitle="Fallidas o fuera de plazo"
+                    icon={AlertTriangle}
+                    iconColor={KPI_TOKENS.overdue.color}
+                    iconBg={KPI_TOKENS.overdue.background}
+                    testId="kpi-missions-overdue"
+                    onClick={() => openTaskList('mission:overdue')}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* First chart: task totals grouped by domain */}

@@ -47,6 +47,10 @@ export const KPI_TOKENS = {
     color: 'hsl(var(--info))',
     background: 'hsl(var(--info-soft))',
   },
+  blocked: {
+    color: 'hsl(var(--status-blocked))',
+    background: 'hsl(var(--destructive-soft))',
+  },
   overdue: {
     color: 'hsl(var(--warning))',
     background: 'hsl(var(--warning-soft))',

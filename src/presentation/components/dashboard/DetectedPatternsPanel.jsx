@@ -170,6 +170,105 @@ function TimelineEvent({ event }) {
   );
 }
 
+function buildPatternGroups(timeline = [], byFriction = [], selectedFriction = null) {
+  const frictionMeta = new Map((byFriction || []).map((item) => [item.friction, item]));
+  const groupMap = new Map();
+
+  const ensureGroup = (frictionKey, fallbackLabel = null) => {
+    if (!frictionKey) return null;
+    if (!groupMap.has(frictionKey)) {
+      const meta = frictionMeta.get(frictionKey);
+      groupMap.set(frictionKey, {
+        key: frictionKey,
+        meta: meta || {
+          friction: frictionKey,
+          label: fallbackLabel || frictionKey,
+          count: 0,
+          pattern_status: 'improving',
+          sources: {},
+        },
+        events: [],
+      });
+    }
+    return groupMap.get(frictionKey);
+  };
+
+  if (selectedFriction) {
+    ensureGroup(selectedFriction);
+    timeline.forEach((event) => {
+      if (event.friction === selectedFriction || event.secondary_friction === selectedFriction) {
+        const label = event.friction === selectedFriction ? event.label : event.secondary_label;
+        ensureGroup(selectedFriction, label)?.events.push(event);
+      }
+    });
+    return Array.from(groupMap.values()).filter((group) => group.events.length > 0);
+  }
+
+  byFriction.forEach((item) => ensureGroup(item.friction));
+  timeline.forEach((event) => {
+    ensureGroup(event.friction, event.label)?.events.push(event);
+    if (event.secondary_friction && event.secondary_friction !== event.friction) {
+      ensureGroup(event.secondary_friction, event.secondary_label)?.events.push(event);
+    }
+  });
+
+  return Array.from(groupMap.values())
+    .filter((group) => group.events.length > 0 || group.meta.count > 0)
+    .sort((a, b) => {
+      const countDiff = (b.meta.count || b.events.length) - (a.meta.count || a.events.length);
+      if (countDiff !== 0) return countDiff;
+      const latestA = a.events[0]?.created_at || '';
+      const latestB = b.events[0]?.created_at || '';
+      return String(latestB).localeCompare(String(latestA));
+    });
+}
+
+function PatternEvidenceGroup({ group, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const item = group.meta;
+  const eventCount = group.events.length;
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="rounded-lg border bg-card overflow-hidden"
+      data-testid={`detected-pattern-group-${item.friction}`}
+    >
+      <div className="flex items-start gap-3 p-3">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex flex-1 items-start justify-between gap-3 text-left"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                <UserStatusBadge item={item} />
+                <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {eventCount} {eventCount === 1 ? 'entrada' : 'entradas'}
+                </span>
+              </div>
+              <SourceChips sources={item.sources} />
+              {item.user_notes && (
+                <p className="mt-1 text-xs text-muted-foreground italic">{item.user_notes}</p>
+              )}
+            </div>
+            <ChevronDown size={16} className={`mt-0.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent>
+        <div className="border-t px-3">
+          {group.events.map((event) => (
+            <TimelineEvent key={`${group.key}-${event.source_type}-${event.id}-${event.created_at}`} event={event} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 function SummaryRow({ summary }) {
   if (!summary) return null;
   return (
@@ -278,6 +377,7 @@ export function DetectedPatternsPanel({ data, loading, range = '7', onRangeChang
   const filteredTimeline = selectedFriction
     ? timeline.filter(evt => evt.friction === selectedFriction || evt.secondary_friction === selectedFriction)
     : timeline;
+  const groupedTimeline = buildPatternGroups(filteredTimeline, byFriction, selectedFriction);
 
   const hasData = timeline.length > 0 || byFriction.length > 0 || resolvedFrictions.length > 0;
 
@@ -343,11 +443,15 @@ export function DetectedPatternsPanel({ data, loading, range = '7', onRangeChang
             </div>
           )}
 
-          {/* Timeline */}
-          {filteredTimeline.length > 0 ? (
-            <div className="divide-y divide-border">
-              {filteredTimeline.map((evt) => (
-                <TimelineEvent key={`${evt.source_type}-${evt.id}-${evt.created_at}`} event={evt} />
+          {/* Grouped timeline */}
+          {groupedTimeline.length > 0 ? (
+            <div className="space-y-3">
+              {groupedTimeline.map((group) => (
+                <PatternEvidenceGroup
+                  key={group.key}
+                  group={group}
+                  defaultOpen={!!selectedFriction}
+                />
               ))}
             </div>
           ) : timeline.length > 0 ? (

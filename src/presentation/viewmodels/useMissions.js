@@ -64,6 +64,7 @@ const buildMissionConfirmPayload = (mission) => ({
 export const useMissions = () => {
   const [missions, setMissions] = useState([]);
   const [completedMissions, setCompletedMissions] = useState([]);
+  const [failedMissions, setFailedMissions] = useState([]);
   const [generatingMissions, setGeneratingMissions] = useState(false);
   const [nightlyReviewLoading, setNightlyReviewLoading] = useState(false);
   const [nightlyReviewResult, setNightlyReviewResult] = useState(null);
@@ -107,6 +108,22 @@ export const useMissions = () => {
       return done;
     } catch (error) {
       toast.error('Error al cargar el historial de misiones');
+      throw error;
+    }
+  }, []);
+
+  /**
+   * Fetches failed/expired missions for profile-aware character stats.
+   */
+  const fetchFailedMissions = useCallback(async () => {
+    try {
+      const response = await missionsApi.getAll({});
+      const allProfileMissions = Array.isArray(response.data) ? response.data : [];
+      const failed = allProfileMissions.filter((mission) => ['failed', 'expired'].includes(mission.status));
+      setFailedMissions(sortMissionsByCreatedAt(failed));
+      return failed;
+    } catch (error) {
+      toast.error('Error al cargar misiones falladas');
       throw error;
     }
   }, []);
@@ -295,13 +312,13 @@ export const useMissions = () => {
         toast.error('Misión fallida. Sigue adelante.');
       }
 
-      await Promise.all([fetchMissions(), fetchCompletedMissions()]);
+      await Promise.all([fetchMissions(), fetchCompletedMissions(), fetchFailedMissions()]);
       return response.data;
     } catch (error) {
       toast.error('Error al completar misión');
       throw error;
     }
-  }, [fetchMissions, fetchCompletedMissions]);
+  }, [fetchMissions, fetchCompletedMissions, fetchFailedMissions]);
 
   /**
    * Deletes a mission
@@ -410,6 +427,7 @@ export const useMissions = () => {
     // State
     missions,
     completedMissions,
+    failedMissions,
     generatingMissions,
     nightlyReviewLoading,
     nightlyReviewResult,
@@ -424,6 +442,7 @@ export const useMissions = () => {
     // Actions
     fetchMissions,
     fetchCompletedMissions,
+    fetchFailedMissions,
     generateMissions,
     performNightlyReview,
     hydrateNightlyReviewResult,

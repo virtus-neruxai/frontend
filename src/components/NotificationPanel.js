@@ -250,15 +250,9 @@ export const NotificationPanel = ({ onClose }) => {
                       task_domain: item.task_domain,
                       task_progress: item.task_progress,
                       minutes_left: item.minutes_left,
-                      priority:
-                        item.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H'
-                          ? 'low'
-                          : item.priority,
+                      priority: item.priority,
                       suggestion_type: item.context?.suggestion_type,
                       proposal_family: item.context?.proposal_family,
-                      reflection_id: item.context?.reflection_id,
-                      emotion: item.context?.emotion,
-                      emotion_note: item.context?.emotion_note,
                       message:
                         item.context?.summary ||
                         item.task_title ||
@@ -290,7 +284,6 @@ export const NotificationPanel = ({ onClose }) => {
 const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const { payload, read } = notification;
   const [showTodayTasks, setShowTodayTasks] = useState(false);
-  const isReflectionFollowup = notification.type === 'REFLECTION_NEGATIVE_FOLLOWUP_24H';
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
   const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
@@ -368,7 +361,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
     if (!read) {
       onMarkAsRead(notification.id);
     }
-    if (isReflectionFollowup || isMissionReminder) window.location.href = '/character';
+    if (isMissionReminder) window.location.href = '/character';
     else window.location.href = '/calendar';
   };
 
@@ -392,9 +385,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <p className="font-medium text-foreground text-sm leading-snug break-words">
-              {isReflectionFollowup
-                ? `Seguimiento de reflexión: ${payload.emotion || 'Emoción'}`
-                : isMissionReminder
+              {isMissionReminder
                 ? `🎯 ${payload.mission_title || 'Recordatorio de misión'}`
                 : isNightlyReview
                 ? '🌙 Resumen nocturno'
@@ -431,10 +422,6 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                 </a>
               )}
             </>
-          ) : isReflectionFollowup ? (
-            <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
-              {payload.message || 'Recordatorio de seguimiento emocional a las 24 horas.'}
-            </p>
           ) : isMissionReminder ? (
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
               {payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`}
@@ -445,21 +432,20 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
             </p>
           )}
 
-          {!isReflectionFollowup && payload.task_progress !== undefined && (
+          {payload.task_progress !== undefined && (
             <p className="text-xs text-muted-foreground mt-1">
               Progreso: {payload.task_progress}%
             </p>
           )}
 
-          {!isReflectionFollowup && payload.task_domain && (
+          {payload.task_domain && (
             <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-muted text-muted-foreground">
               {payload.task_domain}
             </span>
           )}
 
           {/* Sprint 2.1: Show tasks today after current task */}
-          {!isReflectionFollowup &&
-            payload.context?.tasks_today_after &&
+          {payload.context?.tasks_today_after &&
             payload.context.tasks_today_after.length > 0 && (
             <div className="mt-3">
               <button

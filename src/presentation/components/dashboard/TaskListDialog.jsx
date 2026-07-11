@@ -13,6 +13,8 @@ const STATUS_LABELS = {
 
 const MISSION_STATUS_LABELS = {
   active: 'Activa',
+  in_progress: 'En progreso',
+  done: 'Completada',
   completed: 'Completada',
   failed: 'Fallida',
   expired: 'Expirada',
@@ -40,7 +42,7 @@ export function TaskListDialog({ open, onClose, title, tasks = [], onTaskClick }
         <div className="flex flex-col gap-2 mt-2">
           {tasks.length === 0 && (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              Sin tareas para mostrar.
+              Sin elementos para mostrar.
             </p>
           )}
           {tasks.map((task) => {

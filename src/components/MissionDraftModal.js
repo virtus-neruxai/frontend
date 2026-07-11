@@ -72,6 +72,7 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
         stat_rewards: draftData.data.stat_rewards || {},
         domain: normalizeTaskDomain(draftData.data.domain, 'Hábitos'),
         addToCalendar: draftData.data.addToCalendar !== false,
+        notifications_enabled: !!draftData.data.notifications_enabled,
         start_date: draftData.data.start_date ? formatDateTimeLocal(draftData.data.start_date) : '',
         due_date: draftData.data.due_date
           ? formatDateTimeLocal(draftData.data.due_date)
@@ -328,6 +329,18 @@ export default function MissionDraftModal({ isOpen, onClose, draftData, onConfir
             />
             Añadir al calendario
           </label>
+
+          {editedData.addToCalendar && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={!!editedData.notifications_enabled}
+                onChange={(e) => setEditedData({ ...editedData, notifications_enabled: e.target.checked })}
+                className="h-4 w-4 accent-[hsl(var(--primary))]"
+              />
+              Habilitar notificación de alertas urgentes
+            </label>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             {editedData.addToCalendar && (

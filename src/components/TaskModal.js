@@ -61,6 +61,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
     is_complete: false,
     status: 'todo',
     all_day: false,
+    notifications_enabled: false,
     recurrence_type: isRoutineMode ? 'daily' : 'none',
     recurrence_interval: 1,
     recurrence_weekdays: [1, 2, 3, 4, 5],
@@ -99,6 +100,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           is_complete: task.is_complete || false,
           status: task.status || 'todo',
           all_day: !!task.all_day,
+          notifications_enabled: !!task.notifications_enabled,
           recurrence_type: loadedIsRoutine
             ? (task.recurrence_rule?.type === 'weekly' ? 'custom' : 'daily')
             : 'none',
@@ -170,6 +172,7 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
           is_complete: false,
           status: 'todo',
           all_day: false,
+          notifications_enabled: false,
           recurrence_type: isRoutineMode ? 'daily' : 'none',
           recurrence_interval: 1,
           recurrence_weekdays: [1, 2, 3, 4, 5],
@@ -799,6 +802,18 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
               onCheckedChange={(v) => handleChange('all_day', v)}
 
               data-testid="task-all-day-switch"
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-2">
+            <Label htmlFor="notifications_enabled" className="text-sm font-medium text-muted-foreground">
+              Habilitar notificación de alertas urgentes
+            </Label>
+            <Switch
+              id="notifications_enabled"
+              checked={!!formData.notifications_enabled}
+              onCheckedChange={(v) => handleChange('notifications_enabled', v)}
+              data-testid="task-notifications-switch"
             />
           </div>
 

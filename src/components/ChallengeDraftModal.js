@@ -52,6 +52,7 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
         },
         suggested_time: d.suggested_time || '08:00',
         estimated_minutes: d.estimated_minutes || 30,
+        notifications_enabled: !!d.notifications_enabled,
       });
     }
   }, [draft]);
@@ -212,6 +213,16 @@ export default function ChallengeDraftModal({ isOpen, onClose, draft, onConfirm,
               />
             </div>
           </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!!editedData.notifications_enabled}
+              onChange={(e) => setEditedData({ ...editedData, notifications_enabled: e.target.checked })}
+              className="h-4 w-4 accent-[hsl(var(--primary))]"
+            />
+            Habilitar notificación de alertas urgentes
+          </label>
 
           {/* Stat rewards (display) */}
           {Object.keys(editedData.stat_rewards || {}).length > 0 && (

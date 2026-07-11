@@ -124,6 +124,7 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
         recurrence_weekdays: isRoutineDraft && Array.isArray(recurrence?.weekdays) ? recurrence.weekdays : [1, 2, 3, 4, 5],
         recurrence_until: isRoutineDraft && recurrence?.until ? formatDateTimeLocal(recurrence.until) : '',
         tags: draftData.data.tags || [],
+        notifications_enabled: !!draftData.data.notifications_enabled,
       });
     }
   }, [draftData]);
@@ -442,6 +443,16 @@ export default function TaskDraftModal({ isOpen, onClose, draftData, onConfirm, 
               />
             </div>
           </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!!editedData.notifications_enabled}
+              onChange={(e) => setEditedData({ ...editedData, notifications_enabled: e.target.checked })}
+              className="h-4 w-4 accent-[hsl(var(--primary))]"
+            />
+            Habilitar notificación de alertas urgentes
+          </label>
 
           {/* Difficulty */}
           <div className="space-y-2">
