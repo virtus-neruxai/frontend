@@ -4,12 +4,25 @@ import Layout from '../components/Layout';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
 import TaskDraftModal from '../components/TaskDraftModal';
 import ReasonedReportView from '../presentation/components/reasoning/ReasonedReportView';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { reasoningApi, tasksApi } from '../lib/api';
 import { Brain, History, Loader2, PlusCircle, Send } from 'lucide-react';
+
+const REPORT_RANGE_OPTIONS = [
+  { value: 1, label: 'Diario' },
+  { value: 7, label: 'Última semana' },
+  { value: 14, label: 'Últimas 2 semanas' },
+  { value: 30, label: 'Último mes' },
+];
+
+function reportRangeLabel(daysBack) {
+  const numeric = Number(daysBack) || 14;
+  return REPORT_RANGE_OPTIONS.find((option) => option.value === numeric)?.label || `Últimos ${numeric} días`;
+}
 
 // A recommendation has no schedule; prefill a sensible default the user can edit.
 function defaultDraftFromRecommendation(rec) {
@@ -58,6 +71,7 @@ export default function ReasoningReportPage() {
   const [generating, setGenerating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
+  const [selectedDaysBack, setSelectedDaysBack] = useState(14);
 
   // Chat about the current report
   const [question, setQuestion] = useState('');
@@ -71,11 +85,12 @@ export default function ReasoningReportPage() {
   // such field anywhere (report, reportJson) — those are implicitly V1.
   const schemaVersion = report?.schema_version || reportJson?.schema_version || '1';
   const isV2 = schemaVersion === '2';
+  const filteredHistory = history.filter((item) => Number(item.days_back || 14) === selectedDaysBack);
 
   const generate = useCallback(async () => {
     setGenerating(true);
     try {
-      const { data } = await reasoningApi.generateReport();
+      const { data } = await reasoningApi.generateReport(selectedDaysBack);
       setReport(data);
       setThread([]);
       sessionRef.current = null;
@@ -89,7 +104,7 @@ export default function ReasoningReportPage() {
     } finally {
       setGenerating(false);
     }
-  }, []);
+  }, [selectedDaysBack]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -107,7 +122,18 @@ export default function ReasoningReportPage() {
   const openReport = useCallback(async (id) => {
     try {
       const { data } = await reasoningApi.getReport(id);
-      setReport({ report_id: data.id, report_json: data.report_json, report_markdown: data.report_markdown });
+      setReport({
+        report_id: data.id,
+        prompt_profile: data.prompt_profile,
+        period_start: data.period_start,
+        period_end: data.period_end,
+        days_back: data.days_back || 14,
+        created_at: data.created_at,
+        report_json: data.report_json,
+        report_markdown: data.report_markdown,
+        schema_version: data.schema_version,
+      });
+      setSelectedDaysBack(Number(data.days_back || 14));
       setThread([]);
       sessionRef.current = null;
       setShowHistory(false);
@@ -159,12 +185,24 @@ export default function ReasoningReportPage() {
             <h1 className="flex items-center gap-2 text-2xl font-bold">
               <Brain className="h-6 w-6" /> Informe Razonado
             </h1>
-            <p className="text-muted-foreground">
-              Tu lectura de las últimas 2 semanas
+            <div className="text-muted-foreground">
+              Tu lectura: {reportRangeLabel(selectedDaysBack)}
               {profileName ? <> · <Badge variant="secondary">{profileName}</Badge></> : null}
-            </p>
+            </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Select value={String(selectedDaysBack)} onValueChange={(value) => setSelectedDaysBack(Number(value))}>
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REPORT_RANGE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={String(option.value)}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button onClick={generate} disabled={generating}>
               {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
               Generar informe
@@ -177,12 +215,32 @@ export default function ReasoningReportPage() {
 
         {showHistory && (
           <Card>
-            <CardHeader><CardTitle className="text-base">Historial de informes</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-base">Historial de informes</CardTitle>
+                <Select value={String(selectedDaysBack)} onValueChange={(value) => setSelectedDaysBack(Number(value))}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REPORT_RANGE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={String(option.value)}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
             <CardContent className="space-y-2">
               {history.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aún no hay informes generados.</p>
+              ) : filteredHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No hay informes para {reportRangeLabel(selectedDaysBack).toLowerCase()}.
+                </p>
               ) : (
-                history.map((r) => (
+                filteredHistory.map((r) => (
                   <button
                     key={r.report_id}
                     onClick={() => openReport(r.report_id)}
@@ -190,6 +248,7 @@ export default function ReasoningReportPage() {
                   >
                     <span className="text-muted-foreground">{(r.created_at || '').slice(0, 16).replace('T', ' ')}</span>
                     {r.prompt_profile ? <Badge variant="outline" className="ml-2">{r.prompt_profile}</Badge> : null}
+                    <Badge variant="secondary" className="ml-2">{reportRangeLabel(r.days_back || 14)}</Badge>
                     {r.summary ? <span> — {r.summary.slice(0, 90)}</span> : null}
                   </button>
                 ))
@@ -264,7 +323,7 @@ export default function ReasoningReportPage() {
 
         {!reportJson && !generating && (
           <Card><CardContent className="pt-6 text-center text-muted-foreground">
-            Pulsa <strong>Generar informe</strong> para tu lectura razonada de las últimas dos semanas.
+            Pulsa <strong>Generar informe</strong> para tu lectura razonada: {reportRangeLabel(selectedDaysBack).toLowerCase()}.
           </CardContent></Card>
         )}
       </div>
