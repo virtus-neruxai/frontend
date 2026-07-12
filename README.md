@@ -85,6 +85,17 @@ El selector compartido `EmotionPicker` se muestra en el Diario y en los flujos d
 
 Las reflexiones vinculadas conservan el perfil activo en el momento de escritura, que determina su análisis y estadísticas. El área Diario filtra por ese perfil de forma explícita. Al editar una tarea o misión se muestran todas sus reflexiones vinculadas sin filtrar por perfil; en rutinas se mantiene además el filtro por la fecha de ocurrencia seleccionada.
 
+## Check-in corporal (body check-ins)
+
+La primera pestaña de Caracter incluye el apartado "Check-in corporal", una
+unidad visual independiente del Diario: API (`bodyCheckinsApi`), estado
+(`useBodyCheckin`) y payloads propios que nunca se mezclan con la reflexión
+narrativa. Una vez guardado, el check-in del día queda bloqueado y muestra
+`mentor_outcome` (comentario o draft confirmable reutilizando los modales de
+draft existentes), KPIs de puntos, evolución e historial. Arquitectura
+completa:
+[BODY-CHECKIN-ARCHITECTURE.md](../infra/virtus/docs/BODY-CHECKIN-ARCHITECTURE.md).
+
 ## Notificaciones del Mentor
 
 `SettingsPage` permite activar o desactivar `mentor_notifications_enabled`. La preferencia controla únicamente notificaciones automáticas cuyo contenido genera el Mentor mediante IA, actualmente `NIGHTLY_REVIEW_SUMMARY` y `REFLECTION_NEGATIVE_FOLLOWUP_24H`. Los avisos operativos de tareas y misiones siguen dependiendo de la configuración general de notificaciones.
@@ -203,8 +214,6 @@ const {
   frictions, frictionsLoading, frictionsRange, setFrictionsRange,
   acknowledgeFriction,   // PATCH /stats/frictions/{friction}/acknowledge
   refreshFrictions,
-  coherenceSignals, coherenceSignalsLoading, coherenceSignalsRange,
-  setCoherenceSignalsRange, refreshCoherenceSignals,
   missionLenses, missionLensesLoading, refreshMissionLenses,
 } = useDashboard();
 ```
@@ -212,8 +221,6 @@ const {
 El KPI `Vencidas` y su diálogo comparten el mismo filtro: tareas no rutinarias en estado `in_progress`/`blocked`, con 24 horas de margen tras `date_end`, más misiones no completadas cuya `expires_at` ya pasó. `DomainDistributionChart` agrupa las tareas del rango por el catálogo canónico de dominios; al pulsar un total abre exactamente ese subconjunto.
 
 `frictionsRange` defaults to `'7'` (últimos 7 días). `acknowledgeFriction(friction, data)` hace PATCH y recarga los datos automáticamente.
-
-`coherenceSignals` alimenta `CoherenceSignalsPanel`, un panel solo lectura con rangos 7/30/90. Consume `GET /stats/coherence-signals` y no tiene flujo de reconocimiento/progreso en V1.
 
 `missionLenses` alimenta el panel superior del Dashboard, encima de Desafíos. Es una lectura de las lentes ya materializadas por backend/graph-sync en OpenSearch (`identity`, `direction`, `transcendence`), por lo que no añade coste LLM al abrir la pantalla.
 

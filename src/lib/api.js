@@ -63,7 +63,6 @@ export const statsApi = {
   acknowledgeEmotionalPattern: (patternKey, data) =>
     api.patch(`/stats/emotional-patterns/${encodeURIComponent(patternKey)}/acknowledge`, data),
   getResolvedEmotionalPatterns: () => api.get('/stats/emotional-patterns/resolved'),
-  getCoherenceSignals: (params = {}) => api.get('/stats/coherence-signals', { params }),
 };
 
 // Character API
@@ -96,6 +95,17 @@ export const reflectionsApi = {
   getHistory: (limit = 100, date) => api.get('/reflections/history', { params: { limit, ...(date ? { date } : {}) } }),
   getStatsHistory: (days = 30) => api.get('/reflections/stats-history', { params: { days } }),
   create: (data) => api.post('/reflections', data),
+};
+
+// Body Check-ins API — contexto fisiológico diario, independiente del Diario.
+// Payload y estado propios: nunca se mezcla con reflections. El borrado por
+// privacidad existe en backend (DELETE) pero no se expone en Caracter.
+export const bodyCheckinsApi = {
+  getByDate: (date) => api.get(`/body-checkins/${date}`),
+  getRange: (params = {}) => api.get('/body-checkins', { params }),
+  save: (date, data) => api.put(`/body-checkins/${date}`, data),
+  getSummary: (days = 7) => api.get('/stats/body-checkins', { params: { days } }),
+  getEvolution: (params = {}) => api.get('/body-checkins/stats/evolution', { params }),
 };
 
 // Notifications API

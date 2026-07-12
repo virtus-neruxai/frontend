@@ -15,6 +15,7 @@ import { StatsHistoryChart } from '../presentation/components/character/StatsHis
 import { ReflectionKPIs } from '../presentation/components/character/ReflectionKPIs';
 import { MissionEvolutionChart } from '../presentation/components/character/MissionEvolutionChart';
 import { FinishedList } from '../presentation/components/character/FinishedList';
+import { BodyCheckinSection } from '../presentation/components/character/bodycheckin/BodyCheckinSection';
 import { ProfileEmptyState } from '../presentation/components/profile-theme/ProfileEmptyState';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { useCharacter } from '../presentation/viewmodels/useCharacter';
@@ -799,6 +800,10 @@ export default function CharacterPageRefactored() {
                 />
               </TabsContent>
             </Tabs>
+
+            {/* Check-in corporal — unidad independiente del Diario (estado,
+                guardado, errores y drafts propios). */}
+            <BodyCheckinSection statsInfo={statsInfo} />
           </TabsContent>
 
           {/* Reflection Tab */}

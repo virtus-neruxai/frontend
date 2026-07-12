@@ -15,7 +15,6 @@ import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/T
 import { DomainDistributionChart } from '../presentation/components/dashboard/DomainDistributionChart';
 import { DetectedPatternsPanel } from '../presentation/components/dashboard/DetectedPatternsPanel';
 import { EmotionalPatternsPanel } from '../presentation/components/dashboard/EmotionalPatternsPanel';
-import { CoherenceSignalsPanel } from '../presentation/components/dashboard/CoherenceSignalsPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -77,10 +76,6 @@ export default function DashboardPageRefactored() {
     emotionalPatternsRange,
     setEmotionalPatternsRange,
     acknowledgeEmotionalPattern,
-    coherenceSignals,
-    coherenceSignalsLoading,
-    coherenceSignalsRange,
-    setCoherenceSignalsRange,
     missionLenses,
     missionLensesLoading,
   } = useDashboard(persistedProfileId);
@@ -307,14 +302,6 @@ export default function DashboardPageRefactored() {
               range={emotionalPatternsRange}
               onRangeChange={setEmotionalPatternsRange}
               onAcknowledge={acknowledgeEmotionalPattern}
-            />
-
-            {/* Coherence Signals Panel */}
-            <CoherenceSignalsPanel
-              data={coherenceSignals}
-              loading={coherenceSignalsLoading}
-              range={coherenceSignalsRange}
-              onRangeChange={setCoherenceSignalsRange}
             />
           </div>
         )}
