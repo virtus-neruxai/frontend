@@ -45,7 +45,7 @@ import { getProfileEmoji, getProfileName } from '../lib/profileUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { PROFILE_THEME_IDS, PROFILE_THEMES } from '../theme/profileThemes';
 import {
-  Target, Scroll,
+  Target, Scroll, HeartPulse,
   XCircle, CheckCircle2, Clock
 } from 'lucide-react';
 
@@ -271,14 +271,19 @@ export default function CharacterPageRefactored() {
 
     const payload = consumeNightlyReviewPayload();
     if (payload) {
-      hydrateNightlyReviewResult({
+      const proposalStatus = payload.proposal_status || payload.context?.proposal_status || null;
+      const hydratedResult = {
         review_date: payload.review_date,
         review_text: payload.review_text || payload.summary || payload.message,
         summary: payload.summary || payload.message,
         tasks_completed: payload.tasks_completed || 0,
         tasks_failed: payload.tasks_failed || 0,
         proposed_missions: payload.proposed_missions || [],
-      });
+      };
+      if (proposalStatus) {
+        hydratedResult.proposal_status = proposalStatus;
+      }
+      hydrateNightlyReviewResult(hydratedResult);
     } else {
       toast.info('La revisión nocturna ya no está disponible en esta sesión.');
     }
@@ -738,6 +743,10 @@ export default function CharacterPageRefactored() {
               <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Misiones
             </TabsTrigger>
+            <TabsTrigger value="body-checkin" className="rounded-full data-[state=active]:bg-card">
+              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Registro corporal
+            </TabsTrigger>
             <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-card">
               <Scroll className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Diario
@@ -800,9 +809,12 @@ export default function CharacterPageRefactored() {
                 />
               </TabsContent>
             </Tabs>
+          </TabsContent>
 
-            {/* Check-in corporal — unidad independiente del Diario (estado,
-                guardado, errores y drafts propios). */}
+          {/* Body Check-in Tab */}
+          <TabsContent value="body-checkin" className="space-y-4">
+            {/* Check-in corporal — unidad independiente de Misiones y Diario
+                (estado, guardado, errores y drafts propios). */}
             <BodyCheckinSection statsInfo={statsInfo} />
           </TabsContent>
 

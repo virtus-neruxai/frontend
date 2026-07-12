@@ -154,6 +154,8 @@ describe('BodyCheckinSection', () => {
     // KPIs desde note_analysis.stat_changes: +1 en Ganados y en Balance Neto.
     expect(screen.getByText('Registros')).toBeInTheDocument();
     expect(screen.getAllByText('+1')).toHaveLength(2);
+    // La evolución concreta de stats aparece en el registro bloqueado y en el historial.
+    expect(screen.getAllByText('Disciplina +1')).toHaveLength(2);
     // Aviso de muestra baja.
     expect(await screen.findByTestId('body-low-sample-warning')).toBeInTheDocument();
   });

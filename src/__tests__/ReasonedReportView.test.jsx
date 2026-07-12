@@ -48,6 +48,18 @@ const fullReport = {
       { friction: 'avoidance_loop', count: 5 },
     ],
   },
+  body_signals: {
+    window_days: 14,
+    sample_size: 3,
+    sample_status: 'trend_weak',
+    avg_sleep_hours: 6.5,
+    avg_energy: 2.5,
+    avg_stress: 3.5,
+    avg_fatigue: 3.0,
+    exercise_days: 1,
+    top_signals: [{ signal: 'low_energy', count: 2 }],
+    trends: { energy: 'down', stress: 'stable', sleep: 'insufficient' },
+  },
 };
 
 describe('ReasonedReportView', () => {
@@ -94,6 +106,26 @@ describe('ReasonedReportView', () => {
     expect(values).toContain('17');
   });
 
+  it('renders the body signals panel with averages, signals and trend', () => {
+    render(<ReasonedReportView report={fullReport} />);
+    expect(screen.getByText('Lectura corporal')).toBeInTheDocument();
+    expect(screen.getByText('6.5h')).toBeInTheDocument();
+    expect(screen.getByText('2.5/5')).toBeInTheDocument();
+    expect(screen.getByText(/Energía baja/)).toBeInTheDocument();
+    // "×2" also appears in the emotional pattern table (pattern_refs count) —
+    // assert at least one match instead of a single unique node.
+    expect(screen.getAllByText('×2').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Energía: A la baja/)).toBeInTheDocument();
+  });
+
+  it('hides the body signals panel when there are no check-ins', () => {
+    render(<ReasonedReportView report={{
+      ...fullReport,
+      body_signals: { sample_size: 0, sample_status: 'no_data', top_signals: [], trends: {} },
+    }} />);
+    expect(screen.queryByText('Lectura corporal')).not.toBeInTheDocument();
+  });
+
   it('shows the confidence for each possible cause', () => {
     render(<ReasonedReportView report={fullReport} />);
     expect(screen.getByText(/Media · 55%/)).toBeInTheDocument();
@@ -114,6 +146,7 @@ describe('ReasonedReportView', () => {
     expect(screen.getByText('Solo lectura.')).toBeInTheDocument();
     expect(screen.queryByText('Evidencias')).not.toBeInTheDocument();
     expect(screen.queryByText('Lectura emocional')).not.toBeInTheDocument();
+    expect(screen.queryByText('Lectura corporal')).not.toBeInTheDocument();
     expect(screen.queryByText('Riesgo operativo')).not.toBeInTheDocument();
     expect(screen.queryByText('Métricas del periodo')).not.toBeInTheDocument();
   });

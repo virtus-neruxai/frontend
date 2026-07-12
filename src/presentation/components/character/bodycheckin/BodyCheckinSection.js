@@ -13,6 +13,7 @@ import { BodyCheckinKPIs } from './BodyCheckinKPIs';
 import { BodyCheckinMentorBlock } from './BodyCheckinMentorBlock';
 import { BodyCheckinSummaryPanel } from './BodyCheckinSummaryPanel';
 import { BodyCheckinHistory } from './BodyCheckinHistory';
+import { BodyCheckinStatChanges } from './BodyCheckinStatChanges';
 
 const DRAFT_TYPE_BY_ACTION = {
   SHOW_TASK_CONFIRMATION_MODAL: 'task',
@@ -146,6 +147,11 @@ export function BodyCheckinSection({ statsInfo = {} }) {
                   ))}
                 </div>
               )}
+              <BodyCheckinStatChanges
+                checkin={checkin.todayCheckin}
+                statsInfo={statsInfo}
+                showEmpty={Boolean(checkin.todayCheckin.note_analysis)}
+              />
             </div>
           )}
         </CardContent>
@@ -159,7 +165,7 @@ export function BodyCheckinSection({ statsInfo = {} }) {
         onDaysChange={(days) => checkin.loadSummary(days)}
       />
 
-      <BodyCheckinHistory items={checkin.history} />
+      <BodyCheckinHistory items={checkin.history} statsInfo={statsInfo} />
 
       {/* Modales propios: confirmar aquí no toca el estado de drafts del Diario. */}
       <TaskDraftModal

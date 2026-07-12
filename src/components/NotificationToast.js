@@ -162,15 +162,16 @@ const Toast = ({ notification, onDismiss }) => {
                 <p className="text-xs text-muted-foreground mt-1">
                   {nightlyReviewProposalStatusLabel}
                 </p>
-              ) : (
-                <a
-                  href={nightlyReviewHref}
-                  onClick={handleNightlyReviewOpen}
-                  className="text-xs text-primary mt-1 hover:underline inline-block"
-                >
-                  {(payload.proposed_missions || []).length > 0 ? 'Abrir propuesta →' : 'Ver revisión →'}
-                </a>
-              )}
+              ) : null}
+              <a
+                href={nightlyReviewHref}
+                onClick={handleNightlyReviewOpen}
+                className="text-xs text-primary mt-1 hover:underline inline-block"
+              >
+                {nightlyReviewProposalStatus || (payload.proposed_missions || []).length === 0
+                  ? 'Ver revisión →'
+                  : 'Abrir propuesta →'}
+              </a>
             </>
           ) : isMissionReminder ? (
             <>

@@ -77,5 +77,9 @@ describe('NightlyReview notification CTA', () => {
 
     expect(screen.queryByRole('link', { name: /abrir propuesta/i })).not.toBeInTheDocument();
     expect(screen.getByText(/esta misión ya ha sido confirmada/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /ver revisión/i })).toHaveAttribute(
+      'href',
+      '/character?nightly_review=1&review_date=2026-07-05'
+    );
   });
 });

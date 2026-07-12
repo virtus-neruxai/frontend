@@ -175,7 +175,7 @@ export const useMissions = () => {
     }));
 
     setProposedMissions(missionsWithDates);
-    setShowConfirmModal(missionsWithDates.length > 0);
+    setShowConfirmModal(missionsWithDates.length > 0 && !result.proposal_status);
     return missionsWithDates;
   }, []);
 

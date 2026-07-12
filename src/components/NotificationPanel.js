@@ -334,16 +334,6 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const Icon = config.icon;
 
   const openNightlyReview = async () => {
-    if (nightlyReviewProposalStatus) {
-      if (onRemove) {
-        await onRemove(notification);
-      } else if (!read) {
-        await onMarkAsRead(notification.id);
-      }
-      window.location.href = '/character';
-      return;
-    }
-
     storeNightlyReviewPayload(payload);
     if (onRemove) {
       await onRemove(notification);
@@ -408,19 +398,20 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                 <p className="text-xs text-muted-foreground mt-1">
                   {nightlyReviewProposalStatusLabel}
                 </p>
-              ) : (payload.proposed_missions || []).length > 0 && (
-                <a
-                  href={buildNightlyReviewHref(payload)}
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    await openNightlyReview();
-                  }}
-                  className="text-xs text-primary mt-1 hover:underline inline-block"
-                >
-                  Abrir propuesta →
-                </a>
-              )}
+              ) : null}
+              <a
+                href={buildNightlyReviewHref(payload)}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  await openNightlyReview();
+                }}
+                className="text-xs text-primary mt-1 hover:underline inline-block"
+              >
+                {nightlyReviewProposalStatus || (payload.proposed_missions || []).length === 0
+                  ? 'Ver revisión →'
+                  : 'Abrir propuesta →'}
+              </a>
             </>
           ) : isMissionReminder ? (
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">

@@ -1,4 +1,5 @@
 import {
+  Activity,
   AlertTriangle,
   ArrowRightCircle,
   BarChart3,
@@ -16,6 +17,8 @@ import {
   Scale,
   Sparkles,
   Target,
+  TrendingDown,
+  TrendingUp,
   Timer,
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
@@ -102,6 +105,32 @@ function frictionLabel(key) {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
+// body_checkins derived signal → human label, mirroring
+// agent-service/tools/body_checkins/qa.py::_SIGNAL_LABELS.
+const BODY_SIGNAL_LABELS = {
+  low_sleep: 'Sueño bajo',
+  poor_sleep_quality: 'Sueño de mala calidad',
+  low_energy: 'Energía baja',
+  high_stress: 'Estrés alto',
+  high_fatigue: 'Fatiga alta',
+  exercise_recorded: 'Ejercicio registrado',
+  no_exercise_recorded: 'Sin ejercicio',
+};
+
+function bodySignalLabel(key) {
+  if (BODY_SIGNAL_LABELS[key]) return BODY_SIGNAL_LABELS[key];
+  const spaced = String(key || '').replace(/_/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+const BODY_TREND_CONFIG = {
+  up: { label: 'Al alza', Icon: TrendingUp, className: 'text-[hsl(var(--warning))] bg-[hsl(var(--warning-soft))]' },
+  down: { label: 'A la baja', Icon: TrendingDown, className: 'text-[hsl(var(--info))] bg-[hsl(var(--info-soft))]' },
+  stable: { label: 'Estable', className: 'text-muted-foreground bg-muted' },
+};
+
+const BODY_TREND_METRIC_LABELS = { energy: 'Energía', stress: 'Estrés', sleep: 'Sueño' };
+
 const PATTERN_STATUS_CONFIG = {
   active:          { label: 'Activo', className: 'text-destructive bg-destructive/10' },
   weak_signal:     { label: 'Señal inicial', className: 'text-[hsl(var(--info))] bg-[hsl(var(--info-soft))]' },
@@ -173,6 +202,70 @@ function MetricsPanel({ metrics }) {
             ))}
           </div>
         </div>
+      )}
+    </Panel>
+  );
+}
+
+// Deterministic, code-computed body_checkins aggregates (report.body_signals)
+// — same never-LLM-authored contract as MetricsPanel above. Only rendered
+// when there's at least one check-in in the window.
+function BodyPanel({ body }) {
+  if (!body || body.sample_size <= 0) return null;
+
+  const stats = [
+    body.avg_sleep_hours != null && { value: `${body.avg_sleep_hours}h`, label: 'Sueño medio' },
+    body.avg_energy != null && { value: `${body.avg_energy}/5`, label: 'Energía media' },
+    body.avg_stress != null && { value: `${body.avg_stress}/5`, label: 'Estrés medio' },
+    body.avg_fatigue != null && { value: `${body.avg_fatigue}/5`, label: 'Fatiga media' },
+    { value: body.sample_size, label: 'Muestra' },
+    body.window_days > 0 && { value: `${body.window_days} días`, label: 'Ventana' },
+  ].filter(Boolean);
+
+  const topSignals = body.top_signals || [];
+  const trends = Object.entries(body.trends || {}).filter(([, value]) => value && value !== 'insufficient');
+
+  return (
+    <Panel title="Lectura corporal" icon={Activity}>
+      {stats.length > 0 && (
+        <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {stats.map((s) => <Stat key={s.label} value={s.value} label={s.label} />)}
+        </div>
+      )}
+      {body.exercise_days > 0 && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Días con ejercicio registrado: <strong className="text-foreground">{body.exercise_days}</strong>
+        </p>
+      )}
+      {topSignals.length > 0 && (
+        <div className="mb-3">
+          <span className="text-xs text-muted-foreground">Señales que más se repiten: </span>
+          <span className="inline-flex flex-wrap gap-1.5 align-middle">
+            {topSignals.map((s) => (
+              <Chip key={s.signal} className="bg-muted/60">
+                {bodySignalLabel(s.signal)} <span className="opacity-60">×{s.count}</span>
+              </Chip>
+            ))}
+          </span>
+        </div>
+      )}
+      {trends.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {trends.map(([metric, direction]) => {
+            const cfg = BODY_TREND_CONFIG[direction] || BODY_TREND_CONFIG.stable;
+            const { Icon: TrendIcon } = cfg;
+            return (
+              <Chip key={metric} className={cfg.className}>
+                {TrendIcon && <TrendIcon size={11} />} {BODY_TREND_METRIC_LABELS[metric] || metric}: {cfg.label}
+              </Chip>
+            );
+          })}
+        </div>
+      )}
+      {body.sample_status === 'isolated' && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Solo hay un registro corporal: es un dato aislado, no una tendencia.
+        </p>
       )}
     </Panel>
   );
@@ -467,6 +560,9 @@ export default function ReasonedReportView({ report, onConvertToTask }) {
           )}
         </Panel>
       )}
+
+      {/* Lectura corporal (sueño/energía/estrés/fatiga; solo si hay check-ins) */}
+      <BodyPanel body={report.body_signals} />
 
       {/* Interpretación y matices (secundario, plegable) */}
       {hasInterpretation && (
