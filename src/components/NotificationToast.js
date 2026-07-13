@@ -53,7 +53,8 @@ const Toast = ({ notification, onDismiss }) => {
   const { payload } = notification;
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
-  const isRoutine = !isMissionReminder && !isNightlyReview && payload?.task_kind === 'routine';
+  const isPatternDetected = notification.type === 'PATTERN_DETECTED';
+  const isRoutine = !isMissionReminder && !isNightlyReview && !isPatternDetected && payload?.task_kind === 'routine';
   const nightlyReviewHref = buildNightlyReviewHref(payload);
   const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
   const nightlyReviewProposalStatusLabel = getNightlyReviewProposalStatusLabel(nightlyReviewProposalStatus);
@@ -146,11 +147,25 @@ const Toast = ({ notification, onDismiss }) => {
               ? '🎯 Recordatorio de misión'
               : isNightlyReview
               ? '🌙 Resumen nocturno'
+              : isPatternDetected
+              ? `⚠️ Patrón detectado: ${payload.pattern || ''}`
               : isRoutine
               ? '⏰ Rutina a punto de vencer'
               : '⏰ Tarea por empezar'}
           </p>
-          {isNightlyReview ? (
+          {isPatternDetected ? (
+            <>
+              <p className="text-sm text-foreground mt-1 whitespace-pre-wrap line-clamp-4">
+                {payload.detected_text || payload.message}
+              </p>
+              <a
+                href="/mentor"
+                className="text-xs text-primary mt-1 hover:underline inline-block"
+              >
+                Hablar con el mentor →
+              </a>
+            </>
+          ) : isNightlyReview ? (
             <>
               <p className="text-sm text-foreground mt-1 whitespace-pre-wrap line-clamp-4">
                 {payload.summary || payload.message || 'Tu resumen nocturno está disponible.'}
@@ -196,7 +211,7 @@ const Toast = ({ notification, onDismiss }) => {
             </>
           )}
 
-          {!isMissionReminder && !isNightlyReview && !isRoutine && payload.task_progress !== undefined && (
+          {!isMissionReminder && !isNightlyReview && !isPatternDetected && !isRoutine && payload.task_progress !== undefined && (
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                 <span>Progreso</span>

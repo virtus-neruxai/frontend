@@ -23,6 +23,10 @@ function getNotificationKey(notification) {
     if (payload.review_date) return `nightly-review:${payload.review_date}`;
   }
 
+  if (notification.type === 'PATTERN_DETECTED') {
+    if (payload.reflection_id) return `pattern:${payload.reflection_id}`;
+  }
+
   if (payload.task_id) return `task:${payload.task_id}:${notification.type}`;
   if (notification.user_id && notification.type && notification.timestamp) {
     return `fallback:${notification.user_id}:${notification.type}:${notification.timestamp}`;

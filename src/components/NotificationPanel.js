@@ -286,6 +286,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const [showTodayTasks, setShowTodayTasks] = useState(false);
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
+  const isPatternDetected = notification.type === 'PATTERN_DETECTED';
   const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
   const nightlyReviewProposalStatusLabel = getNightlyReviewProposalStatusLabel(nightlyReviewProposalStatus);
 
@@ -352,6 +353,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
       onMarkAsRead(notification.id);
     }
     if (isMissionReminder) window.location.href = '/character';
+    else if (isPatternDetected) window.location.href = '/mentor';
     else window.location.href = '/calendar';
   };
 
@@ -379,6 +381,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                 ? `🎯 ${payload.mission_title || 'Recordatorio de misión'}`
                 : isNightlyReview
                 ? '🌙 Resumen nocturno'
+                : isPatternDetected
+                ? `⚠️ Patrón detectado: ${payload.pattern || ''}`
                 : payload.task_title}
             </p>
             {!read && (
@@ -416,6 +420,10 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
           ) : isMissionReminder ? (
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
               {payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`}
+            </p>
+          ) : isPatternDetected ? (
+            <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
+              {payload.detected_text || payload.message}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
