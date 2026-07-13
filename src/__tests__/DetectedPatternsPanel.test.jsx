@@ -118,4 +118,65 @@ describe('DetectedPatternsPanel', () => {
     expect(screen.getByTestId('detected-pattern-group-reactivity')).toBeInTheDocument();
     expect(screen.getAllByText(/Hoy empiezo mi enfoque/)).toHaveLength(1);
   });
+
+  test('translates raw friction keys into readable Spanish labels', () => {
+    const data = {
+      summary: {
+        top_pattern_label: 'value_conflict',
+        pattern_events: 3,
+        avg_severity: 1,
+      },
+      by_friction: [
+        { friction: 'value_conflict', label: 'value_conflict', count: 1, pattern_status: 'improving', sources: { chat_interaction: 1 } },
+        { friction: 'loneliness', label: 'loneliness', count: 1, pattern_status: 'improving', sources: { journal_reflection: 1 } },
+        { friction: 'dopamine_escape', label: 'dopamine_escape', count: 1, pattern_status: 'improving', sources: { task_reflection: 1 } },
+      ],
+      resolved_frictions: [],
+      timeline: [
+        {
+          id: 'chat-value',
+          source_type: 'chat_interaction',
+          created_at: '2026-07-13T10:00:00+00:00',
+          friction: 'value_conflict',
+          label: 'value_conflict',
+          pattern_status: 'improving',
+          excerpt: 'Quiero dos cosas que chocan entre sí',
+        },
+        {
+          id: 'journal-loneliness',
+          source_type: 'journal_reflection',
+          created_at: '2026-07-13T11:00:00+00:00',
+          friction: 'loneliness',
+          label: 'loneliness',
+          pattern_status: 'improving',
+          excerpt: 'Me he sentido aislado',
+        },
+        {
+          id: 'task-dopamine',
+          source_type: 'task_reflection',
+          created_at: '2026-07-13T12:00:00+00:00',
+          friction: 'dopamine_escape',
+          label: 'dopamine_escape',
+          pattern_status: 'improving',
+          excerpt: 'Me fui al móvil para evitar empezar',
+        },
+      ],
+    };
+
+    render(
+      <DetectedPatternsPanel
+        data={data}
+        loading={false}
+        onAcknowledge={vi.fn()}
+      />
+    );
+
+    expect(screen.getAllByText('Conflicto de valores').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Soledad o desconexión').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Escape a estímulos rápidos').length).toBeGreaterThan(0);
+
+    expect(screen.queryByText('value_conflict')).not.toBeInTheDocument();
+    expect(screen.queryByText('loneliness')).not.toBeInTheDocument();
+    expect(screen.queryByText('dopamine_escape')).not.toBeInTheDocument();
+  });
 });

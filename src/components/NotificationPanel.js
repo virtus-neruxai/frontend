@@ -10,6 +10,7 @@ import {
   getNightlyReviewProposalStatusLabel,
   storeNightlyReviewPayload,
 } from '../lib/nightlyReviewNotification';
+import { getPatternNotificationTitle } from '../hooks/useWebSocket';
 
 
 function getTaskNotificationBody(payload) {
@@ -382,7 +383,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                 : isNightlyReview
                 ? '🌙 Resumen nocturno'
                 : isPatternDetected
-                ? `⚠️ Patrón detectado: ${payload.pattern || ''}`
+                ? getPatternNotificationTitle(payload)
                 : payload.task_title}
             </p>
             {!read && (

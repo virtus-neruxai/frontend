@@ -8,6 +8,7 @@ import {
   getNightlyReviewProposalStatusLabel,
   storeNightlyReviewPayload,
 } from '../lib/nightlyReviewNotification';
+import { getPatternNotificationTitle } from '../hooks/useWebSocket';
 
 export const NotificationToast = () => {
   const { notifications, dismissNotification } = useNotificationContext();
@@ -148,7 +149,7 @@ const Toast = ({ notification, onDismiss }) => {
               : isNightlyReview
               ? '🌙 Resumen nocturno'
               : isPatternDetected
-              ? `⚠️ Patrón detectado: ${payload.pattern || ''}`
+              ? getPatternNotificationTitle(payload)
               : isRoutine
               ? '⏰ Rutina a punto de vencer'
               : '⏰ Tarea por empezar'}

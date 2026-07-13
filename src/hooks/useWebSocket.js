@@ -225,7 +225,7 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
     let title;
     if (isMissionReminder) title = '🎯 Recordatorio de misión';
     else if (isNightlyReview) title = '🌙 Resumen nocturno';
-    else if (isPatternDetected) title = `⚠️ Patrón detectado: ${payload.pattern || ''}`;
+    else if (isPatternDetected) title = getPatternNotificationTitle(payload);
     else title = '⏰ Tarea por empezar';
 
     let body = '';
@@ -280,6 +280,13 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
   }
 }
 
+export function getPatternNotificationTitle(payload) {
+  if (payload?.kind === 'value_conflict') {
+    return `⚠️ Posible conflicto con tus valores (tu valor frágil: ${payload.pattern || ''})`;
+  }
+  return `⚠️ Patrón detectado: ${payload?.pattern || ''}`;
+}
+
 export function isSupportedNotificationType(type) {
   return (
     type === 'TASK_DUE_SOON' ||
@@ -330,6 +337,7 @@ export function buildNotificationFromWsData(data) {
       friction: data.friction,
       detected_text: data.detected_text,
       reflection_id: data.reflection_id,
+      kind: data.kind || 'pressure_signal',
       message: data.message || `Patrón detectado: ${data.pattern || ''}`,
       priority: data.priority || 'medium',
       context: data.context || {},

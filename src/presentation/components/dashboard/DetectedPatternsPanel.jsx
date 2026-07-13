@@ -30,6 +30,17 @@ const PATTERN_STATUS_CONFIG = {
   relapse_signal:  { label: 'Reaparece',   color: 'text-[hsl(var(--virtus-secondary))]', bg: 'bg-secondary',              Icon: Minus },
 };
 
+const FRICTION_LABELS = {
+  unclear_goal: 'Meta poco clara',
+  reactivity: 'Reactividad',
+  avoidance_loop: 'Evitación repetida',
+  overload: 'Sobrecarga',
+  low_energy: 'Baja energía',
+  value_conflict: 'Conflicto de valores',
+  loneliness: 'Soledad o desconexión',
+  dopamine_escape: 'Escape a estímulos rápidos',
+};
+
 // User-driven status labels (override auto-detected pattern_status)
 const USER_STATUS_CONFIG = {
   dismissed:  { label: 'Descartado',     color: 'text-muted-foreground', bg: 'bg-muted', Icon: Minus },
@@ -38,6 +49,43 @@ const USER_STATUS_CONFIG = {
   3: { label: 'Trabajando',        color: 'text-[hsl(var(--success))]', bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingUp },
   4: { label: 'Notando mejora',    color: 'text-[hsl(var(--success))]', bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingUp },
 };
+
+function humanizeFrictionLabel(value) {
+  if (!value) return value;
+  const raw = String(value);
+  if (FRICTION_LABELS[raw]) return FRICTION_LABELS[raw];
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+function normalizeFrictionItem(item = {}) {
+  const friction = item.friction || item.key || item.pattern_key;
+  return {
+    ...item,
+    friction,
+    label: humanizeFrictionLabel(item.label || friction),
+  };
+}
+
+function normalizeTimelineEvent(event = {}) {
+  return {
+    ...event,
+    label: humanizeFrictionLabel(event.label || event.friction),
+    secondary_label: event.secondary_label
+      ? humanizeFrictionLabel(event.secondary_label)
+      : humanizeFrictionLabel(event.secondary_friction),
+  };
+}
+
+function normalizeSummary(summary = {}) {
+  return {
+    ...summary,
+    top_pattern_label: humanizeFrictionLabel(summary.top_pattern_label || summary.top_pattern),
+  };
+}
 
 function getUserDisplayStatus(item) {
   if (item.user_confirmed === false) return USER_STATUS_CONFIG.dismissed;
@@ -384,13 +432,14 @@ export function DetectedPatternsPanel({ data, loading, range = '7', onRangeChang
   }
 
   const timeline = data?.timeline || [];
-  const summary = data?.summary || {};
-  const byFriction = data?.by_friction || [];
-  const resolvedFrictions = data?.resolved_frictions || [];
+  const summary = normalizeSummary(data?.summary || {});
+  const byFriction = (data?.by_friction || []).map(normalizeFrictionItem);
+  const resolvedFrictions = (data?.resolved_frictions || []).map(normalizeFrictionItem);
+  const normalizedTimeline = timeline.map(normalizeTimelineEvent);
 
   const filteredTimeline = selectedFriction
-    ? timeline.filter(evt => evt.friction === selectedFriction || evt.secondary_friction === selectedFriction)
-    : timeline;
+    ? normalizedTimeline.filter(evt => evt.friction === selectedFriction || evt.secondary_friction === selectedFriction)
+    : normalizedTimeline;
   const groupedTimeline = buildPatternGroups(filteredTimeline, byFriction, selectedFriction);
 
   const hasData = timeline.length > 0 || byFriction.length > 0 || resolvedFrictions.length > 0;
