@@ -1,4 +1,4 @@
-import { Compass, Fingerprint, Quote, Sparkles, Telescope } from 'lucide-react';
+import { Compass, Fingerprint, Sparkles, Telescope } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 
 function Skeleton({ className }) {
@@ -129,16 +129,6 @@ export function MissionLensesPanel({ data, loading }) {
           </span>
         )}
       </div>
-
-      {hasStatement && (
-        <div className="mb-4 rounded-lg border bg-muted/30 p-3">
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Quote size={13} />
-            Enunciado base
-          </div>
-          <p className="text-sm text-foreground line-clamp-3">{data.mission_statement}</p>
-        </div>
-      )}
 
       {lenses.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">

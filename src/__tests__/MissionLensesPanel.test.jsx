@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { MissionLensesPanel } from '../presentation/components/dashboard/MissionLensesPanel';
 
 describe('MissionLensesPanel', () => {
-  test('renders the mission statement and materialized lenses', () => {
+  test('renders materialized lenses without repeating the mission statement', () => {
     render(
       <MissionLensesPanel
         loading={false}
@@ -32,7 +32,8 @@ describe('MissionLensesPanel', () => {
 
     expect(screen.getByTestId('mission-lenses-panel')).toBeInTheDocument();
     expect(screen.getByText('Lentes de misión')).toBeInTheDocument();
-    expect(screen.getByText('Ser disciplinado y entrenar cada mañana.')).toBeInTheDocument();
+    expect(screen.queryByText('Enunciado base')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ser disciplinado y entrenar cada mañana.')).not.toBeInTheDocument();
     expect(screen.getByText('Persona que honra sus compromisos físicos.')).toBeInTheDocument();
     expect(screen.getByText('Entrenar antes de mirar distracciones.')).toBeInTheDocument();
     expect(screen.getByText('91%')).toBeInTheDocument();

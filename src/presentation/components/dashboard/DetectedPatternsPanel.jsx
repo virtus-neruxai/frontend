@@ -173,6 +173,12 @@ function TimelineEvent({ event }) {
 function buildPatternGroups(timeline = [], byFriction = [], selectedFriction = null) {
   const frictionMeta = new Map((byFriction || []).map((item) => [item.friction, item]));
   const groupMap = new Map();
+  const eventKey = (event) => [
+    event.source_type || '',
+    event.id || '',
+    event.created_at || '',
+    event.excerpt || '',
+  ].join('|');
 
   const ensureGroup = (frictionKey, fallbackLabel = null) => {
     if (!frictionKey) return null;
@@ -188,9 +194,18 @@ function buildPatternGroups(timeline = [], byFriction = [], selectedFriction = n
           sources: {},
         },
         events: [],
+        eventKeys: new Set(),
       });
     }
     return groupMap.get(frictionKey);
+  };
+
+  const pushEvent = (group, event) => {
+    if (!group || !event) return;
+    const key = eventKey(event);
+    if (group.eventKeys.has(key)) return;
+    group.eventKeys.add(key);
+    group.events.push(event);
   };
 
   if (selectedFriction) {
@@ -198,22 +213,21 @@ function buildPatternGroups(timeline = [], byFriction = [], selectedFriction = n
     timeline.forEach((event) => {
       if (event.friction === selectedFriction || event.secondary_friction === selectedFriction) {
         const label = event.friction === selectedFriction ? event.label : event.secondary_label;
-        ensureGroup(selectedFriction, label)?.events.push(event);
+        pushEvent(ensureGroup(selectedFriction, label), event);
       }
     });
     return Array.from(groupMap.values()).filter((group) => group.events.length > 0);
   }
 
-  byFriction.forEach((item) => ensureGroup(item.friction));
   timeline.forEach((event) => {
-    ensureGroup(event.friction, event.label)?.events.push(event);
-    if (event.secondary_friction && event.secondary_friction !== event.friction) {
-      ensureGroup(event.secondary_friction, event.secondary_label)?.events.push(event);
-    }
+    // In the default list, show each interaction/reflection only once under
+    // its primary pattern. Secondary patterns remain visible in the event title
+    // and as top chips/filters, but they do not duplicate the same evidence.
+    pushEvent(ensureGroup(event.friction, event.label), event);
   });
 
   return Array.from(groupMap.values())
-    .filter((group) => group.events.length > 0 || group.meta.count > 0)
+    .filter((group) => group.events.length > 0)
     .sort((a, b) => {
       const countDiff = (b.meta.count || b.events.length) - (a.meta.count || a.events.length);
       if (countDiff !== 0) return countDiff;

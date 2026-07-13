@@ -62,4 +62,60 @@ describe('DetectedPatternsPanel', () => {
     expect(screen.getByText(/Sigo avanzando en funcionalidades técnicas/)).toBeInTheDocument();
     expect(screen.getByText(/me acerco a Dios entonces o no/)).toBeInTheDocument();
   });
+
+  test('does not duplicate the same evidence when an event has primary and secondary patterns', () => {
+    const data = {
+      summary: {
+        top_pattern_label: 'Meta poco clara',
+        pattern_events: 1,
+        avg_severity: 1,
+      },
+      by_friction: [
+        metaPocoClara,
+        {
+          friction: 'reactivity',
+          label: 'Reactividad',
+          count: 1,
+          pattern_status: 'improving',
+          sources: { chat_interaction: 1 },
+          user_confirmed: null,
+          user_progress: null,
+          user_notes: null,
+        },
+      ],
+      resolved_frictions: [],
+      timeline: [
+        {
+          id: 'chat-13',
+          source_type: 'chat_interaction',
+          created_at: '2026-07-13T10:00:00+00:00',
+          friction: 'unclear_goal',
+          secondary_friction: 'reactivity',
+          label: 'Meta poco clara',
+          secondary_label: 'Reactividad',
+          pattern_status: 'improving',
+          excerpt: 'Hoy empiezo mi enfoque para fortalecer mis hábitos',
+        },
+      ],
+    };
+
+    render(
+      <DetectedPatternsPanel
+        data={data}
+        loading={false}
+        onAcknowledge={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('detected-pattern-group-unclear_goal')).toBeInTheDocument();
+    expect(screen.queryByTestId('detected-pattern-group-reactivity')).not.toBeInTheDocument();
+
+    const primaryGroup = screen.getByTestId('detected-pattern-group-unclear_goal');
+    fireEvent.click(within(primaryGroup).getByRole('button', { name: /Meta poco clara/i }));
+    expect(screen.getAllByText(/Hoy empiezo mi enfoque/)).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /Reactividad/i }));
+    expect(screen.getByTestId('detected-pattern-group-reactivity')).toBeInTheDocument();
+    expect(screen.getAllByText(/Hoy empiezo mi enfoque/)).toHaveLength(1);
+  });
 });

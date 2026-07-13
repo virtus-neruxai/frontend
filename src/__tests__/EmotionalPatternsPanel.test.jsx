@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { EmotionalPatternsPanel } from '../presentation/components/dashboard/EmotionalPatternsPanel';
 
 const activePattern = {
@@ -94,7 +94,7 @@ describe('EmotionalPatternsPanel', () => {
 
     expect(screen.getByTestId('emotional-patterns-panel')).toBeInTheDocument();
     expect(screen.getAllByText(/Frustración recurrente en Trabajo/).length).toBeGreaterThan(0);
-    expect(screen.getByText('Activo')).toBeInTheDocument();
+    expect(screen.getAllByText('Activo').length).toBeGreaterThan(0);
     const chipButton = screen.getByTitle('Filtrar evidencias por este patrón');
     expect(chipButton.textContent).toContain('×4');
   });
@@ -103,7 +103,7 @@ describe('EmotionalPatternsPanel', () => {
     const positiveActive = { ...activePattern, polarity: 'positive', pattern_status: 'active', label: 'Calma recurrente en Salud' };
     render(<EmotionalPatternsPanel data={baseData({ by_pattern: [positiveActive] })} loading={false} onAcknowledge={vi.fn()} />);
 
-    expect(screen.getByText('Presente')).toBeInTheDocument();
+    expect(screen.getAllByText('Presente').length).toBeGreaterThan(0);
     expect(screen.queryByText('Activo')).not.toBeInTheDocument();
   });
 
@@ -117,9 +117,9 @@ describe('EmotionalPatternsPanel', () => {
     );
 
     expect(screen.getAllByText(/Señal de Calma en Salud/).length).toBeGreaterThan(0);
-    expect(screen.getByText('Señal inicial')).toBeInTheDocument();
+    expect(screen.getAllByText('Señal inicial').length).toBeGreaterThan(0);
     expect(screen.queryByText('Presente')).not.toBeInTheDocument();
-    // related_signals rendered as secondary text under the chip row
+    // related_signals render as secondary text inside the grouped pattern row
     expect(screen.getByText(/Coincide con Evitación inicial/)).toBeInTheDocument();
   });
 
@@ -132,6 +132,9 @@ describe('EmotionalPatternsPanel', () => {
         onAcknowledge={vi.fn()}
       />
     );
+
+    const group = screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo');
+    fireEvent.click(within(group).getByRole('button', { name: /Frustración recurrente en Trabajo/i }));
 
     expect(screen.getByText('4/5')).toBeInTheDocument();
     expect(screen.getByText(/sigo evitando empezar/)).toBeInTheDocument();
@@ -168,10 +171,109 @@ describe('EmotionalPatternsPanel', () => {
     const chipButtons = screen.getAllByTitle('Filtrar evidencias por este patrón');
     const frustracionChip = chipButtons.find((btn) => btn.textContent.includes('Frustración'));
     fireEvent.click(frustracionChip);
-    expect(screen.getAllByText('Me costó empezar de nuevo.', { exact: false })).toHaveLength(1);
+    expect(screen.getAllByText(/Me costó empezar de nuevo/)).toHaveLength(1);
 
     fireEvent.click(screen.getByText('Ver todos'));
-    expect(screen.getAllByText('Me costó empezar de nuevo.', { exact: false })).toHaveLength(2);
+    expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
+    expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:calma:salud')).toBeInTheDocument();
+    expect(screen.queryByText('Me costó empezar de nuevo.', { exact: false })).not.toBeInTheDocument();
+  });
+
+  test('groups repeated emotional entries under one pattern and deduplicates pattern chips', () => {
+    const duplicatePattern = {
+      ...activePattern,
+      sources: { journal_reflection: 1, chat_interaction: 1 },
+    };
+    const duplicatePatternCopy = {
+      ...activePattern,
+      sources: { journal_reflection: 1, chat_interaction: 1 },
+    };
+    const chatEvent = {
+      ...timelineEvent,
+      id: 'chat-1',
+      source_type: 'chat_interaction',
+      created_at: '2026-07-06T10:00:00+00:00',
+      excerpt: 'Otra vez aparece frustración al hablar del trabajo.',
+    };
+
+    render(
+      <EmotionalPatternsPanel
+        data={baseData({
+          by_pattern: [duplicatePattern, duplicatePatternCopy],
+          timeline: [timelineEvent, chatEvent],
+        })}
+        loading={false}
+        onAcknowledge={vi.fn()}
+      />
+    );
+
+    const chipButtons = screen.getAllByTitle('Filtrar evidencias por este patrón');
+    const patternChips = chipButtons.filter((btn) => btn.textContent.includes('Frustración recurrente en Trabajo'));
+    expect(patternChips).toHaveLength(1);
+
+    const group = screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo');
+    expect(within(group).getByText(/Frustración recurrente en Trabajo/)).toBeInTheDocument();
+    expect(within(group).getByText('2 entradas')).toBeInTheDocument();
+    expect(within(group).getByText('Diario (1)')).toBeInTheDocument();
+    expect(within(group).getByText('Chat (1)')).toBeInTheDocument();
+    expect(screen.queryByText(/Otra vez aparece frustración/)).not.toBeInTheDocument();
+
+    fireEvent.click(within(group).getByRole('button', { name: /Frustración recurrente en Trabajo/i }));
+
+    expect(screen.getByText(/Me costó empezar de nuevo/)).toBeInTheDocument();
+    expect(screen.getByText(/Otra vez aparece frustración/)).toBeInTheDocument();
+  });
+
+  test('renders a single visual group when one reflection contributes several internal pattern keys', () => {
+    const routineEvent = {
+      id: 'routine-emotion-1',
+      source_type: 'routine_reflection',
+      created_at: '2026-07-13T10:00:00+00:00',
+      emotion: 'concentracion',
+      emotion_label: 'Concentración',
+      emoji: '🧠',
+      polarity: 'positive',
+      intensity: 5,
+      domain: 'Rutina',
+      friction: 'unclear_goal',
+      title: 'Rutina de calma',
+      excerpt: 'He sentido concentración al completar la rutina.',
+      note_excerpt: null,
+      pattern_keys: [
+        'recurring_emotion_in_context:concentracion:rutina',
+        'emotion_after_routine:concentracion:rutina',
+        'emotion_friction_association:concentracion:unclear_goal',
+      ],
+    };
+
+    render(
+      <EmotionalPatternsPanel
+        data={baseData({
+          summary: {
+            top_pattern_label: 'Señales emocionales iniciales detectadas',
+            dominant_emotions: [{ emotion: 'concentracion', emotion_label: 'Concentración', emoji: '🧠', count: 1 }],
+            average_intensity: 5,
+            pattern_events: 1,
+            is_stale: true,
+          },
+          by_pattern: [],
+          timeline: [routineEvent],
+        })}
+        loading={false}
+        onAcknowledge={vi.fn()}
+      />
+    );
+
+    const primaryGroup = screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:concentracion:rutina');
+    expect(primaryGroup).toBeInTheDocument();
+    expect(screen.queryByTestId('emotional-pattern-group-emotion_after_routine:concentracion:rutina')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('emotional-pattern-group-emotion_friction_association:concentracion:unclear_goal')).not.toBeInTheDocument();
+    expect(within(primaryGroup).getByText('1 entrada')).toBeInTheDocument();
+    expect(within(primaryGroup).getByText('Rutina (1)')).toBeInTheDocument();
+
+    fireEvent.click(within(primaryGroup).getByRole('button', { name: /Concentración/i }));
+
+    expect(screen.getAllByText(/He sentido concentración/)).toHaveLength(1);
   });
 
   test('resolved patterns render under "Patrones superados"', () => {

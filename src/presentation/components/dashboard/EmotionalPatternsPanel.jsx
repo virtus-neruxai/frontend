@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
-import { TrendingUp, TrendingDown, Minus, BookOpen, CheckSquare, Target, RotateCcw, ChevronDown, CheckCircle2, Pencil, X, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, MessageSquare, BookOpen, CheckSquare, Target, RotateCcw, ChevronDown, CheckCircle2, Pencil, X, Info } from 'lucide-react';
 import { EmotionalPatternAcknowledgeDialog } from './EmotionalPatternAcknowledgeDialog';
 
 function Skeleton({ className }) {
@@ -16,6 +16,7 @@ const RANGE_OPTIONS = [
 ];
 
 const SOURCE_LABELS = {
+  chat_interaction:   { label: 'Chat',    icon: MessageSquare },
   journal_reflection: { label: 'Diario',  icon: BookOpen },
   task_reflection:    { label: 'Tarea',   icon: CheckSquare },
   mission_reflection: { label: 'Misión',  icon: Target },
@@ -147,21 +148,6 @@ function EmotionalPatternChip({ item, onEdit, selected, onSelect }) {
   );
 }
 
-function RelatedSignalsNote({ byPattern }) {
-  const withRelated = (byPattern || []).filter((item) => item.related_signals?.length);
-  if (!withRelated.length) return null;
-  return (
-    <div className="mb-4 space-y-1">
-      {withRelated.map((item) => (
-        <p key={item.pattern_key} className="text-xs text-muted-foreground">
-          <span className="font-medium">{item.emoji ? `${item.emoji} ` : ''}{item.label}:</span>{' '}
-          {item.related_signals.join(' · ')}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 function TimelineEvent({ event }) {
   const source = SOURCE_LABELS[event.source_type] || { label: event.source_type, icon: BookOpen };
   const SourceIcon = source.icon;
@@ -202,6 +188,223 @@ function TimelineEvent({ event }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function mergeSources(a = {}, b = {}) {
+  const merged = { ...(a || {}) };
+  Object.entries(b || {}).forEach(([source, count]) => {
+    merged[source] = Math.max(merged[source] || 0, count || 0);
+  });
+  return merged;
+}
+
+function buildSourcesFromEvents(events = []) {
+  return events.reduce((acc, event) => {
+    if (!event.source_type) return acc;
+    acc[event.source_type] = (acc[event.source_type] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+function mergePatternMeta(existing, incoming) {
+  if (!existing) return { ...incoming };
+  return {
+    ...existing,
+    ...incoming,
+    count: Math.max(existing.count || 0, incoming.count || 0),
+    sources: mergeSources(existing.sources, incoming.sources),
+    related_signals: Array.from(new Set([
+      ...(existing.related_signals || []),
+      ...(incoming.related_signals || []),
+    ])),
+    user_confirmed: incoming.user_confirmed ?? existing.user_confirmed,
+    user_working: incoming.user_working ?? existing.user_working,
+    user_progress: incoming.user_progress ?? existing.user_progress,
+    user_notes: incoming.user_notes ?? existing.user_notes,
+    resolved_at: incoming.resolved_at ?? existing.resolved_at,
+  };
+}
+
+function getEventPatternLabel(event, patternKey) {
+  if (event.pattern_labels && typeof event.pattern_labels === 'object') {
+    return event.pattern_labels[patternKey];
+  }
+  return event.pattern_label || event.emotion_label || patternKey;
+}
+
+function isPrimaryPatternKey(patternKey) {
+  return String(patternKey || '').startsWith('recurring_emotion_in_context:');
+}
+
+function getVisualPatternKey(event) {
+  const keys = event.pattern_keys || [];
+  return keys.find(isPrimaryPatternKey) || keys[0] || null;
+}
+
+function buildPatternGroups(timeline = [], byPattern = [], selectedPatternKey = null) {
+  const patternMeta = new Map();
+  (byPattern || []).forEach((item) => {
+    if (!item.pattern_key) return;
+    patternMeta.set(item.pattern_key, mergePatternMeta(patternMeta.get(item.pattern_key), item));
+  });
+
+  const groupMap = new Map();
+
+  const ensureGroup = (patternKey, fallbackLabel = null) => {
+    if (!patternKey) return null;
+    if (!groupMap.has(patternKey)) {
+      const meta = patternMeta.get(patternKey);
+      groupMap.set(patternKey, {
+        key: patternKey,
+        meta: meta || {
+          pattern_key: patternKey,
+          label: fallbackLabel || patternKey,
+          count: 0,
+          pattern_status: 'signal',
+          sources: {},
+          related_signals: [],
+        },
+        events: [],
+        eventIds: new Set(),
+      });
+    }
+    return groupMap.get(patternKey);
+  };
+
+  const pushEvent = (patternKey, event) => {
+    const group = ensureGroup(patternKey, getEventPatternLabel(event, patternKey));
+    if (!group) return;
+    const eventKey = `${event.source_type || 'source'}-${event.id || ''}-${event.created_at || ''}-${event.excerpt || ''}`;
+    if (group.eventIds.has(eventKey)) return;
+    group.eventIds.add(eventKey);
+    group.events.push(event);
+  };
+
+  if (selectedPatternKey) {
+    ensureGroup(selectedPatternKey);
+    timeline.forEach((event) => {
+      if (event.pattern_keys?.includes(selectedPatternKey)) {
+        pushEvent(selectedPatternKey, event);
+      }
+    });
+  } else {
+    timeline.forEach((event) => {
+      // A single reflection can have several internal pattern keys
+      // (recurring emotion, after routine, emotion+friction...). In the
+      // default dashboard view it must appear once, under its primary visual
+      // pattern, otherwise the same evidence is copied into several cards.
+      pushEvent(getVisualPatternKey(event), event);
+    });
+    patternMeta.forEach((_, patternKey) => {
+      if (groupMap.has(patternKey)) return;
+      // Keep standalone persisted patterns visible, but avoid creating empty
+      // derived groups when their evidence is already represented by the
+      // primary recurring_emotion_in_context group.
+      if (isPrimaryPatternKey(patternKey) || timeline.length === 0) {
+        ensureGroup(patternKey);
+      }
+    });
+  }
+
+  return Array.from(groupMap.values())
+    .map((group) => {
+      const eventSources = buildSourcesFromEvents(group.events);
+      return {
+        ...group,
+        meta: {
+          ...group.meta,
+          count: group.meta.count || group.events.length,
+          sources: mergeSources(group.meta.sources, eventSources),
+        },
+      };
+    })
+    .filter((group) => group.events.length > 0 || group.meta.count > 0)
+    .sort((a, b) => {
+      const countDiff = (b.meta.count || b.events.length) - (a.meta.count || a.events.length);
+      if (countDiff !== 0) return countDiff;
+      const latestA = a.events[0]?.created_at || '';
+      const latestB = b.events[0]?.created_at || '';
+      return String(latestB).localeCompare(String(latestA));
+    });
+}
+
+function buildUniquePatternList(byPattern = []) {
+  const patternMeta = new Map();
+  (byPattern || []).forEach((item) => {
+    if (!item.pattern_key) return;
+    patternMeta.set(item.pattern_key, mergePatternMeta(patternMeta.get(item.pattern_key), item));
+  });
+  const values = Array.from(patternMeta.values());
+  const hasPrimaryForEmotion = new Set(
+    values
+      .filter((item) => isPrimaryPatternKey(item.pattern_key))
+      .map((item) => item.emotion)
+      .filter(Boolean)
+  );
+  return values.filter((item) => (
+    isPrimaryPatternKey(item.pattern_key)
+    || !item.emotion
+    || !hasPrimaryForEmotion.has(item.emotion)
+  ));
+}
+
+function PatternEvidenceGroup({ group, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const isOpen = defaultOpen || open;
+  const item = group.meta;
+  const eventCount = group.events.length;
+
+  return (
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setOpen}
+      className="rounded-lg border bg-card overflow-hidden"
+      data-testid={`emotional-pattern-group-${item.pattern_key}`}
+    >
+      <div className="flex items-start gap-3 p-3">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex flex-1 items-start justify-between gap-3 text-left"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">
+                  {item.emoji ? `${item.emoji} ` : ''}{item.label}
+                </p>
+                <UserStatusBadge item={item} />
+                <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {eventCount} {eventCount === 1 ? 'entrada' : 'entradas'}
+                </span>
+                {item.is_weak_signal && (
+                  <span title={item.sample_warning} className="inline-flex text-muted-foreground">
+                    <Info size={12} />
+                  </span>
+                )}
+              </div>
+              <SourceChips sources={item.sources} />
+              {item.related_signals?.length > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {item.related_signals.join(' · ')}
+                </p>
+              )}
+              {item.user_notes && (
+                <p className="mt-1 text-xs text-muted-foreground italic">{item.user_notes}</p>
+              )}
+            </div>
+            <ChevronDown size={16} className={`mt-0.5 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent>
+        <div className="border-t px-3">
+          {group.events.map((event) => (
+            <TimelineEvent key={`${group.key}-${event.source_type}-${event.id}-${event.created_at}`} event={event} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -321,10 +524,8 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
   const summary = data?.summary || {};
   const byPattern = data?.by_pattern || [];
   const resolvedPatterns = data?.resolved_patterns || [];
-
-  const filteredTimeline = selectedPatternKey
-    ? timeline.filter(evt => evt.pattern_keys?.includes(selectedPatternKey))
-    : timeline;
+  const uniqueByPattern = buildUniquePatternList(byPattern);
+  const groupedTimeline = buildPatternGroups(timeline, uniqueByPattern, selectedPatternKey);
 
   const hasData = timeline.length > 0 || byPattern.length > 0 || resolvedPatterns.length > 0;
 
@@ -367,9 +568,9 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
           <SummaryRow summary={summary} />
 
           {/* Pattern chips */}
-          {byPattern.length > 0 && (
+          {uniqueByPattern.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
-              {byPattern.map((p) => (
+              {uniqueByPattern.map((p) => (
                 <EmotionalPatternChip
                   key={p.pattern_key}
                   item={p}
@@ -390,13 +591,15 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
             </div>
           )}
 
-          <RelatedSignalsNote byPattern={byPattern} />
-
           {/* Timeline */}
-          {filteredTimeline.length > 0 ? (
-            <div className="divide-y divide-border">
-              {filteredTimeline.map((evt) => (
-                <TimelineEvent key={`${evt.source_type}-${evt.id}-${evt.created_at}`} event={evt} />
+          {groupedTimeline.length > 0 ? (
+            <div className="space-y-3">
+              {groupedTimeline.map((group) => (
+                <PatternEvidenceGroup
+                  key={group.key}
+                  group={group}
+                  defaultOpen={!!selectedPatternKey}
+                />
               ))}
             </div>
           ) : timeline.length > 0 ? (

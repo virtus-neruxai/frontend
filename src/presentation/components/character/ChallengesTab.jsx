@@ -11,6 +11,7 @@ import { Sun, CalendarDays, CalendarRange, CheckCircle2, Flame, Trash2, Sparkles
 import { useChallenges } from '../../viewmodels/useChallenges';
 import ChallengeDraftModal from '../../../components/ChallengeDraftModal';
 import { FinishedList } from './FinishedList';
+import { StatRewardsChips } from '../stats/StatRewardsChips';
 
 const CHALLENGE_TYPE_LABEL = { daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual' };
 
@@ -26,8 +27,18 @@ const PLACEHOLDERS = {
   monthly: 'Ej: Quiero obtener más beneficios con mis inversiones',
 };
 
-function ChallengeBlock({ type, challenge, generating, prompt, onPromptChange, onGenerate, onCompleteChallenge, onDelete }) {
+function ChallengeBlock({
+  type,
+  challenge,
+  generating,
+  prompt,
+  onPromptChange,
+  onGenerate,
+  onCompleteChallenge,
+  onDelete,
+}) {
   const Icon = type.icon;
+  const rewards = challenge?.stat_rewards || challenge?.routine?.stat_rewards || {};
 
   return (
     <Card>
@@ -48,6 +59,8 @@ function ChallengeBlock({ type, challenge, generating, prompt, onPromptChange, o
                 <p className="text-xs text-muted-foreground mt-0.5 italic line-clamp-2">“{challenge.prompt}”</p>
               )}
             </div>
+
+            <StatRewardsChips rewards={rewards} />
 
             <div className="flex items-center gap-3 text-xs">
               <Badge variant="outline" className="font-medium">
