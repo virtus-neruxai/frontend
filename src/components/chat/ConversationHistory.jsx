@@ -69,7 +69,9 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
   // so loading a (possibly empty) new session never clears the list's spinner.
   const fetchConversationDetail = useCallback(async (sessionId, forceSelect = false) => {
     try {
-      const response = await conversationsApi.getById(sessionId);
+      const response = await conversationsApi.getById(sessionId, {
+        prompt_profile: persistedProfileId,
+      });
       const data = response.data;
       const loaded = Array.isArray(data.messages) ? data.messages : [];
       setMessages(loaded);
@@ -80,7 +82,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
       console.error('Error fetching conversation:', error);
       setMessages([]);
     }
-  }, []);
+  }, [persistedProfileId]);
 
   // The history is profile-scoped server-side; reload it whenever the active
   // profile changes so it always reflects the current profile's conversations.

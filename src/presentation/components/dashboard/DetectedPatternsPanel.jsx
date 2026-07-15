@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
@@ -28,6 +28,7 @@ const PATTERN_STATUS_CONFIG = {
   improving:       { label: 'Mejorando',   color: 'text-[hsl(var(--success))]',      bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingUp },
   resolved_signal: { label: 'Estable',     color: 'text-[hsl(var(--info))]',         bg: 'bg-[hsl(var(--info-soft))]',    Icon: TrendingUp },
   relapse_signal:  { label: 'Reaparece',   color: 'text-[hsl(var(--virtus-secondary))]', bg: 'bg-secondary',              Icon: Minus },
+  unknown:         { label: 'Sin tendencia', color: 'text-muted-foreground',          bg: 'bg-muted',                       Icon: Minus },
 };
 
 const FRICTION_LABELS = {
@@ -96,7 +97,7 @@ function getUserDisplayStatus(item) {
 }
 
 function PatternStatusBadge({ status }) {
-  const cfg = PATTERN_STATUS_CONFIG[status] || PATTERN_STATUS_CONFIG.improving;
+  const cfg = PATTERN_STATUS_CONFIG[status] || PATTERN_STATUS_CONFIG.unknown;
   const { label, color, bg, Icon } = cfg;
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${color} ${bg}`}>
@@ -149,6 +150,15 @@ function SourceChips({ sources }) {
       })}
     </div>
   );
+}
+
+function countEventSources(events = []) {
+  return events.reduce((sources, event) => {
+    if (event.source_type) {
+      sources[event.source_type] = (sources[event.source_type] || 0) + 1;
+    }
+    return sources;
+  }, {});
 }
 
 function FrictionChip({ item, onEdit, selected, onSelect }) {
@@ -238,7 +248,7 @@ function buildPatternGroups(timeline = [], byFriction = [], selectedFriction = n
           friction: frictionKey,
           label: fallbackLabel || frictionKey,
           count: 0,
-          pattern_status: 'improving',
+          pattern_status: null,
           sources: {},
         },
         events: [],
@@ -268,10 +278,12 @@ function buildPatternGroups(timeline = [], byFriction = [], selectedFriction = n
   }
 
   timeline.forEach((event) => {
-    // In the default list, show each interaction/reflection only once under
-    // its primary pattern. Secondary patterns remain visible in the event title
-    // and as top chips/filters, but they do not duplicate the same evidence.
+    // Each pattern has a single entry containing every related evidence,
+    // regardless of whether the Observer marked it as primary or secondary.
     pushEvent(ensureGroup(event.friction, event.label), event);
+    if (event.secondary_friction && event.secondary_friction !== event.friction) {
+      pushEvent(ensureGroup(event.secondary_friction, event.secondary_label), event);
+    }
   });
 
   return Array.from(groupMap.values())
@@ -288,7 +300,12 @@ function buildPatternGroups(timeline = [], byFriction = [], selectedFriction = n
 function PatternEvidenceGroup({ group, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   const item = group.meta;
-  const eventCount = group.events.length;
+  const evidenceCount = group.events.length;
+  const evidenceSources = countEventSources(group.events);
+
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
 
   return (
     <Collapsible
@@ -308,10 +325,10 @@ function PatternEvidenceGroup({ group, defaultOpen = false }) {
                 <p className="text-sm font-semibold text-foreground">{item.label}</p>
                 <UserStatusBadge item={item} />
                 <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  {eventCount} {eventCount === 1 ? 'entrada' : 'entradas'}
+                  1 entrada · {evidenceCount} {evidenceCount === 1 ? 'evidencia' : 'evidencias'}
                 </span>
               </div>
-              <SourceChips sources={item.sources} />
+              <SourceChips sources={evidenceSources} />
               {item.user_notes && (
                 <p className="mt-1 text-xs text-muted-foreground italic">{item.user_notes}</p>
               )}
@@ -323,7 +340,10 @@ function PatternEvidenceGroup({ group, defaultOpen = false }) {
       <CollapsibleContent>
         <div className="border-t px-3">
           {group.events.map((event) => (
-            <TimelineEvent key={`${group.key}-${event.source_type}-${event.id}-${event.created_at}`} event={event} />
+            <TimelineEvent
+              key={`${group.key}-${event.source_type}-${event.id}-${event.created_at}`}
+              event={event}
+            />
           ))}
         </div>
       </CollapsibleContent>

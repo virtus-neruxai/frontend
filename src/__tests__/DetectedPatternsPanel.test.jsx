@@ -54,7 +54,7 @@ describe('DetectedPatternsPanel', () => {
 
     const group = screen.getByTestId('detected-pattern-group-unclear_goal');
     expect(within(group).getByText('Meta poco clara')).toBeInTheDocument();
-    expect(within(group).getByText('2 entradas')).toBeInTheDocument();
+    expect(within(group).getByText('1 entrada · 2 evidencias')).toBeInTheDocument();
     expect(screen.queryByText(/Sigo avanzando en funcionalidades técnicas/)).not.toBeInTheDocument();
 
     fireEvent.click(within(group).getByRole('button', { name: /Meta poco clara/i }));
@@ -63,7 +63,7 @@ describe('DetectedPatternsPanel', () => {
     expect(screen.getByText(/me acerco a Dios entonces o no/)).toBeInTheDocument();
   });
 
-  test('does not duplicate the same evidence when an event has primary and secondary patterns', () => {
+  test('groups related evidence once inside each pattern entry', () => {
     const data = {
       summary: {
         top_pattern_label: 'Meta poco clara',
@@ -108,15 +108,15 @@ describe('DetectedPatternsPanel', () => {
     );
 
     expect(screen.getByTestId('detected-pattern-group-unclear_goal')).toBeInTheDocument();
-    expect(screen.queryByTestId('detected-pattern-group-reactivity')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detected-pattern-group-reactivity')).toBeInTheDocument();
 
     const primaryGroup = screen.getByTestId('detected-pattern-group-unclear_goal');
     fireEvent.click(within(primaryGroup).getByRole('button', { name: /Meta poco clara/i }));
-    expect(screen.getAllByText(/Hoy empiezo mi enfoque/)).toHaveLength(1);
+    expect(within(primaryGroup).getAllByText(/Hoy empiezo mi enfoque/)).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: /Reactividad/i }));
-    expect(screen.getByTestId('detected-pattern-group-reactivity')).toBeInTheDocument();
-    expect(screen.getAllByText(/Hoy empiezo mi enfoque/)).toHaveLength(1);
+    const secondaryGroup = screen.getByTestId('detected-pattern-group-reactivity');
+    fireEvent.click(within(secondaryGroup).getByRole('button', { name: /Reactividad/i }));
+    expect(within(secondaryGroup).getAllByText(/Hoy empiezo mi enfoque/)).toHaveLength(1);
   });
 
   test('translates raw friction keys into readable Spanish labels', () => {
@@ -178,5 +178,103 @@ describe('DetectedPatternsPanel', () => {
     expect(screen.queryByText('value_conflict')).not.toBeInTheDocument();
     expect(screen.queryByText('loneliness')).not.toBeInTheDocument();
     expect(screen.queryByText('dopamine_escape')).not.toBeInTheDocument();
+  });
+
+  test('uses a neutral badge when no pattern trend has been calculated', () => {
+    const data = {
+      summary: { pattern_events: 1, avg_severity: 1 },
+      by_friction: [{
+        friction: 'rumination_loop',
+        label: 'Rumiación recurrente',
+        count: 1,
+        sources: { chat_interaction: 1 },
+      }],
+      resolved_frictions: [],
+      timeline: [{
+        id: 'chat-neutral',
+        source_type: 'chat_interaction',
+        created_at: '2026-07-15T10:00:00+00:00',
+        friction: 'rumination_loop',
+        label: 'Rumiación recurrente',
+        excerpt: 'Una pregunta logística',
+      }],
+    };
+
+    render(
+      <DetectedPatternsPanel
+        data={data}
+        loading={false}
+        onAcknowledge={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Sin tendencia')).toBeInTheDocument();
+    expect(screen.queryByText('Mejorando')).not.toBeInTheDocument();
+  });
+
+  test('groups primary and secondary evidence under one pattern entry', () => {
+    const data = {
+      summary: { pattern_events: 3, avg_severity: 1 },
+      by_friction: [{
+        friction: 'rumination_loop',
+        label: 'Rumiación recurrente',
+        count: 3,
+        pattern_status: 'active',
+        sources: { chat_interaction: 3 },
+      }],
+      resolved_frictions: [],
+      timeline: [
+        {
+          id: 'chat-primary',
+          source_type: 'chat_interaction',
+          created_at: '2026-07-15T10:00:00+00:00',
+          friction: 'rumination_loop',
+          label: 'Rumiación recurrente',
+          pattern_status: 'active',
+          excerpt: 'Primera evidencia de rumiación',
+        },
+        {
+          id: 'chat-secondary-1',
+          source_type: 'chat_interaction',
+          created_at: '2026-07-15T11:00:00+00:00',
+          friction: 'low_energy',
+          secondary_friction: 'rumination_loop',
+          label: 'Baja energía',
+          secondary_label: 'Rumiación recurrente',
+          pattern_status: 'active',
+          excerpt: 'Segunda evidencia relacionada',
+        },
+        {
+          id: 'chat-secondary-2',
+          source_type: 'chat_interaction',
+          created_at: '2026-07-15T12:00:00+00:00',
+          friction: 'reactivity',
+          secondary_friction: 'rumination_loop',
+          label: 'Reactividad',
+          secondary_label: 'Rumiación recurrente',
+          pattern_status: 'active',
+          excerpt: 'Tercera evidencia relacionada',
+        },
+      ],
+    };
+
+    render(
+      <DetectedPatternsPanel
+        data={data}
+        loading={false}
+        onAcknowledge={vi.fn()}
+      />
+    );
+
+    const group = screen.getByTestId('detected-pattern-group-rumination_loop');
+    expect(within(group).getByText('1 entrada · 3 evidencias')).toBeInTheDocument();
+    expect(within(group).getByText('Chat (3)')).toBeInTheDocument();
+    expect(screen.queryByText(/apariciones/)).not.toBeInTheDocument();
+
+    fireEvent.click(within(group).getByRole('button', { name: /Rumiación recurrente/i }));
+    expect(within(group).getByText(/Primera evidencia de rumiación/)).toBeInTheDocument();
+    expect(within(group).getByText(/Segunda evidencia relacionada/)).toBeInTheDocument();
+    expect(within(group).getByText(/Tercera evidencia relacionada/)).toBeInTheDocument();
+    expect(within(group).queryByText(/secundaria/i)).not.toBeInTheDocument();
   });
 });
