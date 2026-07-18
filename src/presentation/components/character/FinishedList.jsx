@@ -1,7 +1,8 @@
 import { Card, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
-import { CheckCircle2, CalendarCheck, Flame } from 'lucide-react';
+import { CheckCircle2, XCircle, CalendarCheck, Flame } from 'lucide-react';
 import { ProfileEmptyState } from '../profile-theme/ProfileEmptyState';
+import { SEMANTIC_COLORS } from '../../../theme/semanticTokens';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -15,8 +16,11 @@ const formatDate = (value) => {
 /**
  * Read-only list of finished items (challenges or missions) showing the
  * completion date. `items` is a normalized array of:
- *   { id, title, subtitle?, badge?, completed_at, metrics? }
+ *   { id, title, subtitle?, badge?, completed_at, metrics?, status? }
  * where metrics (optional, for challenges) = { completion_rate, streak, completion_count, expected }
+ * and status (optional, for missions) = 'done' | 'failed' | 'expired' — anything
+ * other than 'failed'/'expired' renders as completed (default, backward-compatible
+ * with callers like ChallengesTab that don't pass status).
  */
 export function FinishedList({ items, emptyText = 'Aún no hay elementos finalizados.' }) {
   if (!items || items.length === 0) {
@@ -31,42 +35,49 @@ export function FinishedList({ items, emptyText = 'Aún no hay elementos finaliz
 
   return (
     <div className="space-y-2">
-      {items.map((item) => (
-        <Card key={item.id}>
-          <CardContent className="p-3 flex items-start gap-3">
-            <CheckCircle2 size={18} className="text-[hsl(var(--success))] mt-0.5 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-semibold text-foreground leading-snug">{item.title}</p>
-                {item.badge && (
-                  <Badge variant="outline" className="text-[11px]">{item.badge}</Badge>
+      {items.map((item) => {
+        const isFailed = ['failed', 'expired'].includes(item.status);
+        return (
+          <Card key={item.id}>
+            <CardContent className="p-3 flex items-start gap-3">
+              {isFailed ? (
+                <XCircle size={18} style={{ color: SEMANTIC_COLORS.destructive }} className="mt-0.5 shrink-0" />
+              ) : (
+                <CheckCircle2 size={18} className="text-[hsl(var(--success))] mt-0.5 shrink-0" />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-foreground leading-snug">{item.title}</p>
+                  {item.badge && (
+                    <Badge variant="outline" className="text-[11px]">{item.badge}</Badge>
+                  )}
+                </div>
+                {item.subtitle && (
+                  <p className="text-xs text-muted-foreground mt-0.5 italic line-clamp-2">{item.subtitle}</p>
+                )}
+                {item.metrics && (
+                  <div className="flex items-center gap-3 text-xs mt-1.5">
+                    <Badge variant="outline" className="font-medium">
+                      {item.metrics.completion_rate ?? 0}% cumplimiento
+                    </Badge>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Flame size={13} className="text-primary" />
+                      {item.metrics.streak ?? 0}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {item.metrics.completion_count ?? 0}/{item.metrics.expected ?? 0}
+                    </span>
+                  </div>
                 )}
               </div>
-              {item.subtitle && (
-                <p className="text-xs text-muted-foreground mt-0.5 italic line-clamp-2">{item.subtitle}</p>
-              )}
-              {item.metrics && (
-                <div className="flex items-center gap-3 text-xs mt-1.5">
-                  <Badge variant="outline" className="font-medium">
-                    {item.metrics.completion_rate ?? 0}% cumplimiento
-                  </Badge>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Flame size={13} className="text-primary" />
-                    {item.metrics.streak ?? 0}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {item.metrics.completion_count ?? 0}/{item.metrics.expected ?? 0}
-                  </span>
-                </div>
-              )}
-            </div>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-              <CalendarCheck size={13} />
-              {formatDate(item.completed_at)}
-            </span>
-          </CardContent>
-        </Card>
-      ))}
+              <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                <CalendarCheck size={13} />
+                {formatDate(item.completed_at)}
+              </span>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

@@ -775,7 +775,7 @@ export default function CharacterPageRefactored() {
                   Activas
                 </TabsTrigger>
                 <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-card">
-                  Historial {completedMissions.length > 0 && `(${completedMissions.length})`}
+                  Historial {(completedMissions.length + failedMissions.length) > 0 && `(${completedMissions.length + failedMissions.length})`}
                 </TabsTrigger>
               </TabsList>
 
@@ -799,13 +799,16 @@ export default function CharacterPageRefactored() {
 
               <TabsContent value="history" className="space-y-4">
                 <FinishedList
-                  items={completedMissions.map((m) => ({
-                    id: m.id,
-                    title: m.title,
-                    subtitle: m.description || null,
-                    completed_at: m.completed_at || m.updated_at,
-                  }))}
-                  emptyText="Aún no has completado ninguna misión."
+                  items={[...completedMissions, ...failedMissions]
+                    .map((m) => ({
+                      id: m.id,
+                      title: m.title,
+                      subtitle: m.description || null,
+                      completed_at: m.completed_at || m.updated_at,
+                      status: m.status,
+                    }))
+                    .sort((a, b) => String(b.completed_at).localeCompare(String(a.completed_at)))}
+                  emptyText="Aún no has completado ni fallado ninguna misión."
                 />
               </TabsContent>
             </Tabs>

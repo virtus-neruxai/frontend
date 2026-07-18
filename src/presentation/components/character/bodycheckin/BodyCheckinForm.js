@@ -74,14 +74,7 @@ export function BodyCheckinForm({ onSubmit, saving = false, disabled = false }) 
     onSubmit(payload);
   };
 
-  const isEmpty =
-    form.sleep_hours === '' &&
-    !form.sleep_quality &&
-    !form.energy_level &&
-    !form.stress_level &&
-    !form.fatigue_level &&
-    form.exercise_done === null &&
-    !form.note.trim();
+  const noteMissing = !form.note.trim();
 
   return (
     <div className="space-y-4">
@@ -174,7 +167,7 @@ export function BodyCheckinForm({ onSubmit, saving = false, disabled = false }) 
 
       <div className="space-y-1">
         <Label htmlFor="body-note" className="text-xs uppercase tracking-wider text-muted-foreground">
-          Nota corporal (opcional)
+          Nota corporal
         </Label>
         <Textarea
           id="body-note"
@@ -184,9 +177,12 @@ export function BodyCheckinForm({ onSubmit, saving = false, disabled = false }) 
           disabled={disabled}
           onChange={(e) => set('note', e.target.value)}
         />
+        <p className="text-xs text-muted-foreground">
+          La nota es obligatoria para que el check-in quede registrado.
+        </p>
       </div>
 
-      <Button onClick={handleSubmit} disabled={disabled || saving || isEmpty}>
+      <Button onClick={handleSubmit} disabled={disabled || saving || noteMissing}>
         {saving ? 'Guardando…' : 'Registrar check-in'}
       </Button>
     </div>
