@@ -119,17 +119,17 @@ describe('DetectedPatternsPanel', () => {
     expect(within(secondaryGroup).getAllByText(/Hoy empiezo mi enfoque/)).toHaveLength(1);
   });
 
-  test('translates raw friction keys into readable Spanish labels', () => {
+  test('renders the Spanish labels supplied by the backend', () => {
     const data = {
       summary: {
-        top_pattern_label: 'value_conflict',
+        top_pattern_label: 'Conflicto de valores',
         pattern_events: 3,
         avg_severity: 1,
       },
       by_friction: [
-        { friction: 'value_conflict', label: 'value_conflict', count: 1, pattern_status: 'improving', sources: { chat_interaction: 1 } },
-        { friction: 'loneliness', label: 'loneliness', count: 1, pattern_status: 'improving', sources: { journal_reflection: 1 } },
-        { friction: 'dopamine_escape', label: 'dopamine_escape', count: 1, pattern_status: 'improving', sources: { task_reflection: 1 } },
+        { friction: 'value_conflict', label: 'Conflicto de valores', count: 1, pattern_status: 'improving', sources: { chat_interaction: 1 } },
+        { friction: 'loneliness', label: 'Soledad o desconexión', count: 1, pattern_status: 'improving', sources: { journal_reflection: 1 } },
+        { friction: 'dopamine_escape', label: 'Escape a estímulos rápidos', count: 1, pattern_status: 'improving', sources: { task_reflection: 1 } },
       ],
       resolved_frictions: [],
       timeline: [
@@ -138,7 +138,7 @@ describe('DetectedPatternsPanel', () => {
           source_type: 'chat_interaction',
           created_at: '2026-07-13T10:00:00+00:00',
           friction: 'value_conflict',
-          label: 'value_conflict',
+          label: 'Conflicto de valores',
           pattern_status: 'improving',
           excerpt: 'Quiero dos cosas que chocan entre sí',
         },
@@ -147,7 +147,7 @@ describe('DetectedPatternsPanel', () => {
           source_type: 'journal_reflection',
           created_at: '2026-07-13T11:00:00+00:00',
           friction: 'loneliness',
-          label: 'loneliness',
+          label: 'Soledad o desconexión',
           pattern_status: 'improving',
           excerpt: 'Me he sentido aislado',
         },
@@ -156,7 +156,7 @@ describe('DetectedPatternsPanel', () => {
           source_type: 'task_reflection',
           created_at: '2026-07-13T12:00:00+00:00',
           friction: 'dopamine_escape',
-          label: 'dopamine_escape',
+          label: 'Escape a estímulos rápidos',
           pattern_status: 'improving',
           excerpt: 'Me fui al móvil para evitar empezar',
         },
@@ -175,9 +175,29 @@ describe('DetectedPatternsPanel', () => {
     expect(screen.getAllByText('Soledad o desconexión').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Escape a estímulos rápidos').length).toBeGreaterThan(0);
 
-    expect(screen.queryByText('value_conflict')).not.toBeInTheDocument();
-    expect(screen.queryByText('loneliness')).not.toBeInTheDocument();
-    expect(screen.queryByText('dopamine_escape')).not.toBeInTheDocument();
+  });
+
+  test('does not translate friction taxonomy locally', () => {
+    render(
+      <DetectedPatternsPanel
+        loading={false}
+        range="7"
+        onRangeChange={vi.fn()}
+        onAcknowledge={vi.fn()}
+        data={{
+          summary: { pattern_events: 2 },
+          by_friction: [
+            { friction: 'ego_reactivity', label: 'Reactividad defensiva', count: 1, pattern_status: 'active', sources: { journal_reflection: 1 } },
+            { friction: 'external_dependency', label: 'Dependencia de factores externos', count: 1, pattern_status: 'improving', sources: { journal_reflection: 1 } },
+          ],
+          timeline: [],
+          resolved_frictions: [],
+        }}
+      />
+    );
+
+    expect(screen.getAllByText('Reactividad defensiva').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Dependencia de factores externos').length).toBeGreaterThan(0);
   });
 
   test('uses a neutral badge when no pattern trend has been calculated', () => {

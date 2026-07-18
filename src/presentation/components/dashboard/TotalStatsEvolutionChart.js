@@ -39,10 +39,10 @@ export function combineTotalStatsData(history = [], statsInfo = {}) {
 /**
  * TotalStatsEvolutionChart Component
  *
- * Displays combined evolution of stat changes from both missions and reflections
+ * Displays total stat evolution for the selected profile.
  *
  * @param {Object} props
- * @param {Array} props.data - Combined cumulative stats history (from /stats/evolution?source=all)
+ * @param {Array} props.data - Total cumulative stats history (from /stats/evolution?source=all)
  * @param {string} props.range - Selected time range (7, 14, 30, 60)
  * @param {Function} props.onRangeChange - Callback when range changes
  * @param {string} props.fromDate - Range start (YYYY-MM-DD)
@@ -80,7 +80,7 @@ export function TotalStatsEvolutionChart({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
-            Evolución Total de Stats (Misiones + Reflexiones){profileName ? ` del perfil ${profileName}` : ''}
+            Evolución Total de Stats{profileName ? ` por perfil ${profileName}` : ''}
           </CardTitle>
           <div className="flex items-center gap-2 flex-wrap">
             {onProfileChange && (
@@ -118,7 +118,7 @@ export function TotalStatsEvolutionChart({
           <ProfileEmptyState
             icon={Activity}
             title="No hay datos disponibles"
-            description="Las misiones y reflexiones empezarán a dibujar tu evolución aquí."
+            description="Tus acciones y registros empezarán a dibujar tu evolución aquí."
             compact
             className="h-64"
           />

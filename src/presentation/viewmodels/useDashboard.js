@@ -47,7 +47,7 @@ export function useDashboard(initialProfile) {
   const [statusSummary, setStatusSummary] = useState(null);
   const [statusSummaryLoading, setStatusSummaryLoading] = useState(true);
 
-  // Total stats evolution state (missions + reflections) — also has its own
+  // Total stats evolution state — also has its own
   // independent profile filter, decoupled from "Tareas por Estado".
   const [totalStatsHistory, setTotalStatsHistory] = useState([]);
   const [statsInfo, setStatsInfo] = useState({});

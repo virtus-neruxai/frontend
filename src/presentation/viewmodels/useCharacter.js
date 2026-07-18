@@ -104,14 +104,12 @@ export const useCharacter = () => {
   }, []);
 
   /**
-   * Fetches the all-time cumulative stat totals combining missions + diary
-   * (uncapped net_changes), shown alongside the capped 0/10 stats.
+   * Fetches all-time cumulative stat deltas, shown alongside the capped 0/10 stats.
    */
   const fetchCumulativeTotals = useCallback(async () => {
     try {
-      // Wide range approximates "all time"; source=all combines missions and
-      // standalone diary reflections (mission-linked reflections are excluded
-      // server-side to avoid double counting).
+      // Wide range approximates "all time"; source=all includes mission events,
+      // standalone reflections and body check-in note stat changes.
       const response = await statsApi.getEvolution({ source: 'all', days: 3650 });
       setCumulativeTotals(response.data?.summary?.net_changes || {});
       return response.data;

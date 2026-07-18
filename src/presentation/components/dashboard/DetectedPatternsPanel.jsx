@@ -31,17 +31,6 @@ const PATTERN_STATUS_CONFIG = {
   unknown:         { label: 'Sin tendencia', color: 'text-muted-foreground',          bg: 'bg-muted',                       Icon: Minus },
 };
 
-const FRICTION_LABELS = {
-  unclear_goal: 'Meta poco clara',
-  reactivity: 'Reactividad',
-  avoidance_loop: 'Evitación repetida',
-  overload: 'Sobrecarga',
-  low_energy: 'Baja energía',
-  value_conflict: 'Conflicto de valores',
-  loneliness: 'Soledad o desconexión',
-  dopamine_escape: 'Escape a estímulos rápidos',
-};
-
 // User-driven status labels (override auto-detected pattern_status)
 const USER_STATUS_CONFIG = {
   dismissed:  { label: 'Descartado',     color: 'text-muted-foreground', bg: 'bg-muted', Icon: Minus },
@@ -51,15 +40,8 @@ const USER_STATUS_CONFIG = {
   4: { label: 'Notando mejora',    color: 'text-[hsl(var(--success))]', bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingUp },
 };
 
-function humanizeFrictionLabel(value) {
-  if (!value) return value;
-  const raw = String(value);
-  if (FRICTION_LABELS[raw]) return FRICTION_LABELS[raw];
-  return raw
-    .replace(/_/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/^./, (char) => char.toUpperCase());
+function displayFrictionLabel(label) {
+  return label || 'Patrón sin clasificar';
 }
 
 function normalizeFrictionItem(item = {}) {
@@ -67,24 +49,24 @@ function normalizeFrictionItem(item = {}) {
   return {
     ...item,
     friction,
-    label: humanizeFrictionLabel(item.label || friction),
+    label: displayFrictionLabel(item.label),
   };
 }
 
 function normalizeTimelineEvent(event = {}) {
   return {
     ...event,
-    label: humanizeFrictionLabel(event.label || event.friction),
+    label: displayFrictionLabel(event.label),
     secondary_label: event.secondary_label
-      ? humanizeFrictionLabel(event.secondary_label)
-      : humanizeFrictionLabel(event.secondary_friction),
+      ? displayFrictionLabel(event.secondary_label)
+      : null,
   };
 }
 
 function normalizeSummary(summary = {}) {
   return {
     ...summary,
-    top_pattern_label: humanizeFrictionLabel(summary.top_pattern_label || summary.top_pattern),
+    top_pattern_label: displayFrictionLabel(summary.top_pattern_label),
   };
 }
 
