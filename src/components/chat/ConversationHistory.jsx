@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { MessageCircle, Trash2, ChevronRight, Clock, RefreshCw } from 'lucide-react';
+import { MessageCircle, ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { conversationsApi } from '../../lib/api';
 import { useProfileTheme } from '../../theme/useProfileTheme';
@@ -130,25 +130,6 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
     }
   };
 
-  const deleteConversation = async (sessionId) => {
-    if (!window.confirm('¿Seguro que quieres eliminar esta conversación?')) {
-      return;
-    }
-
-    try {
-      await conversationsApi.delete(sessionId);
-      toast.success('Conversación eliminada');
-      fetchConversations();
-      if (selectedConversation === sessionId) {
-        setSelectedConversation(null);
-        setMessages([]);
-      }
-    } catch (error) {
-      console.error('Error deleting conversation:', error);
-      toast.error('Error al eliminar la conversación');
-    }
-  };
-
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return format(date, "d 'de' MMMM, HH:mm", { locale: es });
@@ -266,16 +247,6 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteConversation(conv.session_id);
-                      }}
-                      className="ml-2 p-1 text-muted-foreground hover:text-destructive transition-colors"
-                      title="Eliminar conversación"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
               );

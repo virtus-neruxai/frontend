@@ -28,12 +28,10 @@ api.interceptors.response.use(
 // Task API — backed by /items?item_type=task
 export const tasksApi = {
   getAll: (params = {}) => api.get('/items', { params: { ...params, item_type: 'task' } }),
-  getById: (id) => api.get(`/items/${id}`),
   create: (data) => api.post('/items', { ...data, item_type: 'task' }),
   update: (id, data) => api.patch(`/items/${id}`, data),
   patch: (id, data) => api.patch(`/items/${id}`, data),
   delete: (id) => api.delete(`/items/${id}`),
-  retry: (id) => api.patch(`/items/${id}`, { status: 'todo', is_complete: false }),
   // Mark a routine occurrence (a specific date) as completed. Defaults to today.
   markRoutineToday: (id, data = {}) => api.post(`/items/${id}/complete-occurrence`, data),
   completeOccurrence: (id, date = null) =>
@@ -58,18 +56,15 @@ export const statsApi = {
   getEvolution: (params = {}) => api.get('/stats/evolution', { params }),
   getFrictions: (params = {}) => api.get('/stats/frictions', { params }),
   acknowledgeFriction: (friction, data) => api.patch(`/stats/frictions/${friction}/acknowledge`, data),
-  getResolvedFrictions: () => api.get('/stats/frictions/resolved'),
   getEmotionalPatterns: (params = {}) => api.get('/stats/emotional-patterns', { params }),
   acknowledgeEmotionalPattern: (patternKey, data) =>
     api.patch(`/stats/emotional-patterns/${encodeURIComponent(patternKey)}/acknowledge`, data),
-  getResolvedEmotionalPatterns: () => api.get('/stats/emotional-patterns/resolved'),
 };
 
 // Character API
 export const characterApi = {
   get: () => api.get('/character'),
   getStatsInfo: (params = {}) => api.get('/character/stats-info', { params }),
-  getStatsHistory: (days = 30) => api.get('/character/stats-history', { params: { days } }),
 };
 
 // Missions API — backed by /items?item_type=mission
@@ -93,7 +88,6 @@ export const reflectionsApi = {
     return api.get('/reflections', { params: normalizedParams || {} });
   },
   getHistory: (limit = 100, date) => api.get('/reflections/history', { params: { limit, ...(date ? { date } : {}) } }),
-  getStatsHistory: (days = 30) => api.get('/reflections/stats-history', { params: { days } }),
   create: (data) => api.post('/reflections', data),
 };
 
@@ -187,8 +181,6 @@ export const reasoningApi = {
       report_id: reportId,
       intent,
     }),
-  recommendationToTask: (data) =>
-    reasoningApiInstance.post('/reasoning/recommendation/to-task', data),
 };
 
 const getAgentInteractions = async (params = {}) => {
@@ -253,7 +245,6 @@ export const conversationsApi = {
 
     return { ...response, data: { session_id: sessionId, messages } };
   },
-  delete: () => Promise.reject(new Error('Conversation deletion is not supported by the current agent API')),
 };
 
 // Profile API

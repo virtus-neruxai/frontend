@@ -95,13 +95,16 @@ describe('BodyCheckinSection', () => {
 
     render(<BodyCheckinSection statsInfo={STATS_INFO} />);
     await user.type(await screen.findByLabelText('Horas de sueño'), '7.5');
+    // La nota es obligatoria (BodyCheckinCreate.note en backend): sin ella el
+    // boton de envio queda deshabilitado.
+    await user.type(screen.getByLabelText('Nota corporal'), 'Dormi bien, buena energia.');
     await user.click(screen.getByText('Registrar check-in'));
 
     await waitFor(() => expect(bodyCheckinsApiMock.save).toHaveBeenCalledTimes(1));
     const [dateArg, payload] = bodyCheckinsApiMock.save.mock.calls[0];
     expect(dateArg).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(payload.sleep_hours).toBe(7.5);
-    expect(payload.note).toBeNull();
+    expect(payload.note).toBe('Dormi bien, buena energia.');
     // Payload propio: jamas manda `content` de reflection.
     expect(payload).not.toHaveProperty('content');
     expect(payload).not.toHaveProperty('emotion_snapshot');
@@ -121,6 +124,7 @@ describe('BodyCheckinSection', () => {
 
     render(<BodyCheckinSection statsInfo={STATS_INFO} />);
     await user.type(await screen.findByLabelText('Horas de sueño'), '7');
+    await user.type(screen.getByLabelText('Nota corporal'), 'Nota de prueba.');
     bodyCheckinsApiMock.getByDate.mockResolvedValue({ data: SAVED_CHECKIN });
     await user.click(screen.getByText('Registrar check-in'));
 
