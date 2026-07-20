@@ -55,6 +55,7 @@ export const statsApi = {
   getTimeseries: (days = 30) => api.get('/stats/timeseries', { params: { days } }),
   getEvolution: (params = {}) => api.get('/stats/evolution', { params }),
   getFrictions: (params = {}) => api.get('/stats/frictions', { params }),
+  getFrictionLabels: () => api.get('/stats/friction-labels'),
   acknowledgeFriction: (friction, data) => api.patch(`/stats/frictions/${friction}/acknowledge`, data),
   getEmotionalPatterns: (params = {}) => api.get('/stats/emotional-patterns', { params }),
   acknowledgeEmotionalPattern: (patternKey, data) =>

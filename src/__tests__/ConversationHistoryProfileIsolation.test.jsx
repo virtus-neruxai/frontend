@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ConversationHistory from '../components/chat/ConversationHistory';
-import { conversationsApi } from '../lib/api';
+import { conversationsApi, statsApi } from '../lib/api';
 
 vi.mock('sonner', () => ({
   toast: {
@@ -14,6 +14,9 @@ vi.mock('../lib/api', () => ({
     getAll: vi.fn(),
     getById: vi.fn(),
     delete: vi.fn(),
+  },
+  statsApi: {
+    getFrictionLabels: vi.fn(),
   },
 }));
 
@@ -35,6 +38,7 @@ describe('ConversationHistory profile isolation', () => {
     conversationsApi.getById.mockResolvedValue({
       data: { session_id: 'student-session', messages: [] },
     });
+    statsApi.getFrictionLabels.mockResolvedValue({ data: { labels: {} } });
   });
 
   test('uses the active profile for both conversation list and detail', async () => {
@@ -57,5 +61,35 @@ describe('ConversationHistory profile isolation', () => {
         { prompt_profile: 'student' }
       );
     });
+  });
+
+  test('shows the Spanish friction label instead of the internal code', async () => {
+    statsApi.getFrictionLabels.mockResolvedValue({
+      data: { labels: { value_conflict: 'Conflicto de valores' } },
+    });
+    conversationsApi.getById.mockResolvedValue({
+      data: {
+        session_id: 'student-session',
+        messages: [{
+          role: 'assistant',
+          message: 'Podemos mirar qué valores entran en tensión.',
+          timestamp: '2026-07-15T16:00:00Z',
+          friction: 'value_conflict',
+          mode: 'MOTIVATION',
+        }],
+      },
+    });
+
+    render(
+      <ConversationHistory
+        activeSessionId={null}
+        onSelectConversation={vi.fn()}
+      />
+    );
+
+    fireEvent.click(await screen.findByText('Conversación de estudiante'));
+
+    expect(await screen.findByText('Conflicto de valores')).toBeInTheDocument();
+    expect(screen.queryByText('value_conflict')).not.toBeInTheDocument();
   });
 });

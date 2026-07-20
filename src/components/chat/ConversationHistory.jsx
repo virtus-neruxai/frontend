@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { MessageCircle, ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { conversationsApi } from '../../lib/api';
+import { conversationsApi, statsApi } from '../../lib/api';
 import { useProfileTheme } from '../../theme/useProfileTheme';
 
 // Retry with a tight, near-constant cadence (not exponential backoff): the
@@ -18,6 +18,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [frictionLabels, setFrictionLabels] = useState({});
   // Start in loading state so the first render shows a spinner instead of a
   // premature "no conversations" flash before the initial fetch resolves.
   const [loading, setLoading] = useState(true);
@@ -84,11 +85,28 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
     }
   }, [persistedProfileId]);
 
+  const fetchFrictionLabels = useCallback(async () => {
+    try {
+      const response = await statsApi.getFrictionLabels();
+      const labels = response.data?.labels;
+      setFrictionLabels(labels && typeof labels === 'object' ? labels : {});
+    } catch (error) {
+      // The history remains available even if the display catalog is briefly
+      // unavailable; unknown codes use the generic Spanish fallback below.
+      console.error('Error fetching friction labels:', error);
+      setFrictionLabels({});
+    }
+  }, []);
+
   // The history is profile-scoped server-side; reload it whenever the active
   // profile changes so it always reflects the current profile's conversations.
   useEffect(() => {
     fetchConversations();
   }, [persistedProfileId, fetchConversations]);
+
+  useEffect(() => {
+    fetchFrictionLabels();
+  }, [fetchFrictionLabels]);
 
   // Auto-load the active session's messages when activeSessionId changes
   useEffect(() => {
@@ -148,18 +166,9 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
       overload: 'bg-primary/10 text-primary',
     };
 
-    const labels = {
-      avoidance_loop: 'Evitación',
-      rumination_loop: 'Rumiación',
-      low_energy: 'Baja energía',
-      reactivity: 'Reactividad',
-      unclear_goal: 'Meta poco clara',
-      overload: 'Sobrecarga',
-    };
-
     return (
       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colors[friction] || 'bg-muted text-muted-foreground'}`}>
-        {labels[friction] || friction}
+        {frictionLabels[friction] || 'Patrón detectado'}
       </span>
     );
   };
