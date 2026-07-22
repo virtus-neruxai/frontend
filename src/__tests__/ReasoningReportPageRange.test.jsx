@@ -12,7 +12,6 @@ vi.mock('../lib/api', () => ({
     getReports: vi.fn(),
     getReport: vi.fn(),
     chat: vi.fn(),
-    recommendationToTask: vi.fn(),
   },
   tasksApi: { create: vi.fn() },
 }));
