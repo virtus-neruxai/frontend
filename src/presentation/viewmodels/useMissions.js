@@ -34,7 +34,6 @@ const buildMissionConfirmPayload = (mission) => ({
   description: mission.description,
   mission_type: mission.mission_type || 'daily',
   stat_rewards: mission.stat_rewards || {},
-  stat_penalties: mission.stat_penalties || {},
   difficulty: mission.difficulty || 1,
   domain: mission.domain || 'Hábitos',
   estimated_minutes: mission.estimated_minutes || 30,

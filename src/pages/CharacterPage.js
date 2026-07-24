@@ -818,7 +818,7 @@ export default function CharacterPageRefactored() {
           <TabsContent value="body-checkin" className="space-y-4">
             {/* Check-in corporal — unidad independiente de Misiones y Diario
                 (estado, guardado, errores y drafts propios). */}
-            <BodyCheckinSection statsInfo={statsInfo} />
+            <BodyCheckinSection statsInfo={statsInfo} onStatsChanged={fetchCharacter} />
           </TabsContent>
 
           {/* Reflection Tab */}

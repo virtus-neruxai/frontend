@@ -37,7 +37,12 @@ export function BodyCheckinHistory({ items = [], statsInfo = {} }) {
                 </div>
                 <p className="text-xs text-muted-foreground">{metricSummary(item)}</p>
                 <div className="mt-2">
-                  <BodyCheckinStatChanges checkin={item} statsInfo={statsInfo} title={null} />
+                  <BodyCheckinStatChanges
+                    checkin={item}
+                    statsInfo={statsInfo}
+                    title={null}
+                    showEmpty={Boolean(item.note_analysis)}
+                  />
                 </div>
                 {(item.derived_signals || []).length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">

@@ -26,8 +26,12 @@ const DRAFT_TYPE_BY_ACTION = {
  * falla, el Diario no se ve afectado (y viceversa). Instancia PROPIA de
  * useDrafts para que confirmar una propuesta del Mentor aquí no interfiera
  * con los drafts del Diario.
+ *
+ * onStatsChanged: el check-in tiene su propio hook/estado (useBodyCheckin),
+ * separado del useCharacter() de CharacterPage — sin este callback, un stat
+ * aplicado aquí no se reflejaba en el panel de Estadísticas hasta recargar.
  */
-export function BodyCheckinSection({ statsInfo = {} }) {
+export function BodyCheckinSection({ statsInfo = {}, onStatsChanged }) {
   const checkin = useBodyCheckin();
   const drafts = useDrafts();
   const [evolutionRange, setEvolutionRange] = useState('30');
@@ -57,6 +61,9 @@ export function BodyCheckinSection({ statsInfo = {} }) {
     const saved = await checkin.save(payload);
     if (saved) {
       refreshData();
+      if (saved.note_analysis?.stats_applied) {
+        onStatsChanged?.();
+      }
     }
   };
 

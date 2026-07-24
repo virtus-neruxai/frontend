@@ -3,7 +3,7 @@ import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import {
   Target, Calendar, Trash2,
-  CheckCircle2, XCircle, RefreshCw
+  CheckCircle2, RefreshCw
 } from 'lucide-react';
 import { getProfileName, getProfileEmoji } from '../../../lib/profileUtils';
 import { formatStatLabel } from '../../../lib/statUtils';
@@ -66,26 +66,6 @@ const MissionCard = ({ mission, onSelect, onSchedule, onDelete, statsInfo = {} }
                       style={{ color: SEMANTIC_COLORS.success, borderColor: SEMANTIC_COLORS.success }}
                     >
                       +{value} {formatStatLabel(stat, statsInfo)}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Penalties */}
-            {mission.stat_penalties && Object.keys(mission.stat_penalties).length > 0 && (
-              <div className="flex items-center gap-2">
-                <XCircle className="w-4 h-4" style={{ color: SEMANTIC_COLORS.destructive }} strokeWidth={1.5} />
-                <span className="text-xs font-medium" style={{ color: SEMANTIC_COLORS.destructive }}>Si fallas:</span>
-                <div className="flex gap-1 flex-wrap">
-                  {Object.entries(mission.stat_penalties).map(([stat, value]) => (
-                    <Badge 
-                      key={stat} 
-                      variant="outline" 
-                      className="text-xs"
-                      style={{ color: SEMANTIC_COLORS.destructive, borderColor: SEMANTIC_COLORS.destructive }}
-                    >
-                      -{Math.abs(Number(value) || 0)} {formatStatLabel(stat, statsInfo)}
                     </Badge>
                   ))}
                 </div>
