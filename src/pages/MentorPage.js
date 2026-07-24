@@ -6,6 +6,7 @@ import Layout from '../components/Layout';
 import ConversationHistory from '../components/chat/ConversationHistory';
 import TaskDraftModal from '../components/TaskDraftModal';
 import MissionDraftModal from '../components/MissionDraftModal';
+import ProjectDraftModal from '../components/ProjectDraftModal';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -18,7 +19,7 @@ import { ProfileHeroCard } from '../presentation/components/profile-theme/Profil
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { useProfileTheme } from '../theme/useProfileTheme';
-import { Clock, MessageCircle, PlusCircle, Repeat, Send } from 'lucide-react';
+import { Clock, MessageCircle, PlusCircle, Repeat, Rocket, Send } from 'lucide-react';
 
 const formatConvDate = (dateString) => {
   if (!dateString) return '';
@@ -45,6 +46,8 @@ export default function MentorPage() {
     setDeepReasoning,
     userDataQa,
     setUserDataQa,
+    projectPlan,
+    setProjectPlan,
     sendMessage,
     setChatMessage,
     startNewConversation,
@@ -54,14 +57,18 @@ export default function MentorPage() {
   const {
     showTaskDraftModal,
     showMissionDraftModal,
+    showProjectDraftModal,
     currentDraftData,
     openDraftModal,
     confirmTaskDraft,
     rejectTaskDraft,
     confirmMissionDraft,
     rejectMissionDraft,
+    confirmProjectDraft,
+    rejectProjectDraft,
     setShowTaskDraftModal,
     setShowMissionDraftModal,
+    setShowProjectDraftModal,
   } = useDrafts();
 
   // Metadata of the currently selected/active conversation (for UI indicator)
@@ -98,6 +105,7 @@ export default function MentorPage() {
   const formatDraftType = (type) => {
     if (type === 'task') return 'tarea';
     if (type === 'mission') return 'misión';
+    if (type === 'project') return 'plan de proyecto';
     return 'propuesta';
   };
 
@@ -147,11 +155,13 @@ export default function MentorPage() {
   const convPreview = activeConversation?.preview
     ? `"${activeConversation.preview.slice(0, 80)}${activeConversation.preview.length > 80 ? '…' : ''}"`
     : null;
-  const sendButtonLabel = userDataQa
-    ? 'Consultando tus datos…'
-    : deepReasoning
-      ? 'Razonando en profundidad…'
-      : 'Pensando...';
+  const sendButtonLabel = projectPlan
+    ? 'Diseñando tu plan…'
+    : userDataQa
+      ? 'Consultando tus datos…'
+      : deepReasoning
+        ? 'Razonando en profundidad…'
+        : 'Pensando...';
 
   return (
     <Layout ambient>
@@ -302,8 +312,27 @@ export default function MentorPage() {
                     id="user-data-qa-toggle"
                     checked={userDataQa}
                     onCheckedChange={setUserDataQa}
-                    disabled={chatLoading || deepReasoning || Boolean(pendingDraft)}
+                    disabled={chatLoading || deepReasoning || projectPlan || Boolean(pendingDraft)}
                     data-testid="user-data-qa-toggle"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="project-plan-toggle" className="flex items-center gap-1.5">
+                      <Rocket className="w-3.5 h-3.5 text-primary" />
+                      Modo plan
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Diseña un proyecto completo (tareas y rutinas hasta una fecha) a partir de una meta.
+                    </p>
+                  </div>
+                  <Switch
+                    id="project-plan-toggle"
+                    checked={projectPlan}
+                    onCheckedChange={setProjectPlan}
+                    disabled={chatLoading || deepReasoning || userDataQa}
+                    data-testid="project-plan-toggle"
                   />
                 </div>
 
@@ -386,6 +415,14 @@ export default function MentorPage() {
           draftData={currentDraftData}
           onConfirm={(editedData) => confirmMissionDraft(editedData)}
           onReject={rejectMissionDraft}
+        />
+
+        <ProjectDraftModal
+          isOpen={showProjectDraftModal}
+          onClose={() => setShowProjectDraftModal(false)}
+          draftData={currentDraftData}
+          onConfirm={(editedData) => confirmProjectDraft(editedData)}
+          onReject={rejectProjectDraft}
         />
       </div>
     </Layout>

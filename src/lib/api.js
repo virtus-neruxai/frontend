@@ -138,13 +138,24 @@ agentApiInstance.interceptors.response.use(
 );
 
 export const agentApi = {
-  chat: (message, sessionId, deepReasoning = false, userDataQa = false) => agentApiInstance.post('/agent/chat', {
-    message,
-    session_id: sessionId,
-    deep_reasoning: deepReasoning,
-    user_data_qa: userDataQa
-  }),
+  chat: (message, sessionId, deepReasoning = false, userDataQa = false, projectPlan = false) =>
+    agentApiInstance.post('/agent/chat', {
+      message,
+      session_id: sessionId,
+      deep_reasoning: deepReasoning,
+      user_data_qa: userDataQa,
+      project_plan: projectPlan,
+    }),
   confirmDraft: (data) => agentApiInstance.post('/agent/draft/confirm', data),
+};
+
+// Projects API — planificaciones (item_type="project") con sus tasks/routines hijas.
+// list/get devuelven el project + children + metrics agregadas (ver backend/routes/projects.py).
+export const projectsApi = {
+  getAll: (params = {}) => api.get('/projects', { params }),
+  get: (projectId) => api.get(`/projects/${projectId}`),
+  complete: (projectId) => api.post(`/projects/${projectId}/complete`),
+  remove: (projectId) => api.delete(`/projects/${projectId}`),
 };
 
 // Reasoning API (Informe Razonado) — usa /reasoning-api/v1 (Traefik stripea /reasoning-api)

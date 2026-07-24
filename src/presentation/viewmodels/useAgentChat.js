@@ -27,11 +27,16 @@ export const useAgentChat = (profileId = 'default') => {
   const [sessionId, setSessionId] = useState(null);
   const [deepReasoning, setDeepReasoningState] = useState(false);
   const [userDataQa, setUserDataQaState] = useState(false);
+  const [projectPlan, setProjectPlanState] = useState(false);
 
+  // The three explicit modes are mutually exclusive — mirrors agent-service's
+  // validate_exclusive_explicit_modes (deep_reasoning / user_data_qa /
+  // project_plan). Turning one on clears the other two.
   const setDeepReasoning = useCallback((checked) => {
     setDeepReasoningState(Boolean(checked));
     if (checked) {
       setUserDataQaState(false);
+      setProjectPlanState(false);
     }
   }, []);
 
@@ -39,6 +44,15 @@ export const useAgentChat = (profileId = 'default') => {
     setUserDataQaState(Boolean(checked));
     if (checked) {
       setDeepReasoningState(false);
+      setProjectPlanState(false);
+    }
+  }, []);
+
+  const setProjectPlan = useCallback((checked) => {
+    setProjectPlanState(Boolean(checked));
+    if (checked) {
+      setDeepReasoningState(false);
+      setUserDataQaState(false);
     }
   }, []);
 
@@ -94,7 +108,7 @@ export const useAgentChat = (profileId = 'default') => {
 
     setChatLoading(true);
     try {
-      const response = await agentApi.chat(message, sessionId, deepReasoning, userDataQa);
+      const response = await agentApi.chat(message, sessionId, deepReasoning, userDataQa, projectPlan);
       setChatResponse(response.data.response);
       setChatMetadata(response.data.metadata || null);
       setChatMessage('');
@@ -104,6 +118,8 @@ export const useAgentChat = (profileId = 'default') => {
           let draftType = 'task';
           if (response.data.ui_action.action === 'SHOW_MISSION_CONFIRMATION_MODAL') {
             draftType = 'mission';
+          } else if (response.data.ui_action.action === 'SHOW_PROJECT_CONFIRMATION_MODAL') {
+            draftType = 'project';
           } else if (response.data.ui_action.action === 'SHOW_TASK_CONFIRMATION_MODAL') {
             draftType = 'task';
           }
@@ -122,7 +138,7 @@ export const useAgentChat = (profileId = 'default') => {
     } finally {
       setChatLoading(false);
     }
-  }, [sessionId, deepReasoning, userDataQa]);
+  }, [sessionId, deepReasoning, userDataQa, projectPlan]);
 
   const clearResponse = useCallback(() => {
     setChatResponse('');
@@ -138,6 +154,8 @@ export const useAgentChat = (profileId = 'default') => {
     setDeepReasoning,
     userDataQa,
     setUserDataQa,
+    projectPlan,
+    setProjectPlan,
     sendMessage,
     setChatMessage,
     setChatResponse,

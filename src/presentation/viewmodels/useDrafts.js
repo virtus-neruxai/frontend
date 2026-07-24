@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 export const useDrafts = () => {
   const [showTaskDraftModal, setShowTaskDraftModal] = useState(false);
   const [showMissionDraftModal, setShowMissionDraftModal] = useState(false);
+  const [showProjectDraftModal, setShowProjectDraftModal] = useState(false);
   const [currentDraftId, setCurrentDraftId] = useState(null);
   const [currentDraftData, setCurrentDraftData] = useState(null);
 
@@ -25,6 +26,8 @@ export const useDrafts = () => {
     setCurrentDraftData(uiAction);
     if (type === 'mission') {
       setShowMissionDraftModal(true);
+    } else if (type === 'project') {
+      setShowProjectDraftModal(true);
     } else if (type === 'task') {
       setShowTaskDraftModal(true);
     }
@@ -97,9 +100,43 @@ export const useDrafts = () => {
     }
   }, [currentDraftId, getDraftErrorMessage]);
 
+  const confirmProjectDraft = useCallback(async (editedData, onSuccess) => {
+    try {
+      const response = await agentApi.confirmDraft({
+        draft_id: currentDraftId,
+        confirmed: true,
+        edited_data: editedData,
+      });
+      if (response.data.success) {
+        toast.success(response.data.message || 'Proyecto creado exitosamente');
+        setShowProjectDraftModal(false);
+        setCurrentDraftId(null);
+        setCurrentDraftData(null);
+        if (onSuccess) onSuccess();
+      }
+    } catch (error) {
+      toast.error(getDraftErrorMessage(error, 'Error al confirmar el proyecto'));
+      throw error;
+    }
+  }, [currentDraftId, getDraftErrorMessage]);
+
+  const rejectProjectDraft = useCallback(async () => {
+    try {
+      await agentApi.confirmDraft({ draft_id: currentDraftId, confirmed: false });
+      toast.info('Plan descartado');
+      setShowProjectDraftModal(false);
+      setCurrentDraftId(null);
+      setCurrentDraftData(null);
+    } catch (error) {
+      toast.error(getDraftErrorMessage(error, 'Error al descartar el plan'));
+      throw error;
+    }
+  }, [currentDraftId, getDraftErrorMessage]);
+
   const closeDraftModals = useCallback(() => {
     setShowTaskDraftModal(false);
     setShowMissionDraftModal(false);
+    setShowProjectDraftModal(false);
     setCurrentDraftId(null);
     setCurrentDraftData(null);
   }, []);
@@ -107,6 +144,7 @@ export const useDrafts = () => {
   return {
     showTaskDraftModal,
     showMissionDraftModal,
+    showProjectDraftModal,
     currentDraftId,
     currentDraftData,
     openDraftModal,
@@ -114,8 +152,11 @@ export const useDrafts = () => {
     rejectTaskDraft,
     confirmMissionDraft,
     rejectMissionDraft,
+    confirmProjectDraft,
+    rejectProjectDraft,
     closeDraftModals,
     setShowTaskDraftModal,
     setShowMissionDraftModal,
+    setShowProjectDraftModal,
   };
 };

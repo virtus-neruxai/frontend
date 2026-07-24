@@ -34,6 +34,7 @@ vi.mock('../components/chat/ConversationHistory', async () => {
 
 vi.mock('../components/TaskDraftModal', () => ({ default: () => null }));
 vi.mock('../components/MissionDraftModal', () => ({ default: () => null }));
+vi.mock('../components/ProjectDraftModal', () => ({ default: () => null }));
 vi.mock('../presentation/components/character/ChallengesTab', () => ({ ChallengesTab: () => null }));
 vi.mock('../presentation/components/profile-theme/ProfileHeroCard', () => ({
   ProfileHeroCard: ({ title }) => <div data-testid="profile-hero">{title}</div>,
@@ -43,14 +44,18 @@ vi.mock('../presentation/viewmodels/useDrafts', () => ({
   useDrafts: () => ({
     showTaskDraftModal: false,
     showMissionDraftModal: false,
+    showProjectDraftModal: false,
     currentDraftData: null,
     openDraftModal: vi.fn(),
     confirmTaskDraft: vi.fn(),
     rejectTaskDraft: vi.fn(),
     confirmMissionDraft: vi.fn(),
     rejectMissionDraft: vi.fn(),
+    confirmProjectDraft: vi.fn(),
+    rejectProjectDraft: vi.fn(),
     setShowTaskDraftModal: vi.fn(),
     setShowMissionDraftModal: vi.fn(),
+    setShowProjectDraftModal: vi.fn(),
   }),
 }));
 
@@ -106,6 +111,7 @@ describe('MentorPage USER_DATA_QA toggle', () => {
         expect.any(String),
         false,
         true,
+        false,
       );
     });
   });
