@@ -75,6 +75,11 @@ export const useMissions = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [proposedMissions, setProposedMissions] = useState([]);
   const [confirmingMissions, setConfirmingMissions] = useState(false);
+  // Missions rejected earlier in this session — rejected drafts are never
+  // persisted, so without these the generator has no memory of them and can
+  // resurface the exact same template on the very next "Generar Misiones" click.
+  const [rejectedTemplateIds, setRejectedTemplateIds] = useState(() => new Set());
+  const [rejectedFingerprints, setRejectedFingerprints] = useState(() => new Set());
   
   // Schedule modal states
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -133,7 +138,10 @@ export const useMissions = () => {
   const generateMissions = useCallback(async () => {
     setGeneratingMissions(true);
     try {
-      const response = await missionsApi.generate({});
+      const response = await missionsApi.generate({
+        exclude_template_ids: Array.from(rejectedTemplateIds),
+        exclude_semantic_fingerprints: Array.from(rejectedFingerprints),
+      });
       // generate-with-context returns { drafts: [...], metadata: {...} }
       const drafts = response.data?.drafts || (Array.isArray(response.data) ? response.data : []);
 
@@ -157,7 +165,7 @@ export const useMissions = () => {
     } finally {
       setGeneratingMissions(false);
     }
-  }, []);
+  }, [rejectedTemplateIds, rejectedFingerprints]);
 
   /**
    * Hydrates the NightlyReview result into the same state used by the manual button flow.
@@ -211,13 +219,15 @@ export const useMissions = () => {
   }, [hydrateNightlyReviewResult]);
 
   /**
-   * Confirms and creates proposed missions
+   * Confirms and creates one proposed mission by its index in proposedMissions.
+   * @param {number} index - Position of the mission within proposedMissions
+   * @param {Object} editedData - Optional field overrides from the edit modal
    * @param {Function} onSuccess - Callback to refresh character data after confirmation
    */
-  const confirmMissions = useCallback(async (editedData, onSuccess) => {
+  const confirmMissionAt = useCallback(async (index, editedData, onSuccess) => {
     setConfirmingMissions(true);
     try {
-      const currentMission = proposedMissions[0];
+      const currentMission = proposedMissions[index];
       if (!currentMission) return;
 
       const missionToConfirm = {
@@ -240,7 +250,7 @@ export const useMissions = () => {
         await missionsApi.confirmMissions([buildMissionConfirmPayload(missionToConfirm)]);
       }
 
-      const remainingMissions = proposedMissions.slice(1);
+      const remainingMissions = proposedMissions.filter((_, i) => i !== index);
       toast.success('Misión creada');
       await markActiveNightlyReviewProposalStatus('confirmed');
       setProposedMissions(remainingMissions);
@@ -257,12 +267,55 @@ export const useMissions = () => {
     }
   }, [proposedMissions, fetchMissions, markActiveNightlyReviewProposalStatus]);
 
-  const rejectProposedMission = useCallback(async () => {
-    const remainingMissions = proposedMissions.slice(1);
+  /**
+   * Confirms every remaining proposed mission in a single batch call.
+   */
+  const confirmAllProposedMissions = useCallback(async (onSuccess) => {
+    if (proposedMissions.length === 0) return;
+    setConfirmingMissions(true);
+    try {
+      await missionsApi.confirmMissions(proposedMissions.map(buildMissionConfirmPayload));
+      toast.success('Misiones creadas');
+      await markActiveNightlyReviewProposalStatus('confirmed');
+      setProposedMissions([]);
+      setShowConfirmModal(false);
+
+      await fetchMissions();
+      if (onSuccess) await onSuccess();
+    } catch (error) {
+      console.error('Error confirming missions:', error);
+      toast.error('Error al confirmar misiones');
+      throw error;
+    } finally {
+      setConfirmingMissions(false);
+    }
+  }, [proposedMissions, fetchMissions, markActiveNightlyReviewProposalStatus]);
+
+  const _rememberRejected = (mission) => {
+    if (mission?.base_template_id) {
+      setRejectedTemplateIds((prev) => new Set(prev).add(mission.base_template_id));
+    }
+    if (mission?.semantic_fingerprint) {
+      setRejectedFingerprints((prev) => new Set(prev).add(mission.semantic_fingerprint));
+    }
+  };
+
+  const rejectMissionAt = useCallback(async (index) => {
+    const mission = proposedMissions[index];
+    const remainingMissions = proposedMissions.filter((_, i) => i !== index);
+    _rememberRejected(mission);
     await markActiveNightlyReviewProposalStatus('rejected');
     setProposedMissions(remainingMissions);
     setShowConfirmModal(remainingMissions.length > 0);
     toast.info('Misión rechazada');
+  }, [proposedMissions, markActiveNightlyReviewProposalStatus]);
+
+  const rejectAllProposedMissions = useCallback(async () => {
+    proposedMissions.forEach(_rememberRejected);
+    await markActiveNightlyReviewProposalStatus('rejected');
+    setProposedMissions([]);
+    setShowConfirmModal(false);
+    toast.info('Misiones rechazadas');
   }, [proposedMissions, markActiveNightlyReviewProposalStatus]);
 
   /**
@@ -434,10 +487,11 @@ export const useMissions = () => {
     missionStatsLoading,
     showConfirmModal,
     proposedMissions,
+    confirmingMissions,
     showScheduleModal,
     missionToSchedule,
     scheduleDateTime,
-    
+
     // Actions
     fetchMissions,
     fetchCompletedMissions,
@@ -445,8 +499,10 @@ export const useMissions = () => {
     generateMissions,
     performNightlyReview,
     hydrateNightlyReviewResult,
-    confirmMissions,
-    rejectProposedMission,
+    confirmMissionAt,
+    confirmAllProposedMissions,
+    rejectMissionAt,
+    rejectAllProposedMissions,
     completeMission,
     deleteMission,
     scheduleMission,

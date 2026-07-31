@@ -127,10 +127,16 @@ function AppRoutes() {
 
 function ProfileSettingsSync() {
   const { isAuthenticated, loading } = useAuth();
-  const { syncPersistedProfile } = useProfileTheme();
+  const { syncPersistedProfile, markProfileSynced } = useProfileTheme();
 
   useEffect(() => {
-    if (loading || !isAuthenticated) return undefined;
+    if (loading) return undefined;
+    // Nothing to resolve when signed out: release the gate so profile-scoped
+    // views never wait forever on a request that will not happen.
+    if (!isAuthenticated) {
+      markProfileSynced();
+      return undefined;
+    }
 
     let cancelled = false;
 
@@ -140,16 +146,20 @@ function ProfileSettingsSync() {
         const resolved = response?.data?.resolved_prompt_profile || response?.data?.prompt_profile;
         if (resolved) {
           syncPersistedProfile(resolved);
+        } else {
+          markProfileSynced();
         }
       })
       .catch(() => {
-        // Settings sync should never block the authenticated app shell.
+        // Settings sync should never block the authenticated app shell: fall
+        // back to the cached profile rather than leaving consumers pending.
+        if (!cancelled) markProfileSynced();
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, loading, syncPersistedProfile]);
+  }, [isAuthenticated, loading, syncPersistedProfile, markProfileSynced]);
 
   return null;
 }

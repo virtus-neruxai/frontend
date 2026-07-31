@@ -14,6 +14,10 @@ export function ProfileThemeProvider({ children }) {
   const initialProfile = readCachedPromptProfile();
   const [profileId, setProfileId] = useState(initialProfile);
   const [persistedProfileId, setPersistedProfileId] = useState(initialProfile);
+  // initialProfile comes from localStorage (or the default when absent), which
+  // may not be the account's real profile. Stays false until ProfileSettingsSync
+  // resolves it against the backend so profile-scoped queries never run early.
+  const [isProfileSynced, setIsProfileSynced] = useState(false);
 
   useIsomorphicLayoutEffect(() => {
     applyProfileThemeAttribute(profileId);
@@ -34,8 +38,12 @@ export function ProfileThemeProvider({ children }) {
     return normalized;
   }, []);
 
+  const markProfileSynced = useCallback(() => setIsProfileSynced(true), []);
+
   const syncPersistedProfile = useCallback((nextProfileId) => {
-    return persistProfile(nextProfileId);
+    const normalized = persistProfile(nextProfileId);
+    setIsProfileSynced(true);
+    return normalized;
   }, [persistProfile]);
 
   const revertPreview = useCallback(() => {
@@ -49,16 +57,20 @@ export function ProfileThemeProvider({ children }) {
     persistedProfileId,
     theme: PROFILE_THEMES[profileId],
     persistedTheme: PROFILE_THEMES[persistedProfileId],
+    isProfileSynced,
     previewProfile,
     persistProfile,
     syncPersistedProfile,
+    markProfileSynced,
     revertPreview,
   }), [
     profileId,
     persistedProfileId,
+    isProfileSynced,
     previewProfile,
     persistProfile,
     syncPersistedProfile,
+    markProfileSynced,
     revertPreview,
   ]);
 

@@ -69,9 +69,9 @@ export function CalendarGrid({
       eventOrder="isRecurring,start,-duration,allDay,title"
       eventOrderStrict={true}
       weekends={true}
-      // timeGrid needs a bounded height to create the internal scroller
-      // where scrollTime is applied.
-      height={isTimeView ? 700 : 'auto'}
+      // Keep Day/Week tall enough to see a useful span of hours at once while
+      // preserving FullCalendar's internal scroll for the rest of the day.
+      height={isTimeView ? 920 : 'auto'}
       contentHeight={isTimeView ? undefined : 'auto'}
       aspectRatio={isTimeView ? undefined : 1.8}
       firstDay={1}

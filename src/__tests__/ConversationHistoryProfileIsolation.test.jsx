@@ -21,7 +21,9 @@ vi.mock('../lib/api', () => ({
 }));
 
 vi.mock('../theme/useProfileTheme', () => ({
-  useProfileTheme: () => ({ persistedProfileId: 'student' }),
+  // isProfileSynced gates the fetches: the component must not query before the
+  // backend has resolved the account's real profile.
+  useProfileTheme: () => ({ persistedProfileId: 'student', isProfileSynced: true }),
 }));
 
 describe('ConversationHistory profile isolation', () => {

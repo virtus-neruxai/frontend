@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import TaskDraftModal from '../components/TaskDraftModal';
 import MissionDraftModal from '../components/MissionDraftModal';
+import MissionProposalsModal from '../components/MissionProposalsModal';
 import EmotionPicker from '../components/EmotionPicker';
 import EmotionBadge from '../components/EmotionBadge';
 import EmotionDiscardAlert from '../components/EmotionDiscardAlert';
@@ -118,8 +119,11 @@ export default function CharacterPageRefactored() {
     generateMissions,
     performNightlyReview,
     hydrateNightlyReviewResult,
-    confirmMissions,
-    rejectProposedMission,
+    confirmMissionAt,
+    confirmAllProposedMissions,
+    rejectMissionAt,
+    rejectAllProposedMissions,
+    confirmingMissions,
     completeMission,
     deleteMission,
     scheduleMission,
@@ -600,20 +604,6 @@ export default function CharacterPageRefactored() {
   const handleScheduleMission = async () => {
     await scheduleMission(fetchAllData);
   };
-
-  const currentGeneratedMission = proposedMissions[0] || null;
-  const generatedMissionDraftData = currentGeneratedMission ? {
-    data: {
-      ...currentGeneratedMission,
-      addToCalendar: currentGeneratedMission.addToCalendar !== false,
-      start_date: currentGeneratedMission.scheduled_datetime || currentGeneratedMission.start_date,
-      due_date: currentGeneratedMission.expires_at || currentGeneratedMission.due_date,
-    },
-    metadata: {
-      agent_reasoning: currentGeneratedMission.agent_reasoning,
-      confidence: currentGeneratedMission.confidence,
-    },
-  } : null;
 
   const getReflectionHistoryDescription = () => {
     if (reflectionHistoryMode === 'journal') return 'Entradas libres del diario';
@@ -1378,12 +1368,16 @@ export default function CharacterPageRefactored() {
         </Dialog>
 
         {/* Draft Modals */}
-        <MissionDraftModal
+        <MissionProposalsModal
           isOpen={showConfirmModal}
           onClose={() => setShowConfirmModal(false)}
-          draftData={generatedMissionDraftData}
-          onConfirm={(editedData) => confirmMissions(editedData, fetchAllData)}
-          onReject={rejectProposedMission}
+          proposals={proposedMissions}
+          statsInfo={statsInfo}
+          isSubmitting={confirmingMissions}
+          onAcceptAt={(index, editedData) => confirmMissionAt(index, editedData, fetchAllData)}
+          onRejectAt={(index) => rejectMissionAt(index)}
+          onAcceptAll={() => confirmAllProposedMissions(fetchAllData)}
+          onRejectAll={() => rejectAllProposedMissions()}
         />
 
         <TaskDraftModal

@@ -4,6 +4,7 @@ import { es } from 'date-fns/locale';
 import { MessageCircle, ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { conversationsApi, statsApi } from '../../lib/api';
+import { getProfileName } from '../../lib/profileUtils';
 import { useProfileTheme } from '../../theme/useProfileTheme';
 
 // Retry with a tight, near-constant cadence (not exponential backoff): the
@@ -14,7 +15,7 @@ const RETRY_STEP_MS = 500;
 const RETRY_MAX_MS = 2000;
 
 const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation }, ref) => {
-  const { persistedProfileId } = useProfileTheme();
+  const { persistedProfileId, isProfileSynced } = useProfileTheme();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -100,9 +101,13 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
 
   // The history is profile-scoped server-side; reload it whenever the active
   // profile changes so it always reflects the current profile's conversations.
+  // Gate on isProfileSynced: querying before the backend resolves the profile
+  // would filter by the cached/default one and render a false "no
+  // conversations" (the request succeeds, it just matches nothing).
   useEffect(() => {
+    if (!isProfileSynced) return;
     fetchConversations();
-  }, [persistedProfileId, fetchConversations]);
+  }, [persistedProfileId, isProfileSynced, fetchConversations]);
 
   useEffect(() => {
     fetchFrictionLabels();
@@ -110,18 +115,21 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
 
   // Auto-load the active session's messages when activeSessionId changes
   useEffect(() => {
+    if (!isProfileSynced) return;
     if (activeSessionId) {
       fetchConversationDetail(activeSessionId);
     }
-  }, [activeSessionId, fetchConversationDetail]);
+  }, [activeSessionId, isProfileSynced, fetchConversationDetail]);
 
   // Refetch when the tab/window regains focus so the list self-heals after the
   // backend finishes starting or after a transient network error.
   useEffect(() => {
-    const onFocus = () => fetchConversations();
+    const onFocus = () => {
+      if (isProfileSynced) fetchConversations();
+    };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [fetchConversations]);
+  }, [isProfileSynced, fetchConversations]);
 
   // Cancel any pending retry timer on unmount.
   useEffect(() => () => {
@@ -213,7 +221,16 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
               </button>
             </div>
           ) : conversations.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No tienes conversaciones con este mentor todavía. Empieza una nueva conversación arriba.</p>
+            // Name the profile being filtered: an empty list is otherwise
+            // indistinguishable from filtering by the wrong profile.
+            <p className="text-muted-foreground text-sm">
+              No tienes conversaciones con el mentor{' '}
+              <span className="font-semibold text-foreground">
+                {getProfileName(persistedProfileId)}
+              </span>{' '}
+              todavía. Empieza una nueva conversación arriba, o cambia de perfil
+              si esperabas ver otras.
+            </p>
           ) : (
             conversations.map((conv) => {
               const isActive = conv.session_id === activeSessionId;
