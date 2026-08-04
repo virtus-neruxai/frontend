@@ -100,7 +100,9 @@ export default function ReasoningReportPage() {
         toast.success('Informe generado');
       }
     } catch (e) {
-      toast.error('No se pudo generar el informe');
+      // The backend persists nothing on failure, so there is no partial report
+      // to clean up — the user can simply press "Generar informe" again.
+      toast.error('No se pudo generar el informe. Vuelve a intentarlo.');
     } finally {
       setGenerating(false);
     }

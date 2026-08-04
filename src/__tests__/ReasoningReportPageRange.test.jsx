@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { toast } from 'sonner';
 import ReasoningReportPage from '../pages/ReasoningReportPage';
 import { reasoningApi } from '../lib/api';
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+  toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
 vi.mock('../lib/api', () => ({
@@ -107,5 +108,25 @@ describe('ReasoningReportPage range selector', () => {
 
     expect(await screen.findByText(/informe semanal/i)).toBeInTheDocument();
     expect(screen.queryByText(/informe de dos semanas/i)).not.toBeInTheDocument();
+  });
+
+  test('a failed generation surfaces a retryable error and stores nothing', async () => {
+    // The backend persists nothing on failure (502), so the page must not show
+    // a report — the always-visible "Generar informe" button is the retry.
+    reasoningApi.generateReport.mockRejectedValue(new Error('502'));
+
+    render(<ReasoningReportPage />);
+    fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'No se pudo generar el informe. Vuelve a intentarlo.'
+      )
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
+    await waitFor(() => expect(reasoningApi.generateReport).toHaveBeenCalledTimes(2));
+    expect(reasoningApi.generateReport).toHaveBeenLastCalledWith(14);
   });
 });
