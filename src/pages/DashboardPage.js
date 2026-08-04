@@ -15,6 +15,7 @@ import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/T
 import { DomainDistributionChart } from '../presentation/components/dashboard/DomainDistributionChart';
 import { DetectedPatternsPanel } from '../presentation/components/dashboard/DetectedPatternsPanel';
 import { EmotionalPatternsPanel } from '../presentation/components/dashboard/EmotionalPatternsPanel';
+import { LearnedResponsesPanel } from '../presentation/components/dashboard/LearnedResponsesPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -76,6 +77,8 @@ export default function DashboardPageRefactored() {
     emotionalPatternsRange,
     setEmotionalPatternsRange,
     acknowledgeEmotionalPattern,
+    learnedResponses,
+    learnedResponsesLoading,
     missionLenses,
     missionLensesLoading,
   } = useDashboard(persistedProfileId);
@@ -302,6 +305,12 @@ export default function DashboardPageRefactored() {
               range={emotionalPatternsRange}
               onRangeChange={setEmotionalPatternsRange}
               onAcknowledge={acknowledgeEmotionalPattern}
+            />
+
+            {/* Conductas adoptadas (NRRM §13.2) — se oculta si no hay ninguna */}
+            <LearnedResponsesPanel
+              data={learnedResponses}
+              loading={learnedResponsesLoading}
             />
           </div>
         )}

@@ -6,25 +6,32 @@ import {
   BookOpen,
   CheckSquare,
   ChevronDown,
+  EyeOff,
   Flag,
+  Gauge,
   GitBranch,
   HeartPulse,
   ListChecks,
   MessageSquare,
   PlusCircle,
   Quote,
+  Repeat,
   RotateCcw,
   Scale,
   Sparkles,
+  Sprout,
   Target,
+  ThumbsDown,
   TrendingDown,
   TrendingUp,
   Timer,
+  Undo2,
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
 import { useState } from 'react';
+import FeedbackControl from './FeedbackControl';
 
 // Objective figures (percentages, counts, "×3", plain numbers) are the data the
 // reader scans for first — bold them so they pop out of the surrounding prose
@@ -335,7 +342,184 @@ function CollapsibleSection({ title, icon: Icon, children }) {
   );
 }
 
-export default function ReasonedReportView({ report, onConvertToTask }) {
+// NRRM F0 — code-computed sample size/coverage. Naming what the reading is
+// based on is part of the reading: a confident sentence over three events in
+// one day should not look like a confident sentence over a full fortnight.
+function DataQualityPanel({ dataQuality }) {
+  if (!dataQuality) return null;
+  const degraded = dataQuality.degraded_sources || [];
+  const sparse = dataQuality.mode === 'sparse_sample';
+
+  return (
+    <Panel title="Calidad de la muestra" icon={Gauge} tone={sparse ? 'warning' : undefined}>
+      <div className="grid grid-cols-3 gap-2">
+        <Stat value={dataQuality.sample_size ?? 0} label="Eventos analizados" />
+        <Stat value={dataQuality.coverage_days ?? 0} label="Días con actividad" />
+        <Stat value={dataQuality.positive_sample_size ?? 0} label="Recursos positivos" />
+      </div>
+      {sparse && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Muestra escasa: esta lectura describe hechos puntuales y evita afirmar que sean
+          recurrentes.
+        </p>
+      )}
+      {degraded.length > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Fuentes con datos incompletos:{' '}
+          {degraded.map((d) => `${d.source} (${d.reason === 'failed' ? 'no disponible' : 'truncada'})`).join(', ')}.
+        </p>
+      )}
+    </Panel>
+  );
+}
+
+// NRRM F3 — "Lo que tu propia historia también demuestra": counterevidence
+// drawn from the user's own records. Every claim here is anchored in real
+// resource_ids; the panel exists so it reads as evidence, not encouragement.
+function PositiveEvidencePanel({ items, feedbackFor, onFeedback, onResourceFeedback }) {
+  if (!items?.length) return null;
+  return (
+    <Panel title="Lo que tu propia historia también demuestra" icon={Sprout}>
+      <div className="divide-y divide-border">
+        {items.map((item, i) => (
+          <div key={i} className="py-3 first:pt-0 last:pb-0">
+            <p className="text-sm">{prose(item.claim)}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {(item.dates || []).map((d) => (
+                <Chip key={d} className="bg-muted text-muted-foreground">{d}</Chip>
+              ))}
+              {(item.source_types || []).map((s) => (
+                <Chip key={s} className="border text-muted-foreground">{resourceTypeLabel(s)}</Chip>
+              ))}
+            </div>
+            {onResourceFeedback && (item.resource_ids || []).length > 0 && (
+              <ResourceFeedbackRow
+                resourceIds={item.resource_ids}
+                onResourceFeedback={onResourceFeedback}
+              />
+            )}
+            {onFeedback && (
+              <FeedbackControl
+                targetType="report_pattern"
+                targetText={item.claim}
+                evidenceIds={item.evidence_ids || []}
+                feedback={feedbackFor?.(item.claim)}
+                onSubmit={onFeedback}
+                rejectLabel="Esto no fue lo que me ayudó"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+// Feedback on the concrete resources a claim cites. "No me ayudó" is a verdict
+// on the extraction; "no lo uses más" is only a reuse preference — the record
+// itself is never deleted or altered either way.
+function ResourceFeedbackRow({ resourceIds, onResourceFeedback }) {
+  const [busy, setBusy] = useState(false);
+  const send = async (value) => {
+    setBusy(true);
+    try {
+      await Promise.all(resourceIds.map((id) => onResourceFeedback(id, value)));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+      <button
+        type="button" disabled={busy} onClick={() => send('incorrect')}
+        className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"
+      >
+        <ThumbsDown size={11} /> Esto no me ayudó
+      </button>
+      <button
+        type="button" disabled={busy} onClick={() => send('exclude_from_companion')}
+        className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"
+      >
+        <EyeOff size={11} /> No lo uses más
+      </button>
+      <button
+        type="button" disabled={busy} onClick={() => send(null)}
+        className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+      >
+        <Undo2 size={11} /> Deshacer
+      </button>
+    </div>
+  );
+}
+
+const RESOURCE_TYPE_LABELS = {
+  pleasant_activity: 'Actividad agradable',
+  social_connection: 'Conexión social',
+  achievement: 'Logro',
+  rest: 'Descanso',
+  creative_activity: 'Actividad creativa',
+  study_method: 'Método de estudio',
+  spiritual_practice: 'Práctica personal',
+  self_compassion: 'Autocompasión',
+};
+
+function resourceTypeLabel(key) {
+  if (RESOURCE_TYPE_LABELS[key]) return RESOURCE_TYPE_LABELS[key];
+  if (SOURCE_LABELS[key]) return SOURCE_LABELS[key].label;
+  const spaced = String(key || '').replace(/_/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+// NRRM F3 — automatic responses detected in the period. Described, never
+// diagnosed: what repeats and before which signals. The protective-function
+// reading belongs to the companion, not here, and the wording must not turn a
+// learned response into a character trait.
+function CandidatesPanel({ items, feedbackFor, onFeedback }) {
+  if (!items?.length) return null;
+  return (
+    <Panel title="Respuestas automáticas detectadas" icon={Repeat}>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Conductas que se repiten en el periodo. Son observaciones, no diagnósticos: si alguna
+        no te representa, dilo y no volverá a proponerse.
+      </p>
+      <ul className="space-y-4">
+        {items.map((item, i) => (
+          <li key={i}>
+            <p className="text-sm">{prose(item.observed_response)}</p>
+            {(item.activation_signals || []).length > 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Se activa ante: {item.activation_signals.join(' · ')}
+              </p>
+            )}
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {(item.dates || []).map((d) => (
+                <Chip key={d} className="bg-muted text-muted-foreground">{d}</Chip>
+              ))}
+            </div>
+            <div className="mt-2"><ConfidenceBar value={item.confidence} /></div>
+            {onFeedback && (
+              <FeedbackControl
+                targetType="learned_response_candidate"
+                targetText={item.observed_response}
+                evidenceIds={item.evidence_ids || []}
+                feedback={feedbackFor?.(item.observed_response)}
+                onSubmit={onFeedback}
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
+export default function ReasonedReportView({
+  report,
+  onConvertToTask,
+  feedbackFor,
+  onFeedback,
+  onResourceFeedback,
+}) {
   if (!report) return null;
 
   const causal = report.causal_analysis || {};
@@ -451,7 +635,24 @@ export default function ReasonedReportView({ report, onConvertToTask }) {
         <div className="grid gap-4 md:grid-cols-2">
           {detectedPatterns.length > 0 && (
             <Panel title="Patrones detectados" icon={GitBranch}>
-              <FactList items={detectedPatterns} />
+              <ul className="space-y-3">
+                {detectedPatterns.map((pattern, i) => (
+                  <li key={i} className="flex gap-2 text-sm">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+                    <div className="min-w-0 flex-1">
+                      <span>{prose(pattern)}</span>
+                      {onFeedback && (
+                        <FeedbackControl
+                          targetType="report_pattern"
+                          targetText={pattern}
+                          feedback={feedbackFor?.(pattern)}
+                          onSubmit={onFeedback}
+                        />
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </Panel>
           )}
           {possibleCauses.length > 0 && (
@@ -461,6 +662,16 @@ export default function ReasonedReportView({ report, onConvertToTask }) {
                   <li key={i} className="space-y-1.5">
                     <p className="text-sm">{prose(cause.hypothesis)}</p>
                     <ConfidenceBar value={cause.confidence} />
+                    {onFeedback && (
+                      <FeedbackControl
+                        targetType="report_cause"
+                        targetText={cause.hypothesis}
+                        evidenceIds={cause.evidence_ids || []}
+                        feedback={feedbackFor?.(cause.hypothesis)}
+                        onSubmit={onFeedback}
+                        rejectLabel="La causa no es esa"
+                      />
+                    )}
                   </li>
                 ))}
               </ul>
@@ -561,8 +772,24 @@ export default function ReasonedReportView({ report, onConvertToTask }) {
         </Panel>
       )}
 
+      {/* NRRM: contraevidencia de la propia historia, respuestas automáticas
+          detectadas y calidad de la muestra. Ausentes en V2 → no se renderizan. */}
+      <PositiveEvidencePanel
+        items={report.positive_evidence}
+        feedbackFor={feedbackFor}
+        onFeedback={onFeedback}
+        onResourceFeedback={onResourceFeedback}
+      />
+      <CandidatesPanel
+        items={report.learned_response_candidates}
+        feedbackFor={feedbackFor}
+        onFeedback={onFeedback}
+      />
+
       {/* Lectura corporal (sueño/energía/estrés/fatiga; solo si hay check-ins) */}
       <BodyPanel body={report.body_signals} />
+
+      <DataQualityPanel dataQuality={report.data_quality} />
 
       {/* Interpretación y matices (secundario, plegable) */}
       {hasInterpretation && (

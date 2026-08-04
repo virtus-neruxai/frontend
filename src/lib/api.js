@@ -193,6 +193,44 @@ export const reasoningApi = {
       report_id: reportId,
       intent,
     }),
+
+  // ── NRRM ──────────────────────────────────────────────────────────────────
+  // All of these 404 while the feature flags are off, which is the intended
+  // "not available" signal — callers treat it as "hide the surface", not as
+  // an error worth showing the user.
+  generateCompanion: (reportId) =>
+    reasoningApiInstance.post(`/reasoning/reports/${reportId}/companion`),
+  getCompanion: (reportId) =>
+    reasoningApiInstance.get(`/reasoning/reports/${reportId}/companion`),
+  adoptAlternativeResponse: (reportId) =>
+    reasoningApiInstance.post(
+      `/reasoning/reports/${reportId}/companion/alternative-response/adopt`,
+    ),
+
+  // `targetText` must be the literal wording shown on screen: the suppression
+  // key is derived from those words, so a paraphrase would silently key to
+  // something else. `verdict: null` undoes previous feedback.
+  sendFeedback: (reportId, { targetType, targetText = '', stage = '', verdict, userCorrection = null, evidenceIds = [] }) =>
+    reasoningApiInstance.post(`/reasoning/reports/${reportId}/feedback`, {
+      target_type: targetType,
+      target_text: targetText,
+      stage,
+      verdict,
+      user_correction: userCorrection,
+      evidence_ids: evidenceIds,
+    }),
+  getFeedback: (reportId) =>
+    reasoningApiInstance.get(`/reasoning/reports/${reportId}/feedback`),
+  sendResourceFeedback: (reportId, resourceId, resourceFeedback) =>
+    reasoningApiInstance.post(`/reasoning/reports/${reportId}/feedback/resource`, {
+      resource_id: resourceId,
+      resource_feedback: resourceFeedback,
+    }),
+};
+
+export const behaviorsApi = {
+  // Adopted behaviours live in backend (they outlive any single report).
+  list: () => api.get('/stats/behaviors'),
 };
 
 const getAgentInteractions = async (params = {}) => {

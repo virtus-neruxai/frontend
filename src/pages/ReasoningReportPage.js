@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../components/ui/textarea';
 import TaskDraftModal from '../components/TaskDraftModal';
 import ReasonedReportView from '../presentation/components/reasoning/ReasonedReportView';
+import TransformativeCompanionCard from '../presentation/components/reasoning/TransformativeCompanionCard';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { reasoningApi, tasksApi } from '../lib/api';
 import { Brain, History, Loader2, PlusCircle, Send } from 'lucide-react';
@@ -84,8 +85,113 @@ export default function ReasoningReportPage() {
   // Prospective only: documents saved before schema_version existed have no
   // such field anywhere (report, reportJson) — those are implicitly V1.
   const schemaVersion = report?.schema_version || reportJson?.schema_version || '1';
-  const isV2 = schemaVersion === '2';
+  // V3 (NRRM) extends V2 rather than replacing it: same causal contract plus
+  // data_quality, positive_evidence and learned_response_candidates. Both use
+  // the same view — gating on '2' alone sent V3 reports to the V1 renderer,
+  // which reads fields they do not have and renders an empty card.
+  const isCausal = schemaVersion === '2' || schemaVersion === '3';
   const filteredHistory = history.filter((item) => Number(item.days_back || 14) === selectedDaysBack);
+
+  // ── NRRM: companion + feedback ────────────────────────────────────────────
+  const [companion, setCompanion] = useState(null);
+  const [companionLoading, setCompanionLoading] = useState(false);
+  // The endpoints 404 while the feature flags are off. That is the intended
+  // "not available" signal, so the whole surface hides instead of showing an
+  // error for something the user never asked for.
+  const [companionAvailable, setCompanionAvailable] = useState(true);
+  const [adopting, setAdopting] = useState(false);
+  const [adopted, setAdopted] = useState(false);
+  const [feedback, setFeedback] = useState([]);
+
+  const loadCompanionAndFeedback = useCallback(async (id) => {
+    if (!id) return;
+    setCompanion(null);
+    setAdopted(false);
+    setFeedback([]);
+    try {
+      const { data } = await reasoningApi.getCompanion(id);
+      setCompanion(data?.companion || null);
+    } catch (e) {
+      // 404 here means either "not generated yet" or "flag off"; both are
+      // simply "nothing to show", never an error worth a toast.
+      setCompanion(null);
+    }
+    try {
+      const { data } = await reasoningApi.getFeedback(id);
+      setFeedback(data?.items || []);
+      setCompanionAvailable(true);
+    } catch (e) {
+      if (e?.response?.status === 404) setCompanionAvailable(false);
+    }
+  }, []);
+
+  // A judgement is stored under a hashed key, so the UI matches it back by the
+  // wording it was given on (content targets) or by report+stage (companion).
+  const feedbackFor = useCallback(
+    (key) => feedback.find(
+      (item) => item.target_text === key || item.target_key === `${reportId}:${key}`,
+    ),
+    [feedback, reportId],
+  );
+
+  const submitFeedback = useCallback(async (payload) => {
+    if (!reportId) return;
+    try {
+      const { data } = await reasoningApi.sendFeedback(reportId, payload);
+      setFeedback((items) => [
+        ...items.filter((item) => item.target_key !== data.target_key),
+        data,
+      ]);
+      toast.success(payload.verdict ? 'Gracias, lo tendré en cuenta' : 'Feedback deshecho');
+    } catch {
+      toast.error('No se pudo guardar tu respuesta');
+    }
+  }, [reportId]);
+
+  const submitResourceFeedback = useCallback(async (resourceId, value) => {
+    if (!reportId) return;
+    try {
+      await reasoningApi.sendResourceFeedback(reportId, resourceId, value);
+      toast.success(value ? 'Anotado' : 'Feedback deshecho');
+    } catch {
+      toast.error('No se pudo guardar tu respuesta');
+    }
+  }, [reportId]);
+
+  const generateCompanion = useCallback(async () => {
+    if (!reportId) return;
+    setCompanionLoading(true);
+    try {
+      const { data } = await reasoningApi.generateCompanion(reportId);
+      setCompanion(data?.companion || null);
+      setAdopted(false);
+    } catch (e) {
+      const status = e?.response?.status;
+      if (status === 404) {
+        setCompanionAvailable(false);
+      } else if (status === 409) {
+        toast.info(e.response?.data?.detail || 'No se puede generar el mensaje para este informe.');
+      } else {
+        toast.error('No se pudo generar el mensaje. Vuelve a intentarlo.');
+      }
+    } finally {
+      setCompanionLoading(false);
+    }
+  }, [reportId]);
+
+  const adopt = useCallback(async () => {
+    if (!reportId) return;
+    setAdopting(true);
+    try {
+      await reasoningApi.adoptAlternativeResponse(reportId);
+      setAdopted(true);
+      toast.success('Respuesta adoptada. La verás en tus conductas.');
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'No se pudo adoptar la respuesta.');
+    } finally {
+      setAdopting(false);
+    }
+  }, [reportId]);
 
   const generate = useCallback(async () => {
     setGenerating(true);
@@ -94,6 +200,9 @@ export default function ReasoningReportPage() {
       setReport(data);
       setThread([]);
       sessionRef.current = null;
+      // A fresh report has no companion yet; feedback is per-user and may
+      // already exist from earlier reports.
+      loadCompanionAndFeedback(data?.report_id);
       if (data?.mode === 'SAFE_NO_ACTION') {
         toast.info('Ahora mismo priorizamos tu bienestar antes que el informe.');
       } else {
@@ -106,7 +215,7 @@ export default function ReasoningReportPage() {
     } finally {
       setGenerating(false);
     }
-  }, [selectedDaysBack]);
+  }, [selectedDaysBack, loadCompanionAndFeedback]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -139,10 +248,11 @@ export default function ReasoningReportPage() {
       setThread([]);
       sessionRef.current = null;
       setShowHistory(false);
+      loadCompanionAndFeedback(data.id);
     } catch {
       toast.error('No se pudo abrir el informe');
     }
-  }, []);
+  }, [loadCompanionAndFeedback]);
 
   const ask = useCallback(async () => {
     const q = question.trim();
@@ -263,11 +373,34 @@ export default function ReasoningReportPage() {
           <Card><CardContent className="whitespace-pre-wrap pt-6 text-sm">{report.report_markdown}</CardContent></Card>
         )}
 
-        {reportJson && isV2 && (
-          <ReasonedReportView report={reportJson} onConvertToTask={convertToTask} />
+        {reportJson && isCausal && (
+          <ReasonedReportView
+            report={reportJson}
+            onConvertToTask={convertToTask}
+            feedbackFor={companionAvailable ? feedbackFor : undefined}
+            onFeedback={companionAvailable ? submitFeedback : undefined}
+            onResourceFeedback={companionAvailable ? submitResourceFeedback : undefined}
+          />
         )}
 
-        {reportJson && !isV2 && (
+        {/* "Un mensaje para ti": misma pantalla que el informe (§13.1), pero
+            visualmente distinto — el usuario debe saber siempre si lee análisis
+            o acompañamiento. */}
+        {reportJson && isCausal && schemaVersion === '3' && companionAvailable && (
+          <TransformativeCompanionCard
+            companion={companion}
+            loading={companionLoading}
+            onGenerate={generateCompanion}
+            onAdopt={adopt}
+            adopting={adopting}
+            adopted={adopted}
+            onConvertToTask={convertToTask}
+            feedbackFor={feedbackFor}
+            onFeedback={submitFeedback}
+          />
+        )}
+
+        {reportJson && !isCausal && (
           <Card>
             <CardHeader><CardTitle className="text-base">Tu informe</CardTitle></CardHeader>
             <CardContent className="space-y-4">
