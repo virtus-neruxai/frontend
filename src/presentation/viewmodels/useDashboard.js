@@ -247,6 +247,21 @@ export function useDashboard(initialProfile) {
     }
   }, []);
 
+  // §8.6 — one application the user reported. Refetch so the derived state and
+  // the aggregates come from backend, never from a local guess.
+  const recordBehaviorApplication = useCallback(async (responseKey, data) => {
+    await behaviorsApi.recordApplication(responseKey, data);
+    await fetchLearnedResponses();
+  }, [fetchLearnedResponses]);
+
+  // §8.5 — the half of the lifecycle the user owns. Resuming recomputes the
+  // derived state in backend instead of resetting it, so a pause never costs
+  // them their history.
+  const setBehaviorStatus = useCallback(async (responseKey, status) => {
+    await behaviorsApi.setStatus(responseKey, status);
+    await fetchLearnedResponses();
+  }, [fetchLearnedResponses]);
+
   const fetchMissionLenses = useCallback(async () => {
     setMissionLensesLoading(true);
     try {
@@ -336,6 +351,8 @@ export function useDashboard(initialProfile) {
     learnedResponses,
     learnedResponsesLoading,
     refreshLearnedResponses: fetchLearnedResponses,
+    recordBehaviorApplication,
+    setBehaviorStatus,
     missionLenses,
     missionLensesLoading,
     refreshMissionLenses: fetchMissionLenses,

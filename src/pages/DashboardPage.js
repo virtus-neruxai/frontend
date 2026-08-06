@@ -79,6 +79,8 @@ export default function DashboardPageRefactored() {
     acknowledgeEmotionalPattern,
     learnedResponses,
     learnedResponsesLoading,
+    recordBehaviorApplication,
+    setBehaviorStatus,
     missionLenses,
     missionLensesLoading,
   } = useDashboard(persistedProfileId);
@@ -311,6 +313,8 @@ export default function DashboardPageRefactored() {
             <LearnedResponsesPanel
               data={learnedResponses}
               loading={learnedResponsesLoading}
+              onRecordApplication={recordBehaviorApplication}
+              onSetStatus={setBehaviorStatus}
             />
           </div>
         )}

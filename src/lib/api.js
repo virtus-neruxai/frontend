@@ -231,6 +231,15 @@ export const reasoningApi = {
 export const behaviorsApi = {
   // Adopted behaviours live in backend (they outlive any single report).
   list: () => api.get('/stats/behaviors'),
+  // NRRM F7.1/§8.6 — the user reporting one application. Everything except
+  // trigger_category is optional, and none of it is ever inferred: nothing is
+  // counted without the user saying so (I11).
+  recordApplication: (responseKey, data) =>
+    api.post(`/stats/behaviors/${encodeURIComponent(responseKey)}/applications`, data),
+  // §8.5 — only the states the user owns. practicing/consolidating are derived
+  // from applications and are not settable from here.
+  setStatus: (responseKey, status) =>
+    api.patch(`/stats/behaviors/${encodeURIComponent(responseKey)}`, { status }),
 };
 
 const getAgentInteractions = async (params = {}) => {

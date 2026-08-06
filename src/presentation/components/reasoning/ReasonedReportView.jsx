@@ -376,7 +376,7 @@ function DataQualityPanel({ dataQuality }) {
 // NRRM F3 — "Lo que tu propia historia también demuestra": counterevidence
 // drawn from the user's own records. Every claim here is anchored in real
 // resource_ids; the panel exists so it reads as evidence, not encouragement.
-function PositiveEvidencePanel({ items, feedbackFor, onFeedback, onResourceFeedback }) {
+function PositiveEvidencePanel({ items, onResourceFeedback }) {
   if (!items?.length) return null;
   return (
     <Panel title="Lo que tu propia historia también demuestra" icon={Sprout}>
@@ -392,20 +392,14 @@ function PositiveEvidencePanel({ items, feedbackFor, onFeedback, onResourceFeedb
                 <Chip key={s} className="border text-muted-foreground">{resourceTypeLabel(s)}</Chip>
               ))}
             </div>
+            {/* Resource-level feedback only: a positive_evidence claim always
+                cites a resource_id, so excluding the resource already stops it
+                from being cited again — a second, text-keyed control here
+                would just duplicate that with confusingly similar wording. */}
             {onResourceFeedback && (item.resource_ids || []).length > 0 && (
               <ResourceFeedbackRow
                 resourceIds={item.resource_ids}
                 onResourceFeedback={onResourceFeedback}
-              />
-            )}
-            {onFeedback && (
-              <FeedbackControl
-                targetType="report_pattern"
-                targetText={item.claim}
-                evidenceIds={item.evidence_ids || []}
-                feedback={feedbackFor?.(item.claim)}
-                onSubmit={onFeedback}
-                rejectLabel="Esto no fue lo que me ayudó"
               />
             )}
           </div>
@@ -776,8 +770,6 @@ export default function ReasonedReportView({
           detectadas y calidad de la muestra. Ausentes en V2 → no se renderizan. */}
       <PositiveEvidencePanel
         items={report.positive_evidence}
-        feedbackFor={feedbackFor}
-        onFeedback={onFeedback}
         onResourceFeedback={onResourceFeedback}
       />
       <CandidatesPanel

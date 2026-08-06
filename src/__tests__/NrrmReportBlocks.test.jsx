@@ -134,6 +134,25 @@ describe('NRRM report blocks', () => {
     fireEvent.click(screen.getAllByText('Deshacer')[0]);
     await waitFor(() => expect(onResourceFeedback).toHaveBeenCalledWith('res-1', null));
   });
+
+  it('shows only resource-level feedback for a claim, not a second content-level control', () => {
+    // A positive_evidence claim always cites a resource_id, so excluding the
+    // resource already stops it from being cited again. Stacking the
+    // report_pattern control on top duplicated the action under near-identical
+    // wording ("Esto no me ayudó" vs "Esto no fue lo que me ayudó").
+    render(
+      <ReasonedReportView
+        report={V3_REPORT}
+        onFeedback={vi.fn()}
+        feedbackFor={() => undefined}
+        onResourceFeedback={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Esto no me ayudó')).toBeInTheDocument();
+    expect(screen.getByText('No lo uses más')).toBeInTheDocument();
+    expect(screen.queryByText('Esto no fue lo que me ayudó')).toBeNull();
+  });
 });
 
 const COMPANION = {
