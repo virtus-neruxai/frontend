@@ -60,6 +60,83 @@ Es el patrón central y reutilizable de la app:
 
 **Para añadir un modal de draft nuevo:** crea `components/XDraftModal.js` (mira `MissionDraftModal.js`/`ProjectDraftModal.js`), añade el tipo en `useAgentChat` (map de `ui_action.action`), y los handlers `confirmX/rejectX` + `showXDraftModal` en `useDrafts`, y renderízalo en `MentorPage`. El `edited_data` que envías reemplaza secciones completas del draft; el backend revalida invariantes.
 
+### 4.1 Informe razonado → Companion → conductas
+
+`pages/ReasoningReportPage.js` orquesta las tres superficies. Los componentes
+son `ReasonedReportView.jsx`, `TransformativeCompanionCard.jsx`,
+`FeedbackControl.jsx` y, ya en Dashboard, `LearnedResponsesPanel.jsx`.
+
+```text
+Informe V3
+   ├─ feedback sobre recursos/formulaciones
+   └─ Generar mensaje (Companion)
+          ├─ rechazar/corregir una etapa
+          └─ Adoptar esta respuesta
+                    ↓
+             conducta supervisable
+                    ↓
+       Lo he hecho / Pausar / Ya es mía / Retirar
+```
+
+Feedback visible en el informe:
+
+| Control | Payload | Semántica |
+|---|---|---|
+| Esto no me ayudó | recurso: `incorrect` | Orientativo; no volver a presentarlo como algo eficaz. |
+| No lo uses más | recurso: `exclude_from_companion` | Prohibición fuerte y reversible. |
+| Esto no me representa | patrón/candidato: `verdict="rejected"` + texto literal | Prohibición fuerte de esa formulación. |
+| La causa no es esa | causa: `verdict="rejected"` + texto literal | Igual que el rechazo de patrón, con `target_type="report_cause"`. |
+| Deshacer | `resource_feedback=null` o `verdict=null` | Elimina la restricción activa sin borrar historial. |
+
+`FeedbackControl` debe enviar `targetText` **exactamente como se muestra**: el
+servidor deriva la clave estable desde esas palabras. Para etapas del Companion,
+la identidad es `report_id:stage`:
+
+- **Esto no me representa** guarda `verdict="rejected"`; al regenerar ese
+  Companion, la etapa se omite o se formula de otra manera.
+- **Corregir** solo está habilitado para `old_response` y
+  `past_present_distinction`; guarda `verdict="corrected"` y
+  `user_correction`, que pasa a ser la redacción prioritaria de esa etapa.
+- **Deshacer** envía `verdict=null`.
+
+Adopción:
+
+```text
+Adoptar esta respuesta
+  → POST /reasoning/reports/{reportId}/companion/alternative-response/adopt
+  → reasoning-service lee el Companion persistido
+  → MCP create_learned_response
+  → backend POST /v1/stats/behaviors
+```
+
+El frontend no envía una redacción libre al adoptar. Solo puede adoptarse una
+`proposed_alternative_response` personalizada, con prudencia `full`; las
+prácticas `generic_fallback` no son adoptables. La operación es idempotente por
+`response_key`, no crea tareas/misiones ni cambia stats. Adoptar confirma la
+conducta, **no** confirma las hipótesis del Companion.
+
+En `LearnedResponsesPanel`:
+
+| Acción | API/estado | Consecuencia |
+|---|---|---|
+| Lo he hecho | `POST /stats/behaviors/{key}/applications` | Registra un hecho y puede derivar `practicing`/`consolidating`. |
+| Pausar | `status="paused"` | Detiene supervisión; no prohíbe reutilización. |
+| Ya es mía | `status="integrated"` | Detiene supervisión porque ya no se necesita. |
+| Retirar | `status="retired"` | Detiene supervisión y entra en `retired_behaviors` como prohibición fuerte. |
+| Retomar | envía `status="active"` | Backend recalcula el estado con el historial y elimina la prohibición. |
+
+El título de cada tarjeta es un resumen de presentación de hasta diez palabras,
+calculado por `summarizeBehaviorTitle`; la `alternative_response` completa se
+muestra una sola vez en la transformación respuesta anterior → adoptada o,
+cuando no existe respuesta anterior, como detalle bajo el título. El resumen no
+se persiste ni participa en `response_key` o personalización. Si la respuesta
+completa ya cabe en el título, la transformación muestra «Respuesta adoptada»
+en vez de duplicarla.
+
+Nada de lo anterior borra aplicaciones ni reflexiones. La guía transversal,
+incluidos RAG, read-model, consumidores y fallo seguro, está en
+[`infra/virtus/docs/personalization-feedback-conductas.md`](../infra/virtus/docs/personalization-feedback-conductas.md).
+
 ## 5) Items, tareas y proyectos
 
 - Tareas/rutinas viven en `items` (`item_type=task`, `task_kind=task|routine`). `tasksApi` → `/items`.

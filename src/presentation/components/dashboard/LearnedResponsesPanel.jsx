@@ -49,6 +49,16 @@ const USER_ACTIONS = {
 };
 
 const RESUMABLE = new Set(['paused', 'integrated', 'retired']);
+const BEHAVIOR_TITLE_WORDS = 10;
+
+export function summarizeBehaviorTitle(value) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return 'Conducta adoptada';
+
+  const words = text.replace(/[.!?]+$/, '').split(' ');
+  if (words.length <= BEHAVIOR_TITLE_WORDS) return words.join(' ');
+  return `${words.slice(0, BEHAVIOR_TITLE_WORDS).join(' ')}…`;
+}
 
 function StatusBadge({ status }) {
   const cfg = STATUS_CONFIG[status] || { label: status || '—', className: 'text-muted-foreground bg-muted' };
@@ -156,18 +166,36 @@ export function LearnedResponsesPanel({
             (application) => application.response_key === behavior.response_key
           );
           const canResume = RESUMABLE.has(behavior.status);
+          const title = summarizeBehaviorTitle(behavior.alternative_response);
+          const completeResponseTitle = String(behavior.alternative_response || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/[.!?]+$/, '') === title;
+          const hasPreviousResponse = Boolean(behavior.old_response?.value);
+          const responseNeedsDetail = String(behavior.alternative_response || '')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean).length > BEHAVIOR_TITLE_WORDS;
           return (
             <div key={behavior.response_key} className="py-3 first:pt-0 last:pb-0">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="min-w-0 text-sm font-medium">{behavior.alternative_response}</p>
+                <h4 className="min-w-0 text-sm font-medium">{title}</h4>
                 <StatusBadge status={behavior.status} />
               </div>
 
-              {behavior.old_response?.value && (
+              {hasPreviousResponse && (
                 <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                   <span className="line-through opacity-70">{behavior.old_response.value}</span>
                   <ArrowRight size={11} className="shrink-0" />
-                  <span>{behavior.alternative_response}</span>
+                  <span>
+                    {completeResponseTitle ? 'Respuesta adoptada' : behavior.alternative_response}
+                  </span>
+                </p>
+              )}
+
+              {!hasPreviousResponse && responseNeedsDetail && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {behavior.alternative_response}
                 </p>
               )}
 

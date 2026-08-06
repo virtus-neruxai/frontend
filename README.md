@@ -2,6 +2,11 @@
 
 React application for the virtus Calendar project.
 
+Documentación operativa del flujo Informe → Companion → feedback → conductas:
+
+- [Guía frontend](AGENTS.md#41-informe-razonado--companion--conductas)
+- [Arquitectura transversal de personalización y RAG](../infra/virtus/docs/personalization-feedback-conductas.md)
+
 ## 🏗️ Architecture Overview
 
 This frontend follows **Clean Architecture** principles with **MVVM pattern** to facilitate future migration to mobile platforms (Android/iOS).

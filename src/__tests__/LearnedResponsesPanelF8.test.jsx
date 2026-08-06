@@ -67,6 +67,59 @@ beforeEach(() => {
 });
 
 describe('Behaviours panel — aggregates and timeline (§13.2)', () => {
+  it('uses a short title and shows the adopted wording only once', () => {
+    const longResponse = (
+      'Escribe el primer paso antes de cerrar el día, después revisa cómo te sientes.'
+    );
+    renderPanel({
+      data: {
+        behaviors: [{ ...BEHAVIOR, alternative_response: longResponse }],
+        applications: [],
+      },
+    });
+
+    expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent(
+      'Escribe el primer paso antes de cerrar el día, después…',
+    );
+    expect(screen.getAllByText(longResponse)).toHaveLength(1);
+  });
+
+  it('keeps the full wording visible when there is no previous response', () => {
+    const longResponse = (
+      'Escribe el primer paso antes de cerrar el día, después revisa cómo te sientes.'
+    );
+    renderPanel({
+      data: {
+        behaviors: [{
+          ...BEHAVIOR,
+          alternative_response: longResponse,
+          old_response: null,
+        }],
+        applications: [],
+      },
+    });
+
+    expect(screen.getByText(longResponse)).toBeInTheDocument();
+  });
+
+  it('does not duplicate a response that already fits in the short title', () => {
+    renderPanel({
+      data: {
+        behaviors: [{
+          ...BEHAVIOR,
+          alternative_response: 'Haz una pausa breve.',
+        }],
+        applications: [],
+      },
+    });
+
+    expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent(
+      'Haz una pausa breve',
+    );
+    expect(screen.getByText('Respuesta adoptada')).toBeInTheDocument();
+    expect(screen.queryByText('Haz una pausa breve.')).toBeNull();
+  });
+
   it('counts applications and never anything else', () => {
     renderPanel();
 
