@@ -328,6 +328,9 @@ export function buildNotificationFromWsData(data) {
       tasks_failed: data.tasks_failed || 0,
       proposed_missions: data.proposed_missions || [],
       proposal_status: data.proposal_status || data.context?.proposal_status,
+      // NRRM F8 — behaviour reviews attached to this same notification.
+      learned_response_reviews:
+        data.learned_response_reviews || data.context?.learned_response_reviews || [],
       priority: data.priority || 'low',
       context: data.context || {},
     };

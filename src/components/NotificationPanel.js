@@ -24,6 +24,40 @@ function getTaskNotificationBody(payload) {
   );
 }
 
+/**
+ * NRRM F8 — behaviour reviews riding the nightly summary (§14.2/§14.3).
+ *
+ * Each item asks whether there was an occasion; none of them says the user
+ * should have done anything, and none shows a count. Both the fixed cadence
+ * and the contextual detection render identically on purpose: the user never
+ * reads "we noticed you were struggling".
+ */
+export function LearnedResponseReviews({ reviews, onOpenPanel }) {
+  const items = reviews || [];
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-3 border-t border-border pt-2" data-testid="learned-response-reviews">
+      {items.map((item) => (
+        <div key={item.response_key} className="mt-1.5 first:mt-0">
+          <p className="text-xs text-foreground">{item.alternative_response}</p>
+          <p className="text-xs text-muted-foreground">{item.question}</p>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          await onOpenPanel();
+        }}
+        className="mt-1.5 inline-block text-xs text-primary hover:underline"
+      >
+        Ver mis conductas →
+      </button>
+    </div>
+  );
+}
+
 export const NotificationPanel = ({ onClose }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, dismissNotification, clearAll } =
     useNotificationContext();
@@ -345,6 +379,18 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
     window.location.href = buildNightlyReviewHref(payload);
   };
 
+  // NRRM F8 §14.3 — the review asks; acting on it happens in the panel, with
+  // the behaviour and its history in front of you. Deliberately not a one-tap
+  // "register"/"pause" from the notification itself.
+  const openBehaviorsPanel = async () => {
+    if (onRemove) {
+      await onRemove(notification);
+    } else if (!read) {
+      await onMarkAsRead(notification.id);
+    }
+    window.location.href = '/dashboard';
+  };
+
   const handleClick = () => {
     if (isNightlyReview) {
       openNightlyReview();
@@ -417,6 +463,10 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                   ? 'Ver revisión →'
                   : 'Abrir propuesta →'}
               </a>
+              <LearnedResponseReviews
+                reviews={payload.learned_response_reviews}
+                onOpenPanel={openBehaviorsPanel}
+              />
             </>
           ) : isMissionReminder ? (
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">

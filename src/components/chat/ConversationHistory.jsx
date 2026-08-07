@@ -308,7 +308,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
                       }`}
                     >
                       <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                      {msg.friction && (
+                      {msg.friction && msg.patternEligible && (
                         <div className="mt-2">
                           {getFrictionBadge(msg.friction, msg.mode)}
                         </div>

@@ -2,6 +2,11 @@
 
 React application for the virtus Calendar project.
 
+Documentación operativa del flujo Informe → Companion → feedback → conductas:
+
+- [Guía frontend](AGENTS.md#41-informe-razonado--companion--conductas)
+- [Arquitectura transversal de personalización y RAG](../infra/virtus/docs/personalization-feedback-conductas.md)
+
 ## 🏗️ Architecture Overview
 
 This frontend follows **Clean Architecture** principles with **MVVM pattern** to facilitate future migration to mobile platforms (Android/iOS).
@@ -221,6 +226,8 @@ const {
 El KPI `Vencidas` y su diálogo comparten el mismo filtro: tareas no rutinarias en estado `in_progress`/`blocked`, con 24 horas de margen tras `date_end`, más misiones no completadas cuya `expires_at` ya pasó. `DomainDistributionChart` agrupa las tareas del rango por el catálogo canónico de dominios; al pulsar un total abre exactamente ese subconjunto.
 
 `frictionsRange` defaults to `'7'` (últimos 7 días). `acknowledgeFriction(friction, data)` hace PATCH y recarga los datos automáticamente.
+
+El Historial de Conversaciones solo muestra la etiqueta de fricción cuando `observer_output.pattern_eligible=true`; una clasificación interna descartada por el gate estricto de chat no se presenta al usuario como patrón.
 
 `missionLenses` alimenta el panel superior del Dashboard, encima de Desafíos. Es una lectura de las lentes ya materializadas por backend/graph-sync en OpenSearch (`identity`, `direction`, `transcendence`), por lo que no añade coste LLM al abrir la pantalla.
 

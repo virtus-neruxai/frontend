@@ -77,6 +77,7 @@ describe('ConversationHistory profile isolation', () => {
           message: 'Podemos mirar qué valores entran en tensión.',
           timestamp: '2026-07-15T16:00:00Z',
           friction: 'value_conflict',
+          patternEligible: true,
           mode: 'MOTIVATION',
         }],
       },
@@ -93,5 +94,36 @@ describe('ConversationHistory profile isolation', () => {
 
     expect(await screen.findByText('Conflicto de valores')).toBeInTheDocument();
     expect(screen.queryByText('value_conflict')).not.toBeInTheDocument();
+  });
+
+  test('hides friction badges when the chat turn is not pattern eligible', async () => {
+    statsApi.getFrictionLabels.mockResolvedValue({
+      data: { labels: { overload: 'Saturación' } },
+    });
+    conversationsApi.getById.mockResolvedValue({
+      data: {
+        session_id: 'student-session',
+        messages: [{
+          role: 'user',
+          message: '1 mes, cada día todas las horas necesarias',
+          timestamp: '2026-08-07T10:00:00Z',
+          friction: 'overload',
+          patternEligible: false,
+          mode: 'TASK',
+        }],
+      },
+    });
+
+    render(
+      <ConversationHistory
+        activeSessionId={null}
+        onSelectConversation={vi.fn()}
+      />
+    );
+
+    fireEvent.click(await screen.findByText('Conversación de estudiante'));
+
+    expect(await screen.findByText('1 mes, cada día todas las horas necesarias')).toBeInTheDocument();
+    expect(screen.queryByText('Saturación')).not.toBeInTheDocument();
   });
 });

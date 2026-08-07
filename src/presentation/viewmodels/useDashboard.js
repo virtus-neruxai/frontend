@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { statsApi, characterApi, tasksApi, missionsApi, profileApi } from '../../lib/api';
+import { statsApi, characterApi, tasksApi, missionsApi, profileApi, behaviorsApi } from '../../lib/api';
 import { buildRelativeDateRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 import {
@@ -63,6 +63,8 @@ export function useDashboard(initialProfile) {
   const [frictionsRange, setFrictionsRange] = useState('7');
 
   // Emotional patterns state
+  const [learnedResponses, setLearnedResponses] = useState(null);
+  const [learnedResponsesLoading, setLearnedResponsesLoading] = useState(false);
   const [emotionalPatterns, setEmotionalPatterns] = useState(null);
   const [emotionalPatternsLoading, setEmotionalPatternsLoading] = useState(false);
   const [emotionalPatternsRange, setEmotionalPatternsRange] = useState('7');
@@ -231,6 +233,35 @@ export function useDashboard(initialProfile) {
     await fetchEmotionalPatterns();
   }, [fetchEmotionalPatterns]);
 
+  // NRRM — conductas adoptadas. Fail-soft: si la feature está apagada o el
+  // endpoint no existe todavía, el panel simplemente no se muestra.
+  const fetchLearnedResponses = useCallback(async () => {
+    setLearnedResponsesLoading(true);
+    try {
+      const res = await behaviorsApi.list();
+      setLearnedResponses(res.data);
+    } catch (error) {
+      setLearnedResponses(null);
+    } finally {
+      setLearnedResponsesLoading(false);
+    }
+  }, []);
+
+  // §8.6 — one application the user reported. Refetch so the derived state and
+  // the aggregates come from backend, never from a local guess.
+  const recordBehaviorApplication = useCallback(async (responseKey, data) => {
+    await behaviorsApi.recordApplication(responseKey, data);
+    await fetchLearnedResponses();
+  }, [fetchLearnedResponses]);
+
+  // §8.5 — the half of the lifecycle the user owns. Resuming recomputes the
+  // derived state in backend instead of resetting it, so a pause never costs
+  // them their history.
+  const setBehaviorStatus = useCallback(async (responseKey, status) => {
+    await behaviorsApi.setStatus(responseKey, status);
+    await fetchLearnedResponses();
+  }, [fetchLearnedResponses]);
+
   const fetchMissionLenses = useCallback(async () => {
     setMissionLensesLoading(true);
     try {
@@ -267,6 +298,10 @@ export function useDashboard(initialProfile) {
   useEffect(() => {
     fetchMissionLenses();
   }, [fetchMissionLenses]);
+
+  useEffect(() => {
+    fetchLearnedResponses();
+  }, [fetchLearnedResponses]);
 
   return {
     summary,
@@ -313,6 +348,11 @@ export function useDashboard(initialProfile) {
     emotionalPatternsRangeOptions: EMOTIONAL_PATTERNS_RANGE_OPTIONS,
     acknowledgeEmotionalPattern,
     refreshEmotionalPatterns: fetchEmotionalPatterns,
+    learnedResponses,
+    learnedResponsesLoading,
+    refreshLearnedResponses: fetchLearnedResponses,
+    recordBehaviorApplication,
+    setBehaviorStatus,
     missionLenses,
     missionLensesLoading,
     refreshMissionLenses: fetchMissionLenses,

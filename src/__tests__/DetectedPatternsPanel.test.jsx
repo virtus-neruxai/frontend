@@ -200,6 +200,59 @@ describe('DetectedPatternsPanel', () => {
     expect(screen.getAllByText('Dependencia de factores externos').length).toBeGreaterThan(0);
   });
 
+  test('shows the pattern trend on the card and per-evidence intensity inside', () => {
+    const data = {
+      summary: { pattern_events: 2, avg_severity: 2 },
+      by_friction: [{
+        friction: 'overload',
+        label: 'Saturación',
+        count: 2,
+        pattern_status: 'relapse_signal',
+        sources: { chat_interaction: 2 },
+      }],
+      resolved_frictions: [],
+      timeline: [
+        {
+          id: 'chat-worse',
+          source_type: 'chat_interaction',
+          created_at: '2026-07-15T10:00:00+00:00',
+          friction: 'overload',
+          label: 'Saturación',
+          severity_label: 'Intensa',
+          excerpt: 'Evidencia reciente',
+        },
+        {
+          id: 'chat-earlier',
+          source_type: 'chat_interaction',
+          created_at: '2026-07-10T10:00:00+00:00',
+          friction: 'overload',
+          label: 'Saturación',
+          severity_label: 'Leve',
+          excerpt: 'Evidencia anterior',
+        },
+      ],
+    };
+
+    render(
+      <DetectedPatternsPanel
+        data={data}
+        loading={false}
+        onAcknowledge={vi.fn()}
+      />
+    );
+
+    const group = screen.getByTestId('detected-pattern-group-overload');
+    expect(within(group).getByText('Reaparece')).toBeInTheDocument();
+
+    fireEvent.click(within(group).getByRole('button', { name: /Saturación/i }));
+    expect(within(group).getByText('Intensa')).toBeInTheDocument();
+    expect(within(group).getByText('Leve')).toBeInTheDocument();
+    // Each row shows how strong that evidence was, never a direction — one
+    // event cannot trend, and labelling it made every row read "Activo".
+    expect(within(group).queryByText('Activo')).not.toBeInTheDocument();
+    expect(within(group).queryByText('Mejorando')).not.toBeInTheDocument();
+  });
+
   test('uses a neutral badge when no pattern trend has been calculated', () => {
     const data = {
       summary: { pattern_events: 1, avg_severity: 1 },
@@ -228,7 +281,10 @@ describe('DetectedPatternsPanel', () => {
       />
     );
 
-    expect(screen.getByText('Sin tendencia')).toBeInTheDocument();
+    // Scoped to the card: with nothing trending, the untrended section trigger
+    // carries the same wording, so an unscoped query is ambiguous.
+    const group = screen.getByTestId('detected-pattern-group-rumination_loop');
+    expect(within(group).getByText('Sin tendencia')).toBeInTheDocument();
     expect(screen.queryByText('Mejorando')).not.toBeInTheDocument();
   });
 
@@ -296,5 +352,107 @@ describe('DetectedPatternsPanel', () => {
     expect(within(group).getByText(/Segunda evidencia relacionada/)).toBeInTheDocument();
     expect(within(group).getByText(/Tercera evidencia relacionada/)).toBeInTheDocument();
     expect(within(group).queryByText(/secundaria/i)).not.toBeInTheDocument();
+  });
+
+  describe('trend columns', () => {
+    const evidence = (friction, id, label) => ({
+      id,
+      source_type: 'chat_interaction',
+      created_at: '2026-07-15T10:00:00+00:00',
+      friction,
+      label,
+      severity_label: 'Moderada',
+      excerpt: `Evidencia de ${label}`,
+    });
+
+    const trendData = {
+      summary: { pattern_events: 4, avg_severity: 2 },
+      by_friction: [
+        { friction: 'overload', label: 'Saturación', count: 1, pattern_status: 'active', sources: { chat_interaction: 1 } },
+        { friction: 'reactivity', label: 'Reactividad', count: 1, pattern_status: 'relapse_signal', sources: { chat_interaction: 1 } },
+        { friction: 'low_energy', label: 'Energía baja', count: 1, pattern_status: 'improving', sources: { chat_interaction: 1 } },
+        { friction: 'loneliness', label: 'Soledad o desconexión', count: 1, pattern_status: 'resolved_signal', sources: { chat_interaction: 1 } },
+      ],
+      resolved_frictions: [],
+      timeline: [
+        evidence('overload', 'e1', 'Saturación'),
+        evidence('reactivity', 'e2', 'Reactividad'),
+        evidence('low_energy', 'e3', 'Energía baja'),
+        evidence('loneliness', 'e4', 'Soledad o desconexión'),
+      ],
+    };
+
+    test('splits patterns into the attention and improving columns by trend', () => {
+      render(<DetectedPatternsPanel data={trendData} loading={false} onAcknowledge={vi.fn()} />);
+
+      const attention = screen.getByTestId('friction-column-attention');
+      const improving = screen.getByTestId('friction-column-improving');
+
+      expect(within(attention).getByTestId('detected-pattern-group-overload')).toBeInTheDocument();
+      expect(within(attention).getByTestId('detected-pattern-group-reactivity')).toBeInTheDocument();
+      expect(within(improving).getByTestId('detected-pattern-group-low_energy')).toBeInTheDocument();
+      expect(within(improving).getByTestId('detected-pattern-group-loneliness')).toBeInTheDocument();
+    });
+
+    test('an empty column still renders with its explanation', () => {
+      const onlyAttention = {
+        ...trendData,
+        by_friction: [trendData.by_friction[0]],
+        timeline: [trendData.timeline[0]],
+      };
+      render(<DetectedPatternsPanel data={onlyAttention} loading={false} onAcknowledge={vi.fn()} />);
+
+      const improving = screen.getByTestId('friction-column-improving');
+      // "Nothing is getting better yet" is information, not a hole to hide.
+      expect(within(improving).getByText('Todavía ninguno está bajando de intensidad.')).toBeInTheDocument();
+    });
+
+    test('untrended patterns stay out of the DOM until the section is opened', () => {
+      const mixed = {
+        ...trendData,
+        by_friction: [...trendData.by_friction, { friction: 'procrastination', label: 'Procrastinación', count: 1, pattern_status: 'unknown', sources: { chat_interaction: 1 } }],
+        timeline: [...trendData.timeline, evidence('procrastination', 'e5', 'Procrastinación')],
+      };
+      render(<DetectedPatternsPanel data={mixed} loading={false} onAcknowledge={vi.fn()} />);
+
+      // Radix unmounts collapsed content, so this is genuinely absent.
+      expect(screen.queryByTestId('detected-pattern-group-procrastination')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Sin tendencia/i }));
+      expect(screen.getByTestId('detected-pattern-group-procrastination')).toBeInTheDocument();
+    });
+
+    test('all-untrended data renders no columns and an already-open section', () => {
+      // The demo profile's real state: several patterns, one evidence each.
+      const untrendedOnly = {
+        summary: { pattern_events: 2, avg_severity: 1 },
+        by_friction: [
+          { friction: 'overload', label: 'Saturación', count: 1, pattern_status: 'unknown', sources: { chat_interaction: 1 } },
+          { friction: 'procrastination', label: 'Procrastinación', count: 1, pattern_status: 'unknown', sources: { chat_interaction: 1 } },
+        ],
+        resolved_frictions: [],
+        timeline: [evidence('overload', 'e1', 'Saturación'), evidence('procrastination', 'e2', 'Procrastinación')],
+      };
+      render(<DetectedPatternsPanel data={untrendedOnly} loading={false} onAcknowledge={vi.fn()} />);
+
+      expect(screen.queryByTestId('friction-column-attention')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('friction-column-improving')).not.toBeInTheDocument();
+      // Degrades to the flat list rather than two empty boxes.
+      expect(screen.getByTestId('detected-pattern-group-overload')).toBeInTheDocument();
+      expect(screen.getByTestId('detected-pattern-group-procrastination')).toBeInTheDocument();
+    });
+
+    test('selecting a chip leaves focus mode without columns', () => {
+      render(<DetectedPatternsPanel data={trendData} loading={false} onAcknowledge={vi.fn()} />);
+
+      // The chip and the card trigger share an accessible name, so pick the chip.
+      const chips = screen.getAllByTitle('Filtrar evidencias por este patrón');
+      fireEvent.click(chips.find((chip) => chip.textContent.includes('Saturación')));
+
+      expect(screen.queryByTestId('friction-column-attention')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('friction-column-improving')).not.toBeInTheDocument();
+      const group = screen.getByTestId('detected-pattern-group-overload');
+      expect(within(group).getByText(/Evidencia de Saturación/)).toBeInTheDocument();
+    });
   });
 });

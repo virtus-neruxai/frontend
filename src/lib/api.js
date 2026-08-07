@@ -184,6 +184,7 @@ reasoningApiInstance.interceptors.response.use(
 
 export const reasoningApi = {
   generateReport: (daysBack = 14) => reasoningApiInstance.post('/reasoning/report', { days_back: daysBack }),
+  getReportJob: (jobId) => reasoningApiInstance.get(`/reasoning/report-jobs/${jobId}`),
   getReports: () => reasoningApiInstance.get('/reasoning/reports'),
   getReport: (reportId) => reasoningApiInstance.get(`/reasoning/reports/${reportId}`),
   chat: (message, sessionId, reportId, intent) =>
@@ -193,6 +194,53 @@ export const reasoningApi = {
       report_id: reportId,
       intent,
     }),
+
+  // ── NRRM ──────────────────────────────────────────────────────────────────
+  // All of these 404 while the feature flags are off, which is the intended
+  // "not available" signal — callers treat it as "hide the surface", not as
+  // an error worth showing the user.
+  generateCompanion: (reportId) =>
+    reasoningApiInstance.post(`/reasoning/reports/${reportId}/companion`),
+  getCompanion: (reportId) =>
+    reasoningApiInstance.get(`/reasoning/reports/${reportId}/companion`),
+  adoptAlternativeResponse: (reportId) =>
+    reasoningApiInstance.post(
+      `/reasoning/reports/${reportId}/companion/alternative-response/adopt`,
+    ),
+
+  // `targetText` must be the literal wording shown on screen: the suppression
+  // key is derived from those words, so a paraphrase would silently key to
+  // something else. `verdict: null` undoes previous feedback.
+  sendFeedback: (reportId, { targetType, targetText = '', stage = '', verdict, userCorrection = null, evidenceIds = [] }) =>
+    reasoningApiInstance.post(`/reasoning/reports/${reportId}/feedback`, {
+      target_type: targetType,
+      target_text: targetText,
+      stage,
+      verdict,
+      user_correction: userCorrection,
+      evidence_ids: evidenceIds,
+    }),
+  getFeedback: (reportId) =>
+    reasoningApiInstance.get(`/reasoning/reports/${reportId}/feedback`),
+  sendResourceFeedback: (reportId, resourceId, resourceFeedback) =>
+    reasoningApiInstance.post(`/reasoning/reports/${reportId}/feedback/resource`, {
+      resource_id: resourceId,
+      resource_feedback: resourceFeedback,
+    }),
+};
+
+export const behaviorsApi = {
+  // Adopted behaviours live in backend (they outlive any single report).
+  list: () => api.get('/stats/behaviors'),
+  // NRRM F7.1/§8.6 — the user reporting one application. Everything except
+  // trigger_category is optional, and none of it is ever inferred: nothing is
+  // counted without the user saying so (I11).
+  recordApplication: (responseKey, data) =>
+    api.post(`/stats/behaviors/${encodeURIComponent(responseKey)}/applications`, data),
+  // §8.5 — only the states the user owns. practicing/consolidating are derived
+  // from applications and are not settable from here.
+  setStatus: (responseKey, status) =>
+    api.patch(`/stats/behaviors/${encodeURIComponent(responseKey)}`, { status }),
 };
 
 const getAgentInteractions = async (params = {}) => {
@@ -244,6 +292,7 @@ export const conversationsApi = {
           message: item.user_message,
           timestamp: item.timestamp,
           friction: item.observer_output?.primary_friction,
+          patternEligible: item.observer_output?.pattern_eligible === true,
           mode: item.selected_mode,
         },
         item.agent_response && {
@@ -251,6 +300,7 @@ export const conversationsApi = {
           message: item.agent_response,
           timestamp: item.timestamp,
           friction: item.observer_output?.primary_friction,
+          patternEligible: item.observer_output?.pattern_eligible === true,
           mode: item.selected_mode,
         },
       ].filter(Boolean));

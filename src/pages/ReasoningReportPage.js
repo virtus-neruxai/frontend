@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../components/ui/textarea';
 import TaskDraftModal from '../components/TaskDraftModal';
 import ReasonedReportView from '../presentation/components/reasoning/ReasonedReportView';
+import TransformativeCompanionCard from '../presentation/components/reasoning/TransformativeCompanionCard';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { reasoningApi, tasksApi } from '../lib/api';
-import { Brain, History, Loader2, PlusCircle, Send } from 'lucide-react';
+import { Brain, History, Loader2, Send } from 'lucide-react';
 
 const REPORT_RANGE_OPTIONS = [
   { value: 1, label: 'Diario' },
@@ -18,6 +19,31 @@ const REPORT_RANGE_OPTIONS = [
   { value: 14, label: 'Últimas 2 semanas' },
   { value: 30, label: 'Último mes' },
 ];
+const REPORT_JOB_STORAGE_KEY = 'virtus.reasoning.active-report-job';
+
+function readPendingReportJobId() {
+  try {
+    return window.sessionStorage.getItem(REPORT_JOB_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistPendingReportJobId(jobId) {
+  try {
+    window.sessionStorage.setItem(REPORT_JOB_STORAGE_KEY, jobId);
+  } catch {
+    // The report keeps running server-side even if browser storage is blocked.
+  }
+}
+
+function clearPendingReportJobId() {
+  try {
+    window.sessionStorage.removeItem(REPORT_JOB_STORAGE_KEY);
+  } catch {
+    // Nothing else is needed: this only controls the local progress indicator.
+  }
+}
 
 function reportRangeLabel(daysBack) {
   const numeric = Number(daysBack) || 14;
@@ -46,29 +72,13 @@ function defaultDraftFromRecommendation(rec) {
   };
 }
 
-function Section({ title, items, tone }) {
-  if (!items || items.length === 0) return null;
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <ul className="space-y-1">
-        {items.map((it, i) => (
-          <li key={i} className="text-sm">
-            <span className={`font-medium ${tone || ''}`}>{it.point}</span>
-            {it.evidence ? <span className="text-muted-foreground"> — {it.evidence}</span> : null}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 export default function ReasoningReportPage() {
   const { theme } = useProfileTheme();
   const profileName = theme?.name || '';
 
   const [report, setReport] = useState(null); // {report_id, report_json, ...}
-  const [generating, setGenerating] = useState(false);
+  const [startingGeneration, setStartingGeneration] = useState(false);
+  const [reportJobId, setReportJobId] = useState(readPendingReportJobId);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [selectedDaysBack, setSelectedDaysBack] = useState(14);
@@ -81,28 +91,130 @@ export default function ReasoningReportPage() {
 
   const reportJson = report?.report_json || null;
   const reportId = report?.report_id || null;
-  // Prospective only: documents saved before schema_version existed have no
-  // such field anywhere (report, reportJson) — those are implicitly V1.
+  // V3 (NRRM) extends V2 rather than replacing it: same causal contract plus
+  // data_quality, positive_evidence and learned_response_candidates. One view
+  // renders both, because the V3-only blocks hide themselves when absent.
+  //
+  // V1 is no longer rendered at all. It was a different contract, not an older
+  // one — not a single field name in common — so it needed its own renderer,
+  // and nothing has generated it for a long time. Documents saved before
+  // schema_version existed simply show nothing.
   const schemaVersion = report?.schema_version || reportJson?.schema_version || '1';
-  const isV2 = schemaVersion === '2';
   const filteredHistory = history.filter((item) => Number(item.days_back || 14) === selectedDaysBack);
+  const generating = startingGeneration || Boolean(reportJobId);
+
+  // ── NRRM: companion + feedback ────────────────────────────────────────────
+  const [companion, setCompanion] = useState(null);
+  const [companionLoading, setCompanionLoading] = useState(false);
+  // The endpoints 404 while the feature flags are off. That is the intended
+  // "not available" signal, so the whole surface hides instead of showing an
+  // error for something the user never asked for.
+  const [companionAvailable, setCompanionAvailable] = useState(true);
+  const [adopting, setAdopting] = useState(false);
+  const [adopted, setAdopted] = useState(false);
+  const [feedback, setFeedback] = useState([]);
+
+  const loadCompanionAndFeedback = useCallback(async (id) => {
+    if (!id) return;
+    setCompanion(null);
+    setAdopted(false);
+    setFeedback([]);
+    try {
+      const { data } = await reasoningApi.getCompanion(id);
+      setCompanion(data?.companion || null);
+    } catch (e) {
+      // 404 here means either "not generated yet" or "flag off"; both are
+      // simply "nothing to show", never an error worth a toast.
+      setCompanion(null);
+    }
+    try {
+      const { data } = await reasoningApi.getFeedback(id);
+      setFeedback(data?.items || []);
+      setCompanionAvailable(true);
+    } catch (e) {
+      if (e?.response?.status === 404) setCompanionAvailable(false);
+    }
+  }, []);
+
+  // A judgement is stored under a hashed key, so the UI matches it back by the
+  // wording it was given on (content targets) or by report+stage (companion).
+  const feedbackFor = useCallback(
+    (key) => feedback.find(
+      (item) => item.target_text === key || item.target_key === `${reportId}:${key}`,
+    ),
+    [feedback, reportId],
+  );
+
+  const submitFeedback = useCallback(async (payload) => {
+    if (!reportId) return;
+    try {
+      const { data } = await reasoningApi.sendFeedback(reportId, payload);
+      setFeedback((items) => [
+        ...items.filter((item) => item.target_key !== data.target_key),
+        data,
+      ]);
+      toast.success(payload.verdict ? 'Gracias, lo tendré en cuenta' : 'Feedback deshecho');
+    } catch {
+      toast.error('No se pudo guardar tu respuesta');
+    }
+  }, [reportId]);
+
+  const submitResourceFeedback = useCallback(async (resourceId, value) => {
+    if (!reportId) return;
+    try {
+      await reasoningApi.sendResourceFeedback(reportId, resourceId, value);
+      toast.success(value ? 'Anotado' : 'Feedback deshecho');
+    } catch {
+      toast.error('No se pudo guardar tu respuesta');
+    }
+  }, [reportId]);
+
+  const generateCompanion = useCallback(async () => {
+    if (!reportId) return;
+    setCompanionLoading(true);
+    try {
+      const { data } = await reasoningApi.generateCompanion(reportId);
+      setCompanion(data?.companion || null);
+      setAdopted(false);
+    } catch (e) {
+      const status = e?.response?.status;
+      if (status === 404) {
+        setCompanionAvailable(false);
+      } else if (status === 409) {
+        toast.info(e.response?.data?.detail || 'No se puede generar el mensaje para este informe.');
+      } else {
+        toast.error('No se pudo generar el mensaje. Vuelve a intentarlo.');
+      }
+    } finally {
+      setCompanionLoading(false);
+    }
+  }, [reportId]);
+
+  const adopt = useCallback(async () => {
+    if (!reportId) return;
+    setAdopting(true);
+    try {
+      await reasoningApi.adoptAlternativeResponse(reportId);
+      setAdopted(true);
+      toast.success('Respuesta adoptada. La verás en tus conductas.');
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || 'No se pudo adoptar la respuesta.');
+    } finally {
+      setAdopting(false);
+    }
+  }, [reportId]);
 
   const generate = useCallback(async () => {
-    setGenerating(true);
+    setStartingGeneration(true);
     try {
       const { data } = await reasoningApi.generateReport(selectedDaysBack);
-      setReport(data);
-      setThread([]);
-      sessionRef.current = null;
-      if (data?.mode === 'SAFE_NO_ACTION') {
-        toast.info('Ahora mismo priorizamos tu bienestar antes que el informe.');
-      } else {
-        toast.success('Informe generado');
-      }
+      setReportJobId(data.job_id);
+      persistPendingReportJobId(data.job_id);
+      toast.info('El informe se está generando en segundo plano. Puedes salir de esta pantalla.');
     } catch (e) {
-      toast.error('No se pudo generar el informe');
+      toast.error('No se pudo generar el informe. Vuelve a intentarlo.');
     } finally {
-      setGenerating(false);
+      setStartingGeneration(false);
     }
   }, [selectedDaysBack]);
 
@@ -137,10 +249,63 @@ export default function ReasoningReportPage() {
       setThread([]);
       sessionRef.current = null;
       setShowHistory(false);
+      loadCompanionAndFeedback(data.id);
+      return true;
     } catch {
       toast.error('No se pudo abrir el informe');
+      return false;
     }
-  }, []);
+  }, [loadCompanionAndFeedback]);
+
+  useEffect(() => {
+    if (!reportJobId) return undefined;
+
+    let disposed = false;
+    const finish = () => {
+      clearPendingReportJobId();
+      if (!disposed) setReportJobId(null);
+    };
+    const poll = async () => {
+      try {
+        const { data } = await reasoningApi.getReportJob(reportJobId);
+        if (disposed || data.status === 'queued' || data.status === 'running') return;
+
+        finish();
+        if (data.status === 'failed') {
+          toast.error(data.error || 'No se pudo generar el informe. Vuelve a intentarlo.');
+          return;
+        }
+        if (data.mode === 'SAFE_NO_ACTION') {
+          setReport({
+            report_id: null,
+            mode: data.mode,
+            days_back: data.days_back,
+            report_json: {},
+            report_markdown: data.safe_message || '',
+          });
+          setSelectedDaysBack(Number(data.days_back || 14));
+          setThread([]);
+          sessionRef.current = null;
+          toast.info('Ahora mismo priorizamos tu bienestar antes que el informe.');
+          return;
+        }
+        if (data.report_id && await openReport(data.report_id)) {
+          toast.success('Informe generado');
+        }
+      } catch (error) {
+        if (error?.response?.status === 404) {
+          finish();
+        }
+      }
+    };
+
+    poll();
+    const intervalId = window.setInterval(poll, 2500);
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalId);
+    };
+  }, [openReport, reportJobId]);
 
   const ask = useCallback(async () => {
     const q = question.trim();
@@ -257,41 +422,43 @@ export default function ReasoningReportPage() {
           </Card>
         )}
 
+        {generating && (
+          <Card>
+            <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              El informe se está generando en segundo plano. Puedes navegar con normalidad; aparecerá en el historial al terminar.
+            </CardContent>
+          </Card>
+        )}
+
         {report?.report_markdown && report?.mode === 'SAFE_NO_ACTION' && (
           <Card><CardContent className="whitespace-pre-wrap pt-6 text-sm">{report.report_markdown}</CardContent></Card>
         )}
 
-        {reportJson && isV2 && (
-          <ReasonedReportView report={reportJson} onConvertToTask={convertToTask} />
+        {reportJson && (
+          <ReasonedReportView
+            report={reportJson}
+            onConvertToTask={convertToTask}
+            feedbackFor={companionAvailable ? feedbackFor : undefined}
+            onFeedback={companionAvailable ? submitFeedback : undefined}
+            onResourceFeedback={companionAvailable ? submitResourceFeedback : undefined}
+          />
         )}
 
-        {reportJson && !isV2 && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">Tu informe</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {reportJson.summary && <p className="text-sm">{reportJson.summary}</p>}
-              <Section title="✅ Lo que has hecho bien" items={reportJson.bien_hecho} tone="text-[hsl(var(--success))]" />
-              <Section title="➖ Neutral" items={reportJson.neutral} />
-              <Section title="🔧 A mejorar" items={reportJson.mejora} tone="text-[hsl(var(--warning))]" />
-
-              {reportJson.recommendations?.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold">Recomendaciones</h3>
-                  {reportJson.recommendations.map((rec, i) => (
-                    <div key={i} className="flex items-start justify-between gap-3 rounded-md border p-2">
-                      <div className="text-sm">
-                        <p className="font-medium">{rec.title}</p>
-                        {rec.rationale && <p className="text-muted-foreground">{rec.rationale}</p>}
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => convertToTask(rec)}>
-                        <PlusCircle className="mr-1 h-4 w-4" /> Convertir en tarea
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* "Un mensaje para ti": misma pantalla que el informe (§13.1), pero
+            visualmente distinto — el usuario debe saber siempre si lee análisis
+            o acompañamiento. */}
+        {reportJson && schemaVersion === '3' && companionAvailable && (
+          <TransformativeCompanionCard
+            companion={companion}
+            loading={companionLoading}
+            onGenerate={generateCompanion}
+            onAdopt={adopt}
+            adopting={adopting}
+            adopted={adopted}
+            feedbackFor={feedbackFor}
+            onFeedback={submitFeedback}
+          />
         )}
 
         {reportJson && (
