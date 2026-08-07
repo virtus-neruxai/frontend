@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
-import { TrendingUp, TrendingDown, Minus, MessageSquare, BookOpen, CheckSquare, Target, RotateCcw, ChevronDown, CheckCircle2, Pencil, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, MessageSquare, BookOpen, CheckSquare, Target, RotateCcw, ChevronDown, CheckCircle2, Pencil, X, AlertTriangle } from 'lucide-react';
+import { frictionIcon } from '../../../lib/frictionIcons';
+import { partitionFrictionGroups } from '../../../lib/patternPartition';
 import { FrictionAcknowledgeDialog } from './FrictionAcknowledgeDialog';
 
 function Skeleton({ className }) {
@@ -23,12 +25,24 @@ const SOURCE_LABELS = {
   routine_reflection: { label: 'Rutina',  icon: RotateCcw },
 };
 
+// Trend of the whole pattern: the arrow tracks where its intensity is heading,
+// the colour whether that direction is good news. Derived in the backend by
+// comparing the recent half of a pattern's evidence against the older half
+// (services/friction_labels.py::derive_pattern_status).
 const PATTERN_STATUS_CONFIG = {
-  active:          { label: 'Activo',      color: 'text-destructive',                bg: 'bg-destructive/10',             Icon: TrendingDown },
-  improving:       { label: 'Mejorando',   color: 'text-[hsl(var(--success))]',      bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingUp },
-  resolved_signal: { label: 'Estable',     color: 'text-[hsl(var(--info))]',         bg: 'bg-[hsl(var(--info-soft))]',    Icon: TrendingUp },
-  relapse_signal:  { label: 'Reaparece',   color: 'text-[hsl(var(--virtus-secondary))]', bg: 'bg-secondary',              Icon: Minus },
-  unknown:         { label: 'Sin tendencia', color: 'text-muted-foreground',          bg: 'bg-muted',                       Icon: Minus },
+  active:          { label: 'Activo',        color: 'text-destructive',                    bg: 'bg-destructive/10',             Icon: Minus,        hint: 'Se repite con intensidad alta y no está bajando.' },
+  improving:       { label: 'Mejorando',     color: 'text-[hsl(var(--success))]',          bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingDown, hint: 'Las evidencias recientes son menos intensas que las anteriores.' },
+  resolved_signal: { label: 'Estable',       color: 'text-[hsl(var(--info))]',             bg: 'bg-[hsl(var(--info-soft))]',    Icon: Minus,        hint: 'Sigue apareciendo, pero con intensidad baja y sin cambios.' },
+  relapse_signal:  { label: 'Reaparece',     color: 'text-[hsl(var(--virtus-secondary))]', bg: 'bg-secondary',                  Icon: TrendingUp,   hint: 'Las evidencias recientes son más intensas que las anteriores.' },
+  unknown:         { label: 'Sin tendencia', color: 'text-muted-foreground',               bg: 'bg-muted',                      Icon: Minus,        hint: 'Aún no hay evidencias suficientes para saber hacia dónde va.' },
+};
+
+// Intensity of one piece of evidence. A single event has no direction, so it
+// never carries a trend label — that would make every row read «Activo».
+const SEVERITY_CONFIG = {
+  Leve:     'text-muted-foreground bg-muted',
+  Moderada: 'text-[hsl(var(--warning))] bg-[hsl(var(--warning-soft))]',
+  Intensa:  'text-destructive bg-destructive/10',
 };
 
 // User-driven status labels (override auto-detected pattern_status)
@@ -80,10 +94,93 @@ function getUserDisplayStatus(item) {
 
 function PatternStatusBadge({ status }) {
   const cfg = PATTERN_STATUS_CONFIG[status] || PATTERN_STATUS_CONFIG.unknown;
-  const { label, color, bg, Icon } = cfg;
+  const { label, color, bg, Icon, hint } = cfg;
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${color} ${bg}`}>
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${color} ${bg}`}
+      title={hint}
+    >
       <Icon size={11} />
+      {label}
+    </span>
+  );
+}
+
+const COLUMN_TONES = {
+  attention: { text: 'text-destructive', bg: 'bg-destructive/10' },
+  improving: { text: 'text-[hsl(var(--success))]', bg: 'bg-[hsl(var(--success-soft))]' },
+};
+
+function PatternColumn({ testId, title, description, icon: Icon, tone, count, emptyHint, children }) {
+  const { text, bg } = COLUMN_TONES[tone];
+  return (
+    // min-w-0 is load-bearing: without it a long label refuses to shrink inside
+    // its grid track and pushes the column out.
+    <section data-testid={testId} className="flex min-w-0 flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${bg}`}>
+          <Icon size={14} className={text} />
+        </span>
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+        <Badge variant="outline" className="text-xs">{count}</Badge>
+      </div>
+      <p className="-mt-1 text-xs text-muted-foreground">{description}</p>
+      {count > 0 ? (
+        <div className="flex flex-col gap-3">{children}</div>
+      ) : (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{emptyHint}</p>
+      )}
+    </section>
+  );
+}
+
+function UntrendedSection({ groups, defaultOpen, divided }) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (!groups.length) return null;
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className={divided ? 'mt-4 border-t pt-4' : ''}
+      data-testid="friction-untrended-section"
+    >
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <Minus size={14} />
+            Sin tendencia
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-muted text-xs font-semibold">
+              {groups.length}
+            </span>
+          </span>
+          <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-3">
+        <p className="mb-3 text-xs text-muted-foreground">
+          {PATTERN_STATUS_CONFIG.unknown.hint}
+        </p>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {groups.map((group) => (
+            <PatternEvidenceGroup key={group.key} group={group} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function SeverityBadge({ label }) {
+  if (!label) return null;
+  return (
+    <span
+      className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${SEVERITY_CONFIG[label] || SEVERITY_CONFIG.Leve}`}
+      title="Intensidad de esta evidencia"
+    >
       {label}
     </span>
   );
@@ -145,6 +242,7 @@ function countEventSources(events = []) {
 
 function FrictionChip({ item, onEdit, selected, onSelect }) {
   const isDismissed = item.user_confirmed === false;
+  const ChipIcon = frictionIcon(item.friction);
   return (
     <div
       className={`inline-flex items-center gap-1 text-xs rounded-full font-medium transition-all border
@@ -153,9 +251,10 @@ function FrictionChip({ item, onEdit, selected, onSelect }) {
       <button
         type="button"
         onClick={() => onSelect(item.friction)}
-        className="pl-2.5 pr-1.5 py-1.5 cursor-pointer"
+        className="pl-2.5 pr-1.5 py-1.5 cursor-pointer inline-flex items-center gap-1"
         title="Filtrar evidencias por este patrón"
       >
+        <ChipIcon size={11} className="shrink-0 opacity-70" aria-hidden="true" />
         <span>{item.label}</span>
         <span className={`ml-1 ${selected ? 'opacity-80' : 'opacity-60'}`}>×{item.count}</span>
         {item.user_progress != null && item.user_progress < 5 && (
@@ -190,7 +289,7 @@ function TimelineEvent({ event }) {
               <span className="text-muted-foreground font-normal"> · {event.secondary_label}</span>
             )}
           </span>
-          <PatternStatusBadge status={event.pattern_status} />
+          <SeverityBadge label={event.severity_label} />
         </div>
         {event.excerpt && (
           <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">
@@ -284,6 +383,7 @@ function PatternEvidenceGroup({ group, defaultOpen = false }) {
   const item = group.meta;
   const evidenceCount = group.events.length;
   const evidenceSources = countEventSources(group.events);
+  const GroupIcon = frictionIcon(item.friction);
 
   useEffect(() => {
     if (defaultOpen) setOpen(true);
@@ -302,18 +402,28 @@ function PatternEvidenceGroup({ group, defaultOpen = false }) {
             type="button"
             className="flex flex-1 items-start justify-between gap-3 text-left"
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                <UserStatusBadge item={item} />
-                <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  1 entrada · {evidenceCount} {evidenceCount === 1 ? 'evidencia' : 'evidencias'}
-                </span>
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              {/* Neutral on purpose: the status badge stays the card's only
+                  colour signal. */}
+              <span
+                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+                aria-hidden="true"
+              >
+                <GroupIcon size={14} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  <UserStatusBadge item={item} />
+                  <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    1 entrada · {evidenceCount} {evidenceCount === 1 ? 'evidencia' : 'evidencias'}
+                  </span>
+                </div>
+                <SourceChips sources={evidenceSources} />
+                {item.user_notes && (
+                  <p className="mt-1 text-xs text-muted-foreground italic">{item.user_notes}</p>
+                )}
               </div>
-              <SourceChips sources={evidenceSources} />
-              {item.user_notes && (
-                <p className="mt-1 text-xs text-muted-foreground italic">{item.user_notes}</p>
-              )}
             </div>
             <ChevronDown size={16} className={`mt-0.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
           </button>
@@ -444,6 +554,9 @@ export function DetectedPatternsPanel({ data, loading, range = '7', onRangeChang
     : normalizedTimeline;
   const groupedTimeline = buildPatternGroups(filteredTimeline, byFriction, selectedFriction);
 
+  const buckets = partitionFrictionGroups(groupedTimeline);
+  const hasTrend = buckets.attention.length > 0 || buckets.improving.length > 0;
+
   const hasData = timeline.length > 0 || byFriction.length > 0 || resolvedFrictions.length > 0;
 
   return (
@@ -508,22 +621,67 @@ export function DetectedPatternsPanel({ data, loading, range = '7', onRangeChang
             </div>
           )}
 
-          {/* Grouped timeline */}
-          {groupedTimeline.length > 0 ? (
-            <div className="space-y-3">
-              {groupedTimeline.map((group) => (
-                <PatternEvidenceGroup
-                  key={group.key}
-                  group={group}
-                  defaultOpen={!!selectedFriction}
-                />
-              ))}
-            </div>
-          ) : timeline.length > 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              No hay evidencias de este patrón en el periodo seleccionado.
-            </p>
-          ) : null}
+          {/* Grouped timeline. Selecting a chip means "only this one", not
+              "compare trends", so focus mode drops the columns entirely — a
+              two-column grid holding a single card reads as broken. */}
+          {selectedFriction ? (
+            groupedTimeline.length > 0 ? (
+              <div className="space-y-3">
+                {groupedTimeline.map((group) => (
+                  <PatternEvidenceGroup key={group.key} group={group} defaultOpen />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No hay evidencias de este patrón en el periodo seleccionado.
+              </p>
+            )
+          ) : (
+            <>
+              {hasTrend && (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <PatternColumn
+                    testId="friction-column-attention"
+                    title="Requieren atención"
+                    description="Suben de intensidad o se mantienen altos."
+                    icon={AlertTriangle}
+                    tone="attention"
+                    count={buckets.attention.length}
+                    emptyHint="Ahora mismo ningún patrón está subiendo."
+                  >
+                    {buckets.attention.map((group) => (
+                      <PatternEvidenceGroup key={group.key} group={group} />
+                    ))}
+                  </PatternColumn>
+                  <PatternColumn
+                    testId="friction-column-improving"
+                    title="Van a mejor"
+                    description="Bajan de intensidad o se han estabilizado."
+                    icon={TrendingDown}
+                    tone="improving"
+                    count={buckets.improving.length}
+                    emptyHint="Todavía ninguno está bajando de intensidad."
+                  >
+                    {buckets.improving.map((group) => (
+                      <PatternEvidenceGroup key={group.key} group={group} />
+                    ))}
+                  </PatternColumn>
+                </div>
+              )}
+              {/* With nothing trending, the columns would be two empty boxes.
+                  Degrade to the flat list plus one line of explanation. */}
+              <UntrendedSection
+                groups={buckets.untrended}
+                defaultOpen={!hasTrend}
+                divided={hasTrend}
+              />
+              {groupedTimeline.length === 0 && timeline.length > 0 && (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No hay evidencias de este patrón en el periodo seleccionado.
+                </p>
+              )}
+            </>
+          )}
 
           {/* Resolved frictions section */}
           <ResolvedSection resolvedFrictions={resolvedFrictions} />

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
-import { TrendingUp, TrendingDown, Minus, MessageSquare, BookOpen, CheckSquare, Target, RotateCcw, ChevronDown, CheckCircle2, Pencil, X, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, MessageSquare, BookOpen, CheckSquare, Target, RotateCcw, ChevronDown, CheckCircle2, Pencil, X, Info, Smile, Frown, Meh } from 'lucide-react';
+import { partitionEmotionalGroups } from '../../../lib/patternPartition';
 import { EmotionalPatternAcknowledgeDialog } from './EmotionalPatternAcknowledgeDialog';
 
 function Skeleton({ className }) {
@@ -24,19 +25,38 @@ const SOURCE_LABELS = {
 };
 
 // Weak evidence (signal/weak_signal) always renders as a neutral/informative
-// badge, regardless of polarity — there isn't enough sample to claim
-// "present" or "active" yet. Only "active" is polarity-aware: a positive
-// emotion that's clearly present reads as "Presente" (success), never as a
-// destructive "Activo".
-const WEAK_STATUS_CONFIG = { label: 'Señal inicial', color: 'text-[hsl(var(--info))]', bg: 'bg-[hsl(var(--info-soft))]', Icon: Minus };
-const ACTIVE_POSITIVE_CONFIG = { label: 'Presente', color: 'text-[hsl(var(--success))]', bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingUp };
-const ACTIVE_OTHER_CONFIG = { label: 'Activo', color: 'text-destructive', bg: 'bg-destructive/10', Icon: TrendingDown };
-const IMPROVING_CONFIG = { label: 'Mejorando', color: 'text-[hsl(var(--success))]', bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingUp };
+// badge, regardless of polarity — there isn't enough sample to claim anything.
+//
+// Every other status is polarity-aware. The backend only reports a *direction*
+// (backend/services/pattern_trend.py) because whether that direction is good
+// news depends on the emotion: a fading positive emotion is not "Mejorando",
+// and a growing one is not a relapse. Only this layer knows the polarity, so
+// only this layer turns direction into judgement.
+const WEAK_STATUS_CONFIG = { label: 'Señal inicial', color: 'text-[hsl(var(--info))]', bg: 'bg-[hsl(var(--info-soft))]', Icon: Minus, hint: 'Aún hay pocas evidencias para afirmar nada.' };
+const STEADY_CONFIG = { label: 'Estable', color: 'text-[hsl(var(--info))]', bg: 'bg-[hsl(var(--info-soft))]', Icon: Minus, hint: 'Se repite con intensidad suave y sin cambios.' };
+
+const STATUS_BY_POLARITY = {
+  active: {
+    positive: { label: 'Presente',       color: 'text-[hsl(var(--success))]',  bg: 'bg-[hsl(var(--success-soft))]', Icon: Minus, hint: 'Se repite con fuerza y se mantiene.' },
+    other:    { label: 'Activo',         color: 'text-destructive',            bg: 'bg-destructive/10',             Icon: Minus, hint: 'Se repite con fuerza y no está bajando.' },
+  },
+  easing: {
+    positive: { label: 'Se está apagando', color: 'text-[hsl(var(--warning))]', bg: 'bg-[hsl(var(--warning-soft))]', Icon: TrendingDown, hint: 'Esta emoción aparece con menos fuerza que antes.' },
+    other:    { label: 'Mejorando',        color: 'text-[hsl(var(--success))]', bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingDown, hint: 'Esta emoción aparece con menos fuerza que antes.' },
+  },
+  intensifying: {
+    positive: { label: 'Creciendo',      color: 'text-[hsl(var(--success))]',  bg: 'bg-[hsl(var(--success-soft))]', Icon: TrendingUp, hint: 'Esta emoción aparece con más fuerza que antes.' },
+    other:    { label: 'Se intensifica', color: 'text-destructive',            bg: 'bg-destructive/10',             Icon: TrendingUp, hint: 'Esta emoción aparece con más fuerza que antes.' },
+  },
+};
 
 function getStatusConfig(status, polarity) {
-  if (status === 'weak_signal' || status === 'signal') return WEAK_STATUS_CONFIG;
-  if (status === 'active') return polarity === 'positive' ? ACTIVE_POSITIVE_CONFIG : ACTIVE_OTHER_CONFIG;
-  return IMPROVING_CONFIG;
+  if (status === 'steady') return STEADY_CONFIG;
+  const byPolarity = STATUS_BY_POLARITY[status];
+  // Unknown status → neutral. Snapshots persist pattern_status, so a cache
+  // written before the trend rule landed must not render as a red "Activo".
+  if (!byPolarity) return WEAK_STATUS_CONFIG;
+  return polarity === 'positive' ? byPolarity.positive : byPolarity.other;
 }
 
 // User-driven status labels (override auto-detected pattern_status)
@@ -57,9 +77,12 @@ function getUserDisplayStatus(item) {
 }
 
 function PatternStatusBadge({ status, polarity }) {
-  const { label, color, bg, Icon } = getStatusConfig(status, polarity);
+  const { label, color, bg, Icon, hint } = getStatusConfig(status, polarity);
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${color} ${bg}`}>
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${color} ${bg}`}
+      title={hint}
+    >
       <Icon size={11} />
       {label}
     </span>
@@ -108,6 +131,76 @@ function SourceChips({ sources }) {
         );
       })}
     </div>
+  );
+}
+
+const COLUMN_TONES = {
+  positive: { text: 'text-[hsl(var(--success))]', bg: 'bg-[hsl(var(--success-soft))]' },
+  negative: { text: 'text-destructive', bg: 'bg-destructive/10' },
+};
+
+function PatternColumn({ testId, title, description, icon: Icon, tone, count, emptyHint, children }) {
+  const { text, bg } = COLUMN_TONES[tone];
+  return (
+    // min-w-0 is load-bearing: without it a long label refuses to shrink inside
+    // its grid track and pushes the column out.
+    <section data-testid={testId} className="flex min-w-0 flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${bg}`}>
+          <Icon size={14} className={text} />
+        </span>
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+        <Badge variant="outline" className="text-xs">{count}</Badge>
+      </div>
+      <p className="-mt-1 text-xs text-muted-foreground">{description}</p>
+      {count > 0 ? (
+        <div className="flex flex-col gap-3">{children}</div>
+      ) : (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{emptyHint}</p>
+      )}
+    </section>
+  );
+}
+
+function NeutralSection({ groups, defaultOpen, divided }) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (!groups.length) return null;
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className={divided ? 'mt-4 border-t pt-4' : ''}
+      data-testid="emotional-neutral-section"
+    >
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <Meh size={14} />
+            Neutras
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-muted text-xs font-semibold">
+              {groups.length}
+            </span>
+          </span>
+          <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-3">
+        {/* Worded to cover both a catalogued neutral emotion and a pattern
+            whose polarity never resolved — both land here. */}
+        <p className="mb-3 text-xs text-muted-foreground">
+          Ni suman ni restan, o su tono aún no está claro.
+        </p>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {groups.map((group) => (
+            <PatternEvidenceGroup key={group.key} group={group} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -251,7 +344,11 @@ function buildPatternGroups(timeline = [], byPattern = [], selectedPatternKey = 
 
   const groupMap = new Map();
 
-  const ensureGroup = (patternKey, fallbackLabel = null) => {
+  // `seed` is the event that first created a group that has no persisted
+  // counterpart in by_pattern. Its emoji and polarity have to be carried over:
+  // polarity decides which column the card lands in, so a synthesized meta
+  // without it would silently drop every timeline-only pattern into «Neutras».
+  const ensureGroup = (patternKey, fallbackLabel = null, seed = null) => {
     if (!patternKey) return null;
     if (!groupMap.has(patternKey)) {
       const meta = patternMeta.get(patternKey);
@@ -260,6 +357,8 @@ function buildPatternGroups(timeline = [], byPattern = [], selectedPatternKey = 
         meta: meta || {
           pattern_key: patternKey,
           label: fallbackLabel || patternKey,
+          emoji: seed?.emoji || null,
+          polarity: seed?.polarity || null,
           count: 0,
           pattern_status: 'signal',
           sources: {},
@@ -273,7 +372,7 @@ function buildPatternGroups(timeline = [], byPattern = [], selectedPatternKey = 
   };
 
   const pushEvent = (patternKey, event) => {
-    const group = ensureGroup(patternKey, getEventPatternLabel(event, patternKey));
+    const group = ensureGroup(patternKey, getEventPatternLabel(event, patternKey), event);
     if (!group) return;
     const eventKey = `${event.source_type || 'source'}-${event.id || ''}-${event.created_at || ''}-${event.excerpt || ''}`;
     if (group.eventIds.has(eventKey)) return;
@@ -368,30 +467,39 @@ function PatternEvidenceGroup({ group, defaultOpen = false }) {
             type="button"
             className="flex flex-1 items-start justify-between gap-3 text-left"
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">
-                  {item.emoji ? `${item.emoji} ` : ''}{item.label}
-                </p>
-                <UserStatusBadge item={item} />
-                <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  {eventCount} {eventCount === 1 ? 'entrada' : 'entradas'}
-                </span>
-                {item.is_weak_signal && (
-                  <span title={item.sample_warning} className="inline-flex text-muted-foreground">
-                    <Info size={12} />
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              {/* Rail rather than a text prefix, mirroring the friction panel's
+                  icon: the label wraps cleanly and a screen reader no longer
+                  announces the emoji before an already-labelled emotion. */}
+              <span
+                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-base leading-none"
+                aria-hidden="true"
+              >
+                {item.emoji || '·'}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  <UserStatusBadge item={item} />
+                  <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {eventCount} {eventCount === 1 ? 'entrada' : 'entradas'}
                   </span>
+                  {item.is_weak_signal && (
+                    <span title={item.sample_warning} className="inline-flex text-muted-foreground">
+                      <Info size={12} />
+                    </span>
+                  )}
+                </div>
+                <SourceChips sources={item.sources} />
+                {item.related_signals?.length > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {item.related_signals.join(' · ')}
+                  </p>
+                )}
+                {item.user_notes && (
+                  <p className="mt-1 text-xs text-muted-foreground italic">{item.user_notes}</p>
                 )}
               </div>
-              <SourceChips sources={item.sources} />
-              {item.related_signals?.length > 0 && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {item.related_signals.join(' · ')}
-                </p>
-              )}
-              {item.user_notes && (
-                <p className="mt-1 text-xs text-muted-foreground italic">{item.user_notes}</p>
-              )}
             </div>
             <ChevronDown size={16} className={`mt-0.5 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -527,6 +635,9 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
   const uniqueByPattern = buildUniquePatternList(byPattern);
   const groupedTimeline = buildPatternGroups(timeline, uniqueByPattern, selectedPatternKey);
 
+  const buckets = partitionEmotionalGroups(groupedTimeline);
+  const hasPolarised = buckets.positive.length > 0 || buckets.negative.length > 0;
+
   const hasData = timeline.length > 0 || byPattern.length > 0 || resolvedPatterns.length > 0;
 
   return (
@@ -591,22 +702,67 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
             </div>
           )}
 
-          {/* Timeline */}
-          {groupedTimeline.length > 0 ? (
-            <div className="space-y-3">
-              {groupedTimeline.map((group) => (
-                <PatternEvidenceGroup
-                  key={group.key}
-                  group={group}
-                  defaultOpen={!!selectedPatternKey}
-                />
-              ))}
-            </div>
-          ) : timeline.length > 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              No hay evidencias de este patrón en el periodo seleccionado.
-            </p>
-          ) : null}
+          {/* Timeline. Selecting a chip means "only this one", so focus mode
+              drops the columns: a two-column grid with a single card in it
+              reads as broken. */}
+          {selectedPatternKey ? (
+            groupedTimeline.length > 0 ? (
+              <div className="space-y-3">
+                {groupedTimeline.map((group) => (
+                  <PatternEvidenceGroup key={group.key} group={group} defaultOpen />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No hay evidencias de este patrón en el periodo seleccionado.
+              </p>
+            )
+          ) : (
+            <>
+              {hasPolarised && (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <PatternColumn
+                    testId="emotional-column-positive"
+                    title="Te impulsan"
+                    description="Aparecen y te dan impulso."
+                    icon={Smile}
+                    tone="positive"
+                    count={buckets.positive.length}
+                    emptyHint="Aún no hay emociones positivas recurrentes."
+                  >
+                    {buckets.positive.map((group) => (
+                      <PatternEvidenceGroup key={group.key} group={group} />
+                    ))}
+                  </PatternColumn>
+                  <PatternColumn
+                    testId="emotional-column-negative"
+                    title="Te pesan"
+                    description="Aparecen y te cuestan."
+                    icon={Frown}
+                    tone="negative"
+                    count={buckets.negative.length}
+                    emptyHint="Aún no hay emociones difíciles recurrentes."
+                  >
+                    {buckets.negative.map((group) => (
+                      <PatternEvidenceGroup key={group.key} group={group} />
+                    ))}
+                  </PatternColumn>
+                </div>
+              )}
+              {/* With nothing polarised, the columns would be two empty boxes.
+                  Degrade to the flat list plus one line of explanation. */}
+              <NeutralSection
+                groups={buckets.neutral}
+                defaultOpen={!hasPolarised}
+                divided={hasPolarised}
+              />
+              {groupedTimeline.length === 0 && timeline.length > 0 && (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No hay evidencias de este patrón en el periodo seleccionado.
+                </p>
+              )}
+            </>
+          )}
 
           {/* Resolved patterns section */}
           <ResolvedSection resolvedPatterns={resolvedPatterns} />

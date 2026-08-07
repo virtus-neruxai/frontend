@@ -107,6 +107,50 @@ describe('EmotionalPatternsPanel', () => {
     expect(screen.queryByText('Activo')).not.toBeInTheDocument();
   });
 
+  test('reads a fading emotion as good news only when the emotion is a negative one', () => {
+    const negativeEasing = { ...activePattern, polarity: 'negative', pattern_status: 'easing' };
+    const { unmount } = render(
+      <EmotionalPatternsPanel data={baseData({ by_pattern: [negativeEasing] })} loading={false} onAcknowledge={vi.fn()} />
+    );
+    expect(screen.getAllByText('Mejorando').length).toBeGreaterThan(0);
+    unmount();
+
+    // Same direction, opposite meaning: a positive emotion losing intensity is
+    // something fading, not something improving.
+    const positiveEasing = { ...activePattern, polarity: 'positive', pattern_status: 'easing', label: 'Calma recurrente en Salud' };
+    render(
+      <EmotionalPatternsPanel data={baseData({ by_pattern: [positiveEasing] })} loading={false} onAcknowledge={vi.fn()} />
+    );
+    expect(screen.getAllByText('Se está apagando').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Mejorando')).not.toBeInTheDocument();
+  });
+
+  test('reads a growing emotion as a relapse only when the emotion is a negative one', () => {
+    const negativeRising = { ...activePattern, polarity: 'negative', pattern_status: 'intensifying' };
+    const { unmount } = render(
+      <EmotionalPatternsPanel data={baseData({ by_pattern: [negativeRising] })} loading={false} onAcknowledge={vi.fn()} />
+    );
+    expect(screen.getAllByText('Se intensifica').length).toBeGreaterThan(0);
+    unmount();
+
+    const positiveRising = { ...activePattern, polarity: 'positive', pattern_status: 'intensifying', label: 'Calma recurrente en Salud' };
+    render(
+      <EmotionalPatternsPanel data={baseData({ by_pattern: [positiveRising] })} loading={false} onAcknowledge={vi.fn()} />
+    );
+    expect(screen.getAllByText('Creciendo').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Se intensifica')).not.toBeInTheDocument();
+  });
+
+  test('falls back to a neutral badge for a status written before the trend rule', () => {
+    // Snapshots persist pattern_status for up to 24h, so a cached "improving"
+    // must not be rendered as a red "Activo".
+    const legacy = { ...activePattern, polarity: 'negative', pattern_status: 'improving' };
+    render(<EmotionalPatternsPanel data={baseData({ by_pattern: [legacy] })} loading={false} onAcknowledge={vi.fn()} />);
+
+    expect(screen.getAllByText('Señal inicial').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Activo')).not.toBeInTheDocument();
+  });
+
   test('renders a weak-signal pattern with prudent label, sample_warning tooltip, and related_signals note', () => {
     render(
       <EmotionalPatternsPanel
@@ -312,6 +356,95 @@ describe('EmotionalPatternsPanel', () => {
         'recurring_emotion_in_context:frustracion:trabajo',
         { confirmed: true, working_on_it: false, progress: 1, notes: null }
       );
+    });
+  });
+
+  describe('polarity columns', () => {
+    const calmPattern = {
+      ...activePattern,
+      pattern_key: 'recurring_emotion_in_context:calma:salud',
+      emotion: 'calma',
+      emotion_label: 'Calma',
+      emoji: '\u{1F60C}',
+      polarity: 'positive',
+      label: 'Calma recurrente en Salud',
+    };
+    const calmEvent = {
+      ...timelineEvent,
+      id: 'r-calma',
+      emotion: 'calma',
+      emotion_label: 'Calma',
+      emoji: '\u{1F60C}',
+      polarity: 'positive',
+      excerpt: 'Me sentí en calma tras la rutina.',
+      pattern_keys: ['recurring_emotion_in_context:calma:salud'],
+    };
+
+    test('splits patterns into the positive and negative columns', () => {
+      render(
+        <EmotionalPatternsPanel
+          data={baseData({ by_pattern: [activePattern, calmPattern], timeline: [timelineEvent, calmEvent] })}
+          loading={false}
+          onAcknowledge={vi.fn()}
+        />
+      );
+
+      const positive = screen.getByTestId('emotional-column-positive');
+      const negative = screen.getByTestId('emotional-column-negative');
+
+      expect(within(positive).getByTestId('emotional-pattern-group-recurring_emotion_in_context:calma:salud')).toBeInTheDocument();
+      expect(within(negative).getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
+    });
+
+    test('an unresolved polarity lands in the neutral strip, never in a judged column', () => {
+      const noPolarity = { ...activePattern, polarity: undefined };
+      const neutralEvent = { ...timelineEvent, polarity: undefined };
+      render(
+        <EmotionalPatternsPanel
+          data={baseData({ by_pattern: [noPolarity, calmPattern], timeline: [neutralEvent, calmEvent] })}
+          loading={false}
+          onAcknowledge={vi.fn()}
+        />
+      );
+
+      const negative = screen.getByTestId('emotional-column-negative');
+      expect(within(negative).queryByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).not.toBeInTheDocument();
+
+      // Radix unmounts collapsed content, so it is genuinely absent until opened.
+      expect(screen.queryByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Neutras/i }));
+      expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
+    });
+
+    test('a timeline-only pattern inherits its polarity from the evidence', () => {
+      // Without seeding the synthesized meta, this card would silently fall
+      // into the neutral strip instead of the positive column.
+      render(
+        <EmotionalPatternsPanel
+          data={baseData({ by_pattern: [], timeline: [calmEvent] })}
+          loading={false}
+          onAcknowledge={vi.fn()}
+        />
+      );
+
+      const positive = screen.getByTestId('emotional-column-positive');
+      expect(within(positive).getByTestId('emotional-pattern-group-recurring_emotion_in_context:calma:salud')).toBeInTheDocument();
+    });
+
+    test('all-neutral data renders no columns and an already-open strip', () => {
+      const neutralPattern = { ...activePattern, polarity: 'neutral' };
+      const neutralEvent = { ...timelineEvent, polarity: 'neutral' };
+      render(
+        <EmotionalPatternsPanel
+          data={baseData({ by_pattern: [neutralPattern], timeline: [neutralEvent] })}
+          loading={false}
+          onAcknowledge={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByTestId('emotional-column-positive')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('emotional-column-negative')).not.toBeInTheDocument();
+      expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
     });
   });
 });
