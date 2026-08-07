@@ -66,6 +66,12 @@ Es el patrón central y reutilizable de la app:
 son `ReasonedReportView.jsx`, `TransformativeCompanionCard.jsx`,
 `FeedbackControl.jsx` y, ya en Dashboard, `LearnedResponsesPanel.jsx`.
 
+Al generar un informe, `POST /reasoning/report` devuelve un `job_id` de forma
+inmediata. La página lo conserva en `sessionStorage` y consulta
+`GET /reasoning/report-jobs/{job_id}` hasta completarlo; navegar fuera de la
+página no cancela el informe y, al volver, el resultado se abre o queda en el
+historial. No volver al contrato síncrono de esperar el informe en la petición.
+
 ```text
 Informe V3
    ├─ feedback sobre recursos/formulaciones

@@ -19,6 +19,31 @@ const REPORT_RANGE_OPTIONS = [
   { value: 14, label: 'Últimas 2 semanas' },
   { value: 30, label: 'Último mes' },
 ];
+const REPORT_JOB_STORAGE_KEY = 'virtus.reasoning.active-report-job';
+
+function readPendingReportJobId() {
+  try {
+    return window.sessionStorage.getItem(REPORT_JOB_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistPendingReportJobId(jobId) {
+  try {
+    window.sessionStorage.setItem(REPORT_JOB_STORAGE_KEY, jobId);
+  } catch {
+    // The report keeps running server-side even if browser storage is blocked.
+  }
+}
+
+function clearPendingReportJobId() {
+  try {
+    window.sessionStorage.removeItem(REPORT_JOB_STORAGE_KEY);
+  } catch {
+    // Nothing else is needed: this only controls the local progress indicator.
+  }
+}
 
 function reportRangeLabel(daysBack) {
   const numeric = Number(daysBack) || 14;
@@ -52,7 +77,8 @@ export default function ReasoningReportPage() {
   const profileName = theme?.name || '';
 
   const [report, setReport] = useState(null); // {report_id, report_json, ...}
-  const [generating, setGenerating] = useState(false);
+  const [startingGeneration, setStartingGeneration] = useState(false);
+  const [reportJobId, setReportJobId] = useState(readPendingReportJobId);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [selectedDaysBack, setSelectedDaysBack] = useState(14);
@@ -75,6 +101,7 @@ export default function ReasoningReportPage() {
   // schema_version existed simply show nothing.
   const schemaVersion = report?.schema_version || reportJson?.schema_version || '1';
   const filteredHistory = history.filter((item) => Number(item.days_back || 14) === selectedDaysBack);
+  const generating = startingGeneration || Boolean(reportJobId);
 
   // ── NRRM: companion + feedback ────────────────────────────────────────────
   const [companion, setCompanion] = useState(null);
@@ -178,28 +205,18 @@ export default function ReasoningReportPage() {
   }, [reportId]);
 
   const generate = useCallback(async () => {
-    setGenerating(true);
+    setStartingGeneration(true);
     try {
       const { data } = await reasoningApi.generateReport(selectedDaysBack);
-      setReport(data);
-      setThread([]);
-      sessionRef.current = null;
-      // A fresh report has no companion yet; feedback is per-user and may
-      // already exist from earlier reports.
-      loadCompanionAndFeedback(data?.report_id);
-      if (data?.mode === 'SAFE_NO_ACTION') {
-        toast.info('Ahora mismo priorizamos tu bienestar antes que el informe.');
-      } else {
-        toast.success('Informe generado');
-      }
+      setReportJobId(data.job_id);
+      persistPendingReportJobId(data.job_id);
+      toast.info('El informe se está generando en segundo plano. Puedes salir de esta pantalla.');
     } catch (e) {
-      // The backend persists nothing on failure, so there is no partial report
-      // to clean up — the user can simply press "Generar informe" again.
       toast.error('No se pudo generar el informe. Vuelve a intentarlo.');
     } finally {
-      setGenerating(false);
+      setStartingGeneration(false);
     }
-  }, [selectedDaysBack, loadCompanionAndFeedback]);
+  }, [selectedDaysBack]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -233,10 +250,62 @@ export default function ReasoningReportPage() {
       sessionRef.current = null;
       setShowHistory(false);
       loadCompanionAndFeedback(data.id);
+      return true;
     } catch {
       toast.error('No se pudo abrir el informe');
+      return false;
     }
   }, [loadCompanionAndFeedback]);
+
+  useEffect(() => {
+    if (!reportJobId) return undefined;
+
+    let disposed = false;
+    const finish = () => {
+      clearPendingReportJobId();
+      if (!disposed) setReportJobId(null);
+    };
+    const poll = async () => {
+      try {
+        const { data } = await reasoningApi.getReportJob(reportJobId);
+        if (disposed || data.status === 'queued' || data.status === 'running') return;
+
+        finish();
+        if (data.status === 'failed') {
+          toast.error(data.error || 'No se pudo generar el informe. Vuelve a intentarlo.');
+          return;
+        }
+        if (data.mode === 'SAFE_NO_ACTION') {
+          setReport({
+            report_id: null,
+            mode: data.mode,
+            days_back: data.days_back,
+            report_json: {},
+            report_markdown: data.safe_message || '',
+          });
+          setSelectedDaysBack(Number(data.days_back || 14));
+          setThread([]);
+          sessionRef.current = null;
+          toast.info('Ahora mismo priorizamos tu bienestar antes que el informe.');
+          return;
+        }
+        if (data.report_id && await openReport(data.report_id)) {
+          toast.success('Informe generado');
+        }
+      } catch (error) {
+        if (error?.response?.status === 404) {
+          finish();
+        }
+      }
+    };
+
+    poll();
+    const intervalId = window.setInterval(poll, 2500);
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalId);
+    };
+  }, [openReport, reportJobId]);
 
   const ask = useCallback(async () => {
     const q = question.trim();
@@ -349,6 +418,15 @@ export default function ReasoningReportPage() {
                   </button>
                 ))
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {generating && (
+          <Card>
+            <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              El informe se está generando en segundo plano. Puedes navegar con normalidad; aparecerá en el historial al terminar.
             </CardContent>
           </Card>
         )}

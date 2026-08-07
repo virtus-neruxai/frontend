@@ -10,6 +10,7 @@ vi.mock('sonner', () => ({
 vi.mock('../lib/api', () => ({
   reasoningApi: {
     generateReport: vi.fn(),
+    getReportJob: vi.fn(),
     getReports: vi.fn(),
     getReport: vi.fn(),
     chat: vi.fn(),
@@ -55,14 +56,16 @@ vi.mock('../components/ui/select', () => ({
 describe('ReasoningReportPage range selector', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
     reasoningApi.generateReport.mockResolvedValue({
       data: {
-        report_id: 'report-14',
+        job_id: 'job-14',
+        status: 'queued',
         days_back: 14,
-        mode: 'GENERATE_REPORT',
-        schema_version: '2',
-        report_json: { schema_version: '2', main_reading: 'Lectura 14' },
       },
+    });
+    reasoningApi.getReportJob.mockResolvedValue({
+      data: { job_id: 'job-14', status: 'running', days_back: 14 },
     });
     reasoningApi.getReports.mockResolvedValue({
       data: {
@@ -86,15 +89,19 @@ describe('ReasoningReportPage range selector', () => {
     });
   });
 
-  test('default range is 14 and selected range is sent when generating', async () => {
+  test('default range is 14 and is sent when generating', async () => {
     render(<ReasoningReportPage />);
 
     fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
     await waitFor(() => expect(reasoningApi.generateReport).toHaveBeenCalledWith(14));
+  });
+
+  test('the selected range is sent when generating', async () => {
+    render(<ReasoningReportPage />);
 
     fireEvent.change(screen.getByTestId('range-select'), { target: { value: '7' } });
     fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
-    await waitFor(() => expect(reasoningApi.generateReport).toHaveBeenLastCalledWith(7));
+    await waitFor(() => expect(reasoningApi.generateReport).toHaveBeenCalledWith(7));
   });
 
   test('history is filtered by selected report range', async () => {
@@ -111,8 +118,7 @@ describe('ReasoningReportPage range selector', () => {
   });
 
   test('a failed generation surfaces a retryable error and stores nothing', async () => {
-    // The backend persists nothing on failure (502), so the page must not show
-    // a report — the always-visible "Generar informe" button is the retry.
+    // If the job cannot even be queued, the page keeps the retry action.
     reasoningApi.generateReport.mockRejectedValue(new Error('502'));
 
     render(<ReasoningReportPage />);
@@ -128,5 +134,31 @@ describe('ReasoningReportPage range selector', () => {
     fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
     await waitFor(() => expect(reasoningApi.generateReport).toHaveBeenCalledTimes(2));
     expect(reasoningApi.generateReport).toHaveBeenLastCalledWith(14);
+  });
+
+  test('loads a completed background report after returning to the page', async () => {
+    reasoningApi.getReportJob.mockResolvedValue({
+      data: {
+        job_id: 'job-14',
+        status: 'completed',
+        days_back: 14,
+        report_id: 'report-14',
+        mode: 'GENERATE_REPORT',
+      },
+    });
+    reasoningApi.getReport.mockResolvedValue({
+      data: {
+        id: 'report-14',
+        days_back: 14,
+        report_json: { schema_version: '2', main_reading: 'Lectura 14' },
+        schema_version: '2',
+      },
+    });
+
+    render(<ReasoningReportPage />);
+    fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
+
+    expect(await screen.findByText('Lectura 14')).toBeInTheDocument();
+    expect(window.sessionStorage.getItem('virtus.reasoning.active-report-job')).toBeNull();
   });
 });

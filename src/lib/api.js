@@ -184,6 +184,7 @@ reasoningApiInstance.interceptors.response.use(
 
 export const reasoningApi = {
   generateReport: (daysBack = 14) => reasoningApiInstance.post('/reasoning/report', { days_back: daysBack }),
+  getReportJob: (jobId) => reasoningApiInstance.get(`/reasoning/report-jobs/${jobId}`),
   getReports: () => reasoningApiInstance.get('/reasoning/reports'),
   getReport: (reportId) => reasoningApiInstance.get(`/reasoning/reports/${reportId}`),
   chat: (message, sessionId, reportId, intent) =>
