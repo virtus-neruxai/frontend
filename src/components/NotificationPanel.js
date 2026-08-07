@@ -25,7 +25,8 @@ function getTaskNotificationBody(payload) {
 }
 
 /**
- * NRRM F8 — behaviour reviews riding the nightly summary (§14.2/§14.3).
+ * NRRM F8 — compact behaviour reviews produced by the NightlyReview run
+ * (§14.2/§14.3), but delivered separately from the nightly summary.
  *
  * Each item asks whether there was an occasion; none of them says the user
  * should have done anything, and none shows a count. Both the fixed cadence
@@ -299,6 +300,7 @@ export const NotificationPanel = ({ onClose }) => {
                       tasks_failed: item.context?.tasks_failed,
                       proposed_missions: item.context?.proposed_missions || [],
                       proposal_status: item.context?.proposal_status,
+                      learned_response_reviews: item.context?.learned_response_reviews || [],
                       context: item.context || {},
                     },
                     read: item.status === 'read',
@@ -321,6 +323,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const [showTodayTasks, setShowTodayTasks] = useState(false);
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
+  const isLearnedResponseReview = notification.type === 'LEARNED_RESPONSE_REVIEW';
   const isPatternDetected = notification.type === 'PATTERN_DETECTED';
   const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
   const nightlyReviewProposalStatusLabel = getNightlyReviewProposalStatusLabel(nightlyReviewProposalStatus);
@@ -396,6 +399,10 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
       openNightlyReview();
       return;
     }
+    if (isLearnedResponseReview) {
+      openBehaviorsPanel();
+      return;
+    }
     if (!read) {
       onMarkAsRead(notification.id);
     }
@@ -428,6 +435,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                 ? `🎯 ${payload.mission_title || 'Recordatorio de misión'}`
                 : isNightlyReview
                 ? '🌙 Resumen nocturno'
+                : isLearnedResponseReview
+                ? '🌱 Conducta en práctica'
                 : isPatternDetected
                 ? getPatternNotificationTitle(payload)
                 : payload.task_title}
@@ -463,11 +472,12 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                   ? 'Ver revisión →'
                   : 'Abrir propuesta →'}
               </a>
-              <LearnedResponseReviews
-                reviews={payload.learned_response_reviews}
-                onOpenPanel={openBehaviorsPanel}
-              />
             </>
+          ) : isLearnedResponseReview ? (
+            <LearnedResponseReviews
+              reviews={payload.learned_response_reviews}
+              onOpenPanel={openBehaviorsPanel}
+            />
           ) : isMissionReminder ? (
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
               {payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`}
@@ -480,18 +490,6 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
             <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
               {getTaskNotificationBody(payload)}
             </p>
-          )}
-
-          {payload.task_progress !== undefined && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Progreso: {payload.task_progress}%
-            </p>
-          )}
-
-          {payload.task_domain && (
-            <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-muted text-muted-foreground">
-              {payload.task_domain}
-            </span>
           )}
 
           {/* Sprint 2.1: Show tasks today after current task */}

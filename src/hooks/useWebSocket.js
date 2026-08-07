@@ -220,11 +220,13 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
     const isMissionReminder = notification.type === 'MISSION_REMINDER';
     const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
+    const isLearnedResponseReview = notification.type === 'LEARNED_RESPONSE_REVIEW';
     const isPatternDetected = notification.type === 'PATTERN_DETECTED';
 
     let title;
     if (isMissionReminder) title = '🎯 Recordatorio de misión';
     else if (isNightlyReview) title = '🌙 Resumen nocturno';
+    else if (isLearnedResponseReview) title = '🌱 Conducta en práctica';
     else if (isPatternDetected) title = getPatternNotificationTitle(payload);
     else title = '⏰ Tarea por empezar';
 
@@ -233,6 +235,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       body = payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`;
     } else if (isNightlyReview) {
       body = payload.summary || payload.message || 'Tu resumen nocturno está disponible.';
+    } else if (isLearnedResponseReview) {
+      body = payload.learned_response_reviews?.[0]?.question || 'Tienes una conducta que revisar.';
     } else if (isPatternDetected) {
       body = payload.detected_text || payload.message || '';
     } else {
@@ -246,6 +250,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       ? `mission-${payload.mission_id || notification.id}`
       : isNightlyReview
       ? `nightly-review-${payload.review_date || notification.id}`
+      : isLearnedResponseReview
+      ? `learned-response-review-${notification.history_id || notification.id}`
       : isPatternDetected
       ? `pattern-${payload.reflection_id || notification.id}`
       : payload.task_id;
@@ -273,6 +279,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       if (isNightlyReview) {
         storeNightlyReviewPayload(payload);
         window.location.href = buildNightlyReviewHref(payload);
+      } else if (isLearnedResponseReview) {
+        window.location.href = '/dashboard';
       } else if (isMissionReminder) window.location.href = '/character';
       else if (isPatternDetected) window.location.href = '/mentor';
       else window.location.href = '/calendar';
@@ -292,6 +300,7 @@ export function isSupportedNotificationType(type) {
     type === 'TASK_DUE_SOON' ||
     type === 'MISSION_REMINDER' ||
     type === 'NIGHTLY_REVIEW_SUMMARY' ||
+    type === 'LEARNED_RESPONSE_REVIEW' ||
     type === 'PATTERN_DETECTED'
   );
 }
@@ -299,11 +308,14 @@ export function isSupportedNotificationType(type) {
 export function buildNotificationFromWsData(data) {
   const isMissionReminder = data.type === 'MISSION_REMINDER';
   const isNightlyReview = data.type === 'NIGHTLY_REVIEW_SUMMARY';
+  const isLearnedResponseReview = data.type === 'LEARNED_RESPONSE_REVIEW';
   const isPatternDetected = data.type === 'PATTERN_DETECTED';
   const baseId = isMissionReminder
     ? data.mission_id || data.notification_id
     : isNightlyReview
     ? data.review_date || data.notification_id
+    : isLearnedResponseReview
+    ? data.notification_id
     : isPatternDetected
     ? data.reflection_id || data.notification_id
     : data.task_id;
@@ -328,7 +340,12 @@ export function buildNotificationFromWsData(data) {
       tasks_failed: data.tasks_failed || 0,
       proposed_missions: data.proposed_missions || [],
       proposal_status: data.proposal_status || data.context?.proposal_status,
-      // NRRM F8 — behaviour reviews attached to this same notification.
+      priority: data.priority || 'low',
+      context: data.context || {},
+    };
+  } else if (isLearnedResponseReview) {
+    payload = {
+      review_date: data.review_date || data.context?.review_date,
       learned_response_reviews:
         data.learned_response_reviews || data.context?.learned_response_reviews || [],
       priority: data.priority || 'low',

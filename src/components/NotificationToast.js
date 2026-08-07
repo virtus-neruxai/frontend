@@ -54,8 +54,9 @@ const Toast = ({ notification, onDismiss }) => {
   const { payload } = notification;
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
+  const isLearnedResponseReview = notification.type === 'LEARNED_RESPONSE_REVIEW';
   const isPatternDetected = notification.type === 'PATTERN_DETECTED';
-  const isRoutine = !isMissionReminder && !isNightlyReview && !isPatternDetected && payload?.task_kind === 'routine';
+  const isRoutine = !isMissionReminder && !isNightlyReview && !isLearnedResponseReview && !isPatternDetected && payload?.task_kind === 'routine';
   const nightlyReviewHref = buildNightlyReviewHref(payload);
   const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
   const nightlyReviewProposalStatusLabel = getNightlyReviewProposalStatusLabel(nightlyReviewProposalStatus);
@@ -65,6 +66,12 @@ const Toast = ({ notification, onDismiss }) => {
     storeNightlyReviewPayload(payload);
     await onDismiss();
     window.location.href = nightlyReviewHref;
+  };
+
+  const handleLearnedResponseReviewOpen = async (event) => {
+    event.preventDefault();
+    await onDismiss();
+    window.location.href = '/dashboard';
   };
 
   const formatNextTaskTime = (nextTask) => {
@@ -148,6 +155,8 @@ const Toast = ({ notification, onDismiss }) => {
               ? '🎯 Recordatorio de misión'
               : isNightlyReview
               ? '🌙 Resumen nocturno'
+              : isLearnedResponseReview
+              ? '🌱 Conducta en práctica'
               : isPatternDetected
               ? getPatternNotificationTitle(payload)
               : isRoutine
@@ -189,6 +198,22 @@ const Toast = ({ notification, onDismiss }) => {
                   : 'Abrir propuesta →'}
               </a>
             </>
+          ) : isLearnedResponseReview ? (
+            <>
+              {(payload.learned_response_reviews || []).map((review) => (
+                <div key={review.response_key} className="mt-1">
+                  <p className="text-sm text-foreground line-clamp-2">{review.alternative_response}</p>
+                  <p className="text-xs text-muted-foreground">{review.question}</p>
+                </div>
+              ))}
+              <a
+                href="/dashboard"
+                onClick={handleLearnedResponseReviewOpen}
+                className="text-xs text-primary mt-1 hover:underline inline-block"
+              >
+                Ver mis conductas →
+              </a>
+            </>
           ) : isMissionReminder ? (
             <>
               <p className="text-sm text-foreground mt-1 line-clamp-2">
@@ -212,23 +237,8 @@ const Toast = ({ notification, onDismiss }) => {
             </>
           )}
 
-          {!isMissionReminder && !isNightlyReview && !isPatternDetected && !isRoutine && payload.task_progress !== undefined && (
-            <div className="mt-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                <span>Progreso</span>
-                <span>{payload.task_progress}%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-1.5">
-                <div
-                  className="bg-primary h-1.5 rounded-full transition-all"
-                  style={{ width: `${payload.task_progress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Sprint 2.1: Show next task */}
-          {!isMissionReminder && !isNightlyReview && payload.context?.next_task && (
+          {!isMissionReminder && !isNightlyReview && !isLearnedResponseReview && payload.context?.next_task && (
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <span className="font-medium">Siguiente:</span>
               <span className="truncate">{payload.context.next_task.title}</span>
@@ -236,11 +246,6 @@ const Toast = ({ notification, onDismiss }) => {
             </p>
           )}
 
-          {!isMissionReminder && !isNightlyReview && payload.task_domain && (
-            <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground">
-              {payload.task_domain}
-            </span>
-          )}
         </div>
 
         {/* Dismiss Button */}

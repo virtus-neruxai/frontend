@@ -34,4 +34,32 @@ describe('NightlyReview frontend notifications', () => {
       priority: 'low',
     });
   });
+
+  test('maps a behaviour review as its own notification', () => {
+    expect(isSupportedNotificationType('LEARNED_RESPONSE_REVIEW')).toBe(true);
+
+    const notification = buildNotificationFromWsData({
+      type: 'LEARNED_RESPONSE_REVIEW',
+      user_id: 'demo',
+      notification_id: 'behaviour-history-1',
+      review_date: '2026-08-09',
+      learned_response_reviews: [
+        {
+          response_key: 'value_conflict:example',
+          alternative_response: 'Esperar antes de decidir.',
+          question: '¿Has tenido ocasión de probarlo?',
+        },
+      ],
+      priority: 'low',
+    });
+
+    expect(notification.type).toBe('LEARNED_RESPONSE_REVIEW');
+    expect(notification.history_id).toBe('behaviour-history-1');
+    expect(notification.payload).toMatchObject({
+      review_date: '2026-08-09',
+      learned_response_reviews: [
+        expect.objectContaining({ response_key: 'value_conflict:example' }),
+      ],
+    });
+  });
 });

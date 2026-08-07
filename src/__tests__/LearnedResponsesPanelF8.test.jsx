@@ -245,7 +245,7 @@ describe('Behaviours panel — registering an application (§8.6)', () => {
   });
 });
 
-describe('Behaviour reviews inside the nightly notification (F8 §14.3)', () => {
+describe('Behaviour review notification content (F8 §14.3)', () => {
   const reviews = [
     {
       response_key: 'avoidance_loop:tarea:trabajo',
