@@ -4,7 +4,6 @@ import {
   Info,
   Loader2,
   MessageCircleHeart,
-  PlusCircle,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -66,7 +65,6 @@ export default function TransformativeCompanionCard({
   onAdopt,
   adopting,
   adopted,
-  onConvertToTask,
   feedbackFor,
   onFeedback,
 }) {
@@ -179,23 +177,11 @@ export default function TransformativeCompanionCard({
         )}
 
         {activity?.text && (
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border bg-background/60 p-3">
+          <div className="rounded-md border bg-background/60 p-3">
             <p className="min-w-0 text-sm">
               <Heart size={13} className="mr-1 inline text-primary" />
               {activity.text}
             </p>
-            {onConvertToTask && (
-              // Only ever on explicit request: nothing here becomes a task on
-              // the system's own initiative.
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0"
-                onClick={() => onConvertToTask({ title: activity.text, rationale: '' })}
-              >
-                <PlusCircle className="mr-1 h-4 w-4" /> Convertir en tarea
-              </Button>
-            )}
           </div>
         )}
 

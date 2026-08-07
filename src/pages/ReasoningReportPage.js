@@ -456,7 +456,6 @@ export default function ReasoningReportPage() {
             onAdopt={adopt}
             adopting={adopting}
             adopted={adopted}
-            onConvertToTask={convertToTask}
             feedbackFor={feedbackFor}
             onFeedback={submitFeedback}
           />

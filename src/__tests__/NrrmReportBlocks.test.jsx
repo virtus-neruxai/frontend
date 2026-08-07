@@ -216,6 +216,26 @@ describe('Transformative companion card', () => {
     expect(screen.queryByText('Adoptar esta respuesta')).toBeNull();
   });
 
+  it('does not turn a companion activity into an unstructured task', () => {
+    const onConvertToTask = vi.fn();
+    render(
+      <TransformativeCompanionCard
+        companion={{
+          ...COMPANION,
+          suggested_pleasant_activity: {
+            text: 'La rutina frente al espejo ya la practicaste ese día.',
+            resource_ids: ['res-1'],
+          },
+        }}
+        onConvertToTask={onConvertToTask}
+      />,
+    );
+
+    expect(screen.getByText(/La rutina frente al espejo ya la practicaste/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Convertir en tarea/i })).toBeNull();
+    expect(onConvertToTask).not.toHaveBeenCalled();
+  });
+
   it('lets the user reword a stage in their own words', async () => {
     const onFeedback = vi.fn().mockResolvedValue(undefined);
     render(
