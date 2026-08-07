@@ -11,7 +11,7 @@ import ReasonedReportView from '../presentation/components/reasoning/ReasonedRep
 import TransformativeCompanionCard from '../presentation/components/reasoning/TransformativeCompanionCard';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { reasoningApi, tasksApi } from '../lib/api';
-import { Brain, History, Loader2, PlusCircle, Send } from 'lucide-react';
+import { Brain, History, Loader2, Send } from 'lucide-react';
 
 const REPORT_RANGE_OPTIONS = [
   { value: 1, label: 'Diario' },
@@ -47,23 +47,6 @@ function defaultDraftFromRecommendation(rec) {
   };
 }
 
-function Section({ title, items, tone }) {
-  if (!items || items.length === 0) return null;
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <ul className="space-y-1">
-        {items.map((it, i) => (
-          <li key={i} className="text-sm">
-            <span className={`font-medium ${tone || ''}`}>{it.point}</span>
-            {it.evidence ? <span className="text-muted-foreground"> — {it.evidence}</span> : null}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 export default function ReasoningReportPage() {
   const { theme } = useProfileTheme();
   const profileName = theme?.name || '';
@@ -82,14 +65,15 @@ export default function ReasoningReportPage() {
 
   const reportJson = report?.report_json || null;
   const reportId = report?.report_id || null;
-  // Prospective only: documents saved before schema_version existed have no
-  // such field anywhere (report, reportJson) — those are implicitly V1.
-  const schemaVersion = report?.schema_version || reportJson?.schema_version || '1';
   // V3 (NRRM) extends V2 rather than replacing it: same causal contract plus
-  // data_quality, positive_evidence and learned_response_candidates. Both use
-  // the same view — gating on '2' alone sent V3 reports to the V1 renderer,
-  // which reads fields they do not have and renders an empty card.
-  const isCausal = schemaVersion === '2' || schemaVersion === '3';
+  // data_quality, positive_evidence and learned_response_candidates. One view
+  // renders both, because the V3-only blocks hide themselves when absent.
+  //
+  // V1 is no longer rendered at all. It was a different contract, not an older
+  // one — not a single field name in common — so it needed its own renderer,
+  // and nothing has generated it for a long time. Documents saved before
+  // schema_version existed simply show nothing.
+  const schemaVersion = report?.schema_version || reportJson?.schema_version || '1';
   const filteredHistory = history.filter((item) => Number(item.days_back || 14) === selectedDaysBack);
 
   // ── NRRM: companion + feedback ────────────────────────────────────────────
@@ -373,7 +357,7 @@ export default function ReasoningReportPage() {
           <Card><CardContent className="whitespace-pre-wrap pt-6 text-sm">{report.report_markdown}</CardContent></Card>
         )}
 
-        {reportJson && isCausal && (
+        {reportJson && (
           <ReasonedReportView
             report={reportJson}
             onConvertToTask={convertToTask}
@@ -386,7 +370,7 @@ export default function ReasoningReportPage() {
         {/* "Un mensaje para ti": misma pantalla que el informe (§13.1), pero
             visualmente distinto — el usuario debe saber siempre si lee análisis
             o acompañamiento. */}
-        {reportJson && isCausal && schemaVersion === '3' && companionAvailable && (
+        {reportJson && schemaVersion === '3' && companionAvailable && (
           <TransformativeCompanionCard
             companion={companion}
             loading={companionLoading}
@@ -398,35 +382,6 @@ export default function ReasoningReportPage() {
             feedbackFor={feedbackFor}
             onFeedback={submitFeedback}
           />
-        )}
-
-        {reportJson && !isCausal && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">Tu informe</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {reportJson.summary && <p className="text-sm">{reportJson.summary}</p>}
-              <Section title="✅ Lo que has hecho bien" items={reportJson.bien_hecho} tone="text-[hsl(var(--success))]" />
-              <Section title="➖ Neutral" items={reportJson.neutral} />
-              <Section title="🔧 A mejorar" items={reportJson.mejora} tone="text-[hsl(var(--warning))]" />
-
-              {reportJson.recommendations?.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold">Recomendaciones</h3>
-                  {reportJson.recommendations.map((rec, i) => (
-                    <div key={i} className="flex items-start justify-between gap-3 rounded-md border p-2">
-                      <div className="text-sm">
-                        <p className="font-medium">{rec.title}</p>
-                        {rec.rationale && <p className="text-muted-foreground">{rec.rationale}</p>}
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => convertToTask(rec)}>
-                        <PlusCircle className="mr-1 h-4 w-4" /> Convertir en tarea
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         )}
 
         {reportJson && (
