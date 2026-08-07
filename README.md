@@ -103,7 +103,7 @@ completa:
 
 ## Notificaciones del Mentor
 
-`SettingsPage` permite activar o desactivar `mentor_notifications_enabled`. La preferencia controla únicamente notificaciones automáticas cuyo contenido genera el Mentor mediante IA, actualmente `NIGHTLY_REVIEW_SUMMARY` y `REFLECTION_NEGATIVE_FOLLOWUP_24H`. Los avisos operativos de tareas y misiones siguen dependiendo de la configuración general de notificaciones.
+`SettingsPage` permite activar o desactivar `mentor_notifications_enabled`. La preferencia controla las notificaciones automáticas de acompañamiento: `NIGHTLY_REVIEW_SUMMARY` y las revisiones programadas de conducta `LEARNED_RESPONSE_REVIEW`. Los avisos operativos de tareas y misiones siguen dependiendo de la configuración general de notificaciones.
 
 Las notificaciones `NIGHTLY_REVIEW_SUMMARY` pueden incluir `proposed_missions`. En ese caso el panel y el toast guardan temporalmente el payload, navegan a `/character?nightly_review=1` y `CharacterPage` hidrata el mismo estado que usa el botón de NightlyReview para mostrar el informe y abrir el modal de confirmación de misión existente.
 
