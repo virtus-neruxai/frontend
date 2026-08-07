@@ -227,6 +227,8 @@ El KPI `Vencidas` y su diálogo comparten el mismo filtro: tareas no rutinarias 
 
 `frictionsRange` defaults to `'7'` (últimos 7 días). `acknowledgeFriction(friction, data)` hace PATCH y recarga los datos automáticamente.
 
+El Historial de Conversaciones solo muestra la etiqueta de fricción cuando `observer_output.pattern_eligible=true`; una clasificación interna descartada por el gate estricto de chat no se presenta al usuario como patrón.
+
 `missionLenses` alimenta el panel superior del Dashboard, encima de Desafíos. Es una lectura de las lentes ya materializadas por backend/graph-sync en OpenSearch (`identity`, `direction`, `transcendence`), por lo que no añade coste LLM al abrir la pantalla.
 
 ### useMissions

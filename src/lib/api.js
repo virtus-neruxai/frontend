@@ -291,6 +291,7 @@ export const conversationsApi = {
           message: item.user_message,
           timestamp: item.timestamp,
           friction: item.observer_output?.primary_friction,
+          patternEligible: item.observer_output?.pattern_eligible === true,
           mode: item.selected_mode,
         },
         item.agent_response && {
@@ -298,6 +299,7 @@ export const conversationsApi = {
           message: item.agent_response,
           timestamp: item.timestamp,
           friction: item.observer_output?.primary_friction,
+          patternEligible: item.observer_output?.pattern_eligible === true,
           mode: item.selected_mode,
         },
       ].filter(Boolean));
