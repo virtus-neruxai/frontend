@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { buildNightlyReviewHref, storeNightlyReviewPayload } from '../lib/nightlyReviewNotification';
+import { buildNightlyReviewHref, storeNightlyReviewPayload } from '../lib/schedulerReview/nightlyReviewNotification';
 
 export const useWebSocket = ({
   url,

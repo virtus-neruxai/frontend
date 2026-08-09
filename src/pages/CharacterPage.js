@@ -25,7 +25,7 @@ import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { buildRelativeDateRange } from '../lib/dateRangeUtils';
 import { formatMentorResponseText } from '../lib/mentorTextFormat';
 import { formatStatLabel } from '../lib/statUtils';
-import { consumeNightlyReviewPayload } from '../lib/nightlyReviewNotification';
+import { consumeNightlyReviewPayload } from '../lib/schedulerReview/nightlyReviewNotification';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';

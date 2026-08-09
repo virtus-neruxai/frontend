@@ -7,7 +7,7 @@ import {
   getNightlyReviewProposalStatus,
   getNightlyReviewProposalStatusLabel,
   storeNightlyReviewPayload,
-} from '../lib/nightlyReviewNotification';
+} from '../lib/schedulerReview/nightlyReviewNotification';
 import { getPatternNotificationTitle } from '../hooks/useWebSocket';
 
 export const NotificationToast = () => {
