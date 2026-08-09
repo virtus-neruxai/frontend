@@ -36,6 +36,9 @@ export function BodyCheckinHistory({ items = [], statsInfo = {} }) {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">{metricSummary(item)}</p>
+                {item.note && (
+                  <p className="text-sm mt-1 italic text-foreground/90">&ldquo;{item.note}&rdquo;</p>
+                )}
                 <div className="mt-2">
                   <BodyCheckinStatChanges
                     checkin={item}
