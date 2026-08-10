@@ -162,7 +162,7 @@ function PatternColumn({ testId, title, description, icon: Icon, tone, count, em
   );
 }
 
-function NeutralSection({ groups, defaultOpen, divided, onEdit }) {
+function NeutralSection({ groups, defaultOpen, divided }) {
   const [open, setOpen] = useState(defaultOpen);
   if (!groups.length) return null;
 
@@ -196,7 +196,7 @@ function NeutralSection({ groups, defaultOpen, divided, onEdit }) {
         </p>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {groups.map((group) => (
-            <PatternEvidenceGroup key={group.key} group={group} onEdit={onEdit} />
+            <PatternEvidenceGroup key={group.key} group={group} />
           ))}
         </div>
       </CollapsibleContent>
@@ -241,12 +241,12 @@ function EmotionalPatternChip({ item, onEdit, selected, onSelect }) {
   );
 }
 
-function TimelineEvent({ event }) {
+function TimelineEvent({ event, positive = false }) {
   const source = SOURCE_LABELS[event.source_type] || { label: event.source_type, icon: BookOpen };
   const SourceIcon = source.icon;
   return (
-    <div className="flex gap-3 py-3 border-b last:border-0">
-      <div className="mt-0.5 p-1.5 rounded-md bg-muted text-muted-foreground shrink-0">
+    <div className={`flex gap-3 py-3 ${positive ? 'my-2 rounded-lg border border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/10 px-3' : 'border-b last:border-0'}`}>
+      <div className={`mt-0.5 p-1.5 rounded-md shrink-0 ${positive ? 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' : 'bg-muted text-muted-foreground'}`}>
         <SourceIcon size={14} />
       </div>
       <div className="flex-1 min-w-0">
@@ -257,7 +257,7 @@ function TimelineEvent({ event }) {
               <span className="text-muted-foreground font-normal"> · {event.title}</span>
             )}
           </span>
-          <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+          <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${positive ? 'bg-[hsl(var(--success))]/15 text-foreground' : 'text-muted-foreground bg-muted'}`}>
             {event.intensity}/5
           </span>
         </div>
@@ -319,8 +319,20 @@ function mergePatternMeta(existing, incoming) {
   };
 }
 
+function getEventPatternLabel(event, patternKey) {
+  if (event.pattern_labels && typeof event.pattern_labels === 'object') {
+    return event.pattern_labels[patternKey];
+  }
+  return event.pattern_label || event.emotion_label || patternKey;
+}
+
 function isPrimaryPatternKey(patternKey) {
   return String(patternKey || '').startsWith('recurring_emotion_in_context:');
+}
+
+function getVisualPatternKey(event) {
+  const keys = event.pattern_keys || [];
+  return keys.find(isPrimaryPatternKey) || keys[0] || null;
 }
 
 function buildPatternGroups(timeline = [], byPattern = [], selectedPatternKey = null) {
@@ -332,17 +344,26 @@ function buildPatternGroups(timeline = [], byPattern = [], selectedPatternKey = 
 
   const groupMap = new Map();
 
-  // `by_pattern` is the canonical list of recurrent, useful associations.
-  // Timeline entries are raw evidence and must never create a card on their
-  // own: doing so made one positive reflection look like «Te impulsa» and one
-  // difficult reflection look like «Te pesa».
-  const ensureGroup = (patternKey) => {
-    const meta = patternMeta.get(patternKey);
-    if (!patternKey || !meta) return null;
+  // `seed` is the event that first created a group that has no persisted
+  // counterpart in by_pattern. Its emoji and polarity have to be carried over:
+  // polarity decides which column the card lands in, so a synthesized meta
+  // without it would silently drop every timeline-only pattern into «Neutras».
+  const ensureGroup = (patternKey, fallbackLabel = null, seed = null) => {
+    if (!patternKey) return null;
     if (!groupMap.has(patternKey)) {
+      const meta = patternMeta.get(patternKey);
       groupMap.set(patternKey, {
         key: patternKey,
-        meta,
+        meta: meta || {
+          pattern_key: patternKey,
+          label: fallbackLabel || patternKey,
+          emoji: seed?.emoji || null,
+          polarity: seed?.polarity || null,
+          count: 0,
+          pattern_status: 'signal',
+          sources: {},
+          related_signals: [],
+        },
         events: [],
         eventIds: new Set(),
       });
@@ -351,7 +372,7 @@ function buildPatternGroups(timeline = [], byPattern = [], selectedPatternKey = 
   };
 
   const pushEvent = (patternKey, event) => {
-    const group = ensureGroup(patternKey);
+    const group = ensureGroup(patternKey, getEventPatternLabel(event, patternKey), event);
     if (!group) return;
     const eventKey = `${event.source_type || 'source'}-${event.id || ''}-${event.created_at || ''}-${event.excerpt || ''}`;
     if (group.eventIds.has(eventKey)) return;
@@ -359,29 +380,29 @@ function buildPatternGroups(timeline = [], byPattern = [], selectedPatternKey = 
     group.events.push(event);
   };
 
-  const selectedKey = selectedPatternKey && patternMeta.has(selectedPatternKey)
-    ? selectedPatternKey
-    : null;
-
-  if (selectedKey) {
-    ensureGroup(selectedKey);
+  if (selectedPatternKey) {
+    ensureGroup(selectedPatternKey);
     timeline.forEach((event) => {
-      if (event.pattern_keys?.includes(selectedKey)) {
-        pushEvent(selectedKey, event);
+      if (event.pattern_keys?.includes(selectedPatternKey)) {
+        pushEvent(selectedPatternKey, event);
       }
     });
   } else {
-    // Keep every canonical pattern visible even if the timeline preview was
-    // truncated before one of its evidences.
-    patternMeta.forEach((_, patternKey) => ensureGroup(patternKey));
-
     timeline.forEach((event) => {
       // A single reflection can have several internal pattern keys
-      // (recurring emotion, after routine, emotion+friction...). Attach it
-      // once and only to an eligible key, preferring the primary association.
-      const eligibleKeys = (event.pattern_keys || []).filter((key) => patternMeta.has(key));
-      const visualKey = eligibleKeys.find(isPrimaryPatternKey) || eligibleKeys[0] || null;
-      pushEvent(visualKey, event);
+      // (recurring emotion, after routine, emotion+friction...). In the
+      // default dashboard view it must appear once, under its primary visual
+      // pattern, otherwise the same evidence is copied into several cards.
+      pushEvent(getVisualPatternKey(event), event);
+    });
+    patternMeta.forEach((_, patternKey) => {
+      if (groupMap.has(patternKey)) return;
+      // Keep standalone persisted patterns visible, but avoid creating empty
+      // derived groups when their evidence is already represented by the
+      // primary recurring_emotion_in_context group.
+      if (isPrimaryPatternKey(patternKey) || timeline.length === 0) {
+        ensureGroup(patternKey);
+      }
     });
   }
 
@@ -413,23 +434,32 @@ function buildUniquePatternList(byPattern = []) {
     if (!item.pattern_key) return;
     patternMeta.set(item.pattern_key, mergePatternMeta(patternMeta.get(item.pattern_key), item));
   });
-  // The backend already folds related associations. Only exact duplicate keys
-  // belong here; hiding a standalone derived key would second-guess the
-  // canonical eligibility decision and can diverge between clients.
-  return Array.from(patternMeta.values());
+  const values = Array.from(patternMeta.values());
+  const hasPrimaryForEmotion = new Set(
+    values
+      .filter((item) => isPrimaryPatternKey(item.pattern_key))
+      .map((item) => item.emotion)
+      .filter(Boolean)
+  );
+  return values.filter((item) => (
+    isPrimaryPatternKey(item.pattern_key)
+    || !item.emotion
+    || !hasPrimaryForEmotion.has(item.emotion)
+  ));
 }
 
-function PatternEvidenceGroup({ group, defaultOpen = false, onEdit }) {
+function PatternEvidenceGroup({ group, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   const isOpen = defaultOpen || open;
   const item = group.meta;
   const eventCount = group.events.length;
+  const isPositive = item.polarity === 'positive';
 
   return (
     <Collapsible
       open={isOpen}
       onOpenChange={setOpen}
-      className="rounded-lg border bg-card overflow-hidden"
+      className={`rounded-lg border overflow-hidden ${isPositive ? 'border-[hsl(var(--success))]/50 bg-[hsl(var(--success-soft))]' : 'bg-card'}`}
       data-testid={`emotional-pattern-group-${item.pattern_key}`}
     >
       <div className="flex items-start gap-3 p-3">
@@ -443,7 +473,7 @@ function PatternEvidenceGroup({ group, defaultOpen = false, onEdit }) {
                   icon: the label wraps cleanly and a screen reader no longer
                   announces the emoji before an already-labelled emotion. */}
               <span
-                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-base leading-none"
+                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base leading-none ${isPositive ? 'bg-[hsl(var(--success-soft))] text-[hsl(var(--success))]' : 'bg-muted'}`}
                 aria-hidden="true"
               >
                 {item.emoji || '·'}
@@ -475,23 +505,15 @@ function PatternEvidenceGroup({ group, defaultOpen = false, onEdit }) {
             <ChevronDown size={16} className={`mt-0.5 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </CollapsibleTrigger>
-        {/* A sibling of the trigger, not nested inside it — a button inside a
-            button is invalid HTML and would fire both handlers on one tap.
-            Always visible: the chip's pencil is easy to miss entirely. */}
-        {onEdit && (
-          <button
-            type="button"
-            onClick={() => onEdit(item)}
-            className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Pencil size={12} /> Editar
-          </button>
-        )}
       </div>
       <CollapsibleContent>
-        <div className="border-t px-3">
+        <div className={`border-t px-3 ${isPositive ? 'border-[hsl(var(--success))]/30 bg-[hsl(var(--success-soft))]' : ''}`}>
           {group.events.map((event) => (
-            <TimelineEvent key={`${group.key}-${event.source_type}-${event.id}-${event.created_at}`} event={event} />
+            <TimelineEvent
+              key={`${group.key}-${event.source_type}-${event.id}-${event.created_at}`}
+              event={event}
+              positive={isPositive}
+            />
           ))}
         </div>
       </CollapsibleContent>
@@ -616,15 +638,12 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
   const byPattern = data?.by_pattern || [];
   const resolvedPatterns = data?.resolved_patterns || [];
   const uniqueByPattern = buildUniquePatternList(byPattern);
-  const effectiveSelectedPatternKey = uniqueByPattern.some(
-    (item) => item.pattern_key === selectedPatternKey
-  ) ? selectedPatternKey : null;
-  const groupedTimeline = buildPatternGroups(timeline, uniqueByPattern, effectiveSelectedPatternKey);
+  const groupedTimeline = buildPatternGroups(timeline, uniqueByPattern, selectedPatternKey);
 
   const buckets = partitionEmotionalGroups(groupedTimeline);
   const hasPolarised = buckets.positive.length > 0 || buckets.negative.length > 0;
 
-  const hasData = byPattern.length > 0 || resolvedPatterns.length > 0;
+  const hasData = timeline.length > 0 || byPattern.length > 0 || resolvedPatterns.length > 0;
 
   return (
     <div className="rounded-[8px] border bg-card p-5" data-testid="emotional-patterns-panel">
@@ -672,11 +691,11 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                   key={p.pattern_key}
                   item={p}
                   onEdit={openDialog}
-                  selected={effectiveSelectedPatternKey === p.pattern_key}
+                  selected={selectedPatternKey === p.pattern_key}
                   onSelect={togglePattern}
                 />
               ))}
-              {effectiveSelectedPatternKey && (
+              {selectedPatternKey && (
                 <button
                   type="button"
                   onClick={() => setSelectedPatternKey(null)}
@@ -691,11 +710,11 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
           {/* Timeline. Selecting a chip means "only this one", so focus mode
               drops the columns: a two-column grid with a single card in it
               reads as broken. */}
-          {effectiveSelectedPatternKey ? (
+          {selectedPatternKey ? (
             groupedTimeline.length > 0 ? (
               <div className="space-y-3">
                 {groupedTimeline.map((group) => (
-                  <PatternEvidenceGroup key={group.key} group={group} defaultOpen onEdit={openDialog} />
+                  <PatternEvidenceGroup key={group.key} group={group} defaultOpen />
                 ))}
               </div>
             ) : (
@@ -710,27 +729,27 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                   <PatternColumn
                     testId="emotional-column-positive"
                     title="Te impulsan"
-                    description="Contextos asociados de forma recurrente con emociones que te ayudan."
+                    description="Aparecen y te dan impulso."
                     icon={Smile}
                     tone="positive"
                     count={buckets.positive.length}
                     emptyHint="Aún no hay emociones positivas recurrentes."
                   >
                     {buckets.positive.map((group) => (
-                      <PatternEvidenceGroup key={group.key} group={group} onEdit={openDialog} />
+                      <PatternEvidenceGroup key={group.key} group={group} />
                     ))}
                   </PatternColumn>
                   <PatternColumn
                     testId="emotional-column-negative"
                     title="Te pesan"
-                    description="Contextos asociados de forma recurrente con emociones difíciles."
+                    description="Aparecen y te cuestan."
                     icon={Frown}
                     tone="negative"
                     count={buckets.negative.length}
                     emptyHint="Aún no hay emociones difíciles recurrentes."
                   >
                     {buckets.negative.map((group) => (
-                      <PatternEvidenceGroup key={group.key} group={group} onEdit={openDialog} />
+                      <PatternEvidenceGroup key={group.key} group={group} />
                     ))}
                   </PatternColumn>
                 </div>
@@ -741,8 +760,12 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                 groups={buckets.neutral}
                 defaultOpen={!hasPolarised}
                 divided={hasPolarised}
-                onEdit={openDialog}
               />
+              {groupedTimeline.length === 0 && timeline.length > 0 && (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No hay evidencias de este patrón en el periodo seleccionado.
+                </p>
+              )}
             </>
           )}
 

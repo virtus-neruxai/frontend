@@ -15,7 +15,6 @@ import { TotalStatsEvolutionChart } from '../presentation/components/dashboard/T
 import { DomainDistributionChart } from '../presentation/components/dashboard/DomainDistributionChart';
 import { DetectedPatternsPanel } from '../presentation/components/dashboard/DetectedPatternsPanel';
 import { EmotionalPatternsPanel } from '../presentation/components/dashboard/EmotionalPatternsPanel';
-import { PositiveReflectionsPanel } from '../presentation/components/dashboard/PositiveReflectionsPanel';
 import { LearnedResponsesPanel } from '../presentation/components/dashboard/LearnedResponsesPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
@@ -78,12 +77,6 @@ export default function DashboardPageRefactored() {
     emotionalPatternsRange,
     setEmotionalPatternsRange,
     acknowledgeEmotionalPattern,
-    positiveReflections,
-    positiveReflectionsLoading,
-    positiveReflectionsError,
-    positiveReflectionsRange,
-    setPositiveReflectionsRange,
-    refreshPositiveReflections,
     learnedResponses,
     learnedResponsesLoading,
     recordBehaviorApplication,
@@ -296,15 +289,6 @@ export default function DashboardPageRefactored() {
               loading={totalStatsLoading}
               profile={evolutionProfile}
               onProfileChange={setEvolutionProfile}
-            />
-
-            <PositiveReflectionsPanel
-              data={positiveReflections}
-              loading={positiveReflectionsLoading}
-              error={positiveReflectionsError}
-              range={positiveReflectionsRange}
-              onRangeChange={setPositiveReflectionsRange}
-              onRetry={refreshPositiveReflections}
             />
 
             {/* Detected Patterns Panel */}

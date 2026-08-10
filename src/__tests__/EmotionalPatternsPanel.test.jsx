@@ -105,6 +105,18 @@ describe('EmotionalPatternsPanel', () => {
 
     expect(screen.getAllByText('Presente').length).toBeGreaterThan(0);
     expect(screen.queryByText('Activo')).not.toBeInTheDocument();
+    const positiveGroup = screen.getByTestId(
+      'emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo'
+    );
+    expect(positiveGroup).toHaveClass(
+      'border-[hsl(var(--success))]/50',
+      'bg-[hsl(var(--success-soft))]'
+    );
+
+    fireEvent.click(within(positiveGroup).getByRole('button', { name: /Calma recurrente en Salud/i }));
+    expect(screen.getByText(/Me costó empezar de nuevo/).closest('.my-2')).toHaveClass(
+      'bg-[hsl(var(--success))]/10'
+    );
   });
 
   test('reads a fading emotion as good news only when the emotion is a negative one', () => {
@@ -268,7 +280,7 @@ describe('EmotionalPatternsPanel', () => {
     expect(screen.getByText(/Otra vez aparece frustración/)).toBeInTheDocument();
   });
 
-  test('does not promote one reflection with several internal keys to an emotional pattern', () => {
+  test('renders a single visual group when one reflection contributes several internal pattern keys', () => {
     const routineEvent = {
       id: 'routine-emotion-1',
       source_type: 'routine_reflection',
@@ -308,53 +320,16 @@ describe('EmotionalPatternsPanel', () => {
       />
     );
 
-    expect(screen.getByText('Aún no hay patrones emocionales en este periodo.')).toBeInTheDocument();
-    expect(screen.queryByTestId('emotional-pattern-group-recurring_emotion_in_context:concentracion:rutina')).not.toBeInTheDocument();
+    const primaryGroup = screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:concentracion:rutina');
+    expect(primaryGroup).toBeInTheDocument();
     expect(screen.queryByTestId('emotional-pattern-group-emotion_after_routine:concentracion:rutina')).not.toBeInTheDocument();
     expect(screen.queryByTestId('emotional-pattern-group-emotion_friction_association:concentracion:unclear_goal')).not.toBeInTheDocument();
-  });
+    expect(within(primaryGroup).getByText('1 entrada')).toBeInTheDocument();
+    expect(within(primaryGroup).getByText('Rutina (1)')).toBeInTheDocument();
 
-  test('ignores timeline evidence whose key is not in the canonical by_pattern list', () => {
-    const isolatedCalmEvent = {
-      ...timelineEvent,
-      id: 'r-calm-isolated',
-      emotion: 'calma',
-      emotion_label: 'Calma',
-      polarity: 'positive',
-      pattern_keys: ['recurring_emotion_in_context:calma:salud'],
-    };
+    fireEvent.click(within(primaryGroup).getByRole('button', { name: /Concentración/i }));
 
-    render(
-      <EmotionalPatternsPanel
-        data={baseData({ by_pattern: [activePattern], timeline: [timelineEvent, isolatedCalmEvent] })}
-        loading={false}
-        onAcknowledge={vi.fn()}
-      />
-    );
-
-    expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
-    expect(screen.queryByTestId('emotional-pattern-group-recurring_emotion_in_context:calma:salud')).not.toBeInTheDocument();
-  });
-
-  test('keeps every canonical association even when its preview evidence is absent', () => {
-    const derivedPattern = {
-      ...activePattern,
-      pattern_key: 'emotion_friction_association:frustracion:avoidance_loop',
-      pattern_type: 'emotion_friction_association',
-      label: 'Frustración asociada a Evitación inicial',
-      count: 3,
-    };
-
-    render(
-      <EmotionalPatternsPanel
-        data={baseData({ by_pattern: [activePattern, derivedPattern], timeline: [timelineEvent] })}
-        loading={false}
-        onAcknowledge={vi.fn()}
-      />
-    );
-
-    expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
-    expect(screen.getByTestId('emotional-pattern-group-emotion_friction_association:frustracion:avoidance_loop')).toBeInTheDocument();
+    expect(screen.getAllByText(/He sentido concentración/)).toHaveLength(1);
   });
 
   test('resolved patterns render under "Patrones superados"', () => {
@@ -453,18 +428,19 @@ describe('EmotionalPatternsPanel', () => {
       expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
     });
 
-    test('timeline-only positive and negative evidence creates neither judged column', () => {
+    test('a timeline-only pattern inherits its polarity from the evidence', () => {
+      // Without seeding the synthesized meta, this card would silently fall
+      // into the neutral strip instead of the positive column.
       render(
         <EmotionalPatternsPanel
-          data={baseData({ by_pattern: [], timeline: [calmEvent, timelineEvent] })}
+          data={baseData({ by_pattern: [], timeline: [calmEvent] })}
           loading={false}
           onAcknowledge={vi.fn()}
         />
       );
 
-      expect(screen.getByText('Aún no hay patrones emocionales en este periodo.')).toBeInTheDocument();
-      expect(screen.queryByTestId('emotional-column-positive')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('emotional-column-negative')).not.toBeInTheDocument();
+      const positive = screen.getByTestId('emotional-column-positive');
+      expect(within(positive).getByTestId('emotional-pattern-group-recurring_emotion_in_context:calma:salud')).toBeInTheDocument();
     });
 
     test('all-neutral data renders no columns and an already-open strip', () => {
@@ -481,44 +457,6 @@ describe('EmotionalPatternsPanel', () => {
       expect(screen.queryByTestId('emotional-column-positive')).not.toBeInTheDocument();
       expect(screen.queryByTestId('emotional-column-negative')).not.toBeInTheDocument();
       expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
-    });
-  });
-
-  describe('editing from the evidence card', () => {
-    // The chip's pencil is a 10px icon at 40% opacity — easy to miss entirely.
-    // Every card also carries a plainly labelled "Editar" button of its own,
-    // independent of the chip, so the dialog is reachable without it.
-    test('the card itself opens the acknowledge dialog, without touching the chip', async () => {
-      const onAcknowledge = vi.fn().mockResolvedValue(undefined);
-      render(<EmotionalPatternsPanel data={baseData()} loading={false} onAcknowledge={onAcknowledge} />);
-
-      const card = screen.getByTestId(
-        'emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo'
-      );
-      fireEvent.click(within(card).getByRole('button', { name: /editar/i }));
-      fireEvent.click(screen.getByLabelText('¿Reconoces este patrón en ti?'));
-      fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
-
-      await vi.waitFor(() => {
-        expect(onAcknowledge).toHaveBeenCalledWith(
-          'recurring_emotion_in_context:frustracion:trabajo',
-          { confirmed: true, working_on_it: false, progress: 1, notes: null }
-        );
-      });
-    });
-
-    test('the card button does not also toggle the collapsible open/closed', () => {
-      render(<EmotionalPatternsPanel data={baseData()} loading={false} onAcknowledge={vi.fn()} />);
-
-      const card = screen.getByTestId(
-        'emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo'
-      );
-      expect(within(card).queryByText('Me costó empezar de nuevo.')).not.toBeInTheDocument();
-
-      fireEvent.click(within(card).getByRole('button', { name: /editar/i }));
-
-      // Still collapsed: a sibling button, not a nested one firing both handlers.
-      expect(within(card).queryByText('Me costó empezar de nuevo.')).not.toBeInTheDocument();
     });
   });
 });
