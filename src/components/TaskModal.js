@@ -643,8 +643,15 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
   const selectedRoutineReflections = isRoutine ? routineReflectionsForDate(selectedCompletionKey) : [];
   const taskWasAlreadyComplete = !!(task?.is_complete || task?.status === 'done');
   const canMarkRoutineToday = isRoutine && isEditing && !occurrenceIsFuture;
-  const canAddTaskCompletionReflection = !isRoutine && isEditing && !taskWasAlreadyComplete && !linkedMission;
-  const canMarkTaskDone = canAddTaskCompletionReflection && !formData.is_complete;
+  // A reflection belongs to the item, not to its open/closed state.  It must
+  // remain available when reopening a completed task or a completed linked
+  // mission from the calendar.
+  const canAddTaskCompletionReflection = !isRoutine && isEditing;
+  const canMarkTaskDone = !isRoutine
+    && isEditing
+    && !taskWasAlreadyComplete
+    && !linkedMission
+    && !formData.is_complete;
   const canCompleteLinkedMission = linkedMissionIsActive;
   const showCompletionReflection = isEditing && (
     isRoutine
