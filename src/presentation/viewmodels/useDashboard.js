@@ -21,6 +21,12 @@ const EMOTIONAL_PATTERNS_RANGE_OPTIONS = [
   { value: '90', label: 'Últimos 90 días' },
 ];
 
+const POSITIVE_REFLECTIONS_RANGE_OPTIONS = [
+  { value: '7',  label: 'Últimos 7 días' },
+  { value: '30', label: 'Últimos 30 días' },
+  { value: '90', label: 'Últimos 90 días' },
+];
+
 const RANGE_OPTIONS = [
   { value: '7', label: 'Últimos 7 días' },
   { value: '30', label: 'Últimos 30 días' },
@@ -68,6 +74,13 @@ export function useDashboard(initialProfile) {
   const [emotionalPatterns, setEmotionalPatterns] = useState(null);
   const [emotionalPatternsLoading, setEmotionalPatternsLoading] = useState(false);
   const [emotionalPatternsRange, setEmotionalPatternsRange] = useState('7');
+
+  // Explicitly positive reflections. This is a read-only reminder surface,
+  // separate from recurring emotional-pattern analytics.
+  const [positiveReflections, setPositiveReflections] = useState(null);
+  const [positiveReflectionsLoading, setPositiveReflectionsLoading] = useState(false);
+  const [positiveReflectionsError, setPositiveReflectionsError] = useState(null);
+  const [positiveReflectionsRange, setPositiveReflectionsRange] = useState('7');
 
   // Mission lenses state — materialized semantic lenses derived from the profile.
   const [missionLenses, setMissionLenses] = useState(null);
@@ -233,6 +246,22 @@ export function useDashboard(initialProfile) {
     await fetchEmotionalPatterns();
   }, [fetchEmotionalPatterns]);
 
+  const fetchPositiveReflections = useCallback(async () => {
+    setPositiveReflectionsLoading(true);
+    setPositiveReflectionsError(null);
+    try {
+      const res = await statsApi.getPositiveReflections({
+        days: parseInt(positiveReflectionsRange, 10),
+      });
+      setPositiveReflections(res.data);
+    } catch (error) {
+      console.error('Error fetching positive reflections:', error);
+      setPositiveReflectionsError('No se pudieron cargar las reflexiones positivas.');
+    } finally {
+      setPositiveReflectionsLoading(false);
+    }
+  }, [positiveReflectionsRange]);
+
   // NRRM — conductas adoptadas. Fail-soft: si la feature está apagada o el
   // endpoint no existe todavía, el panel simplemente no se muestra.
   const fetchLearnedResponses = useCallback(async () => {
@@ -296,6 +325,10 @@ export function useDashboard(initialProfile) {
   }, [fetchEmotionalPatterns]);
 
   useEffect(() => {
+    fetchPositiveReflections();
+  }, [fetchPositiveReflections]);
+
+  useEffect(() => {
     fetchMissionLenses();
   }, [fetchMissionLenses]);
 
@@ -348,6 +381,13 @@ export function useDashboard(initialProfile) {
     emotionalPatternsRangeOptions: EMOTIONAL_PATTERNS_RANGE_OPTIONS,
     acknowledgeEmotionalPattern,
     refreshEmotionalPatterns: fetchEmotionalPatterns,
+    positiveReflections,
+    positiveReflectionsLoading,
+    positiveReflectionsError,
+    positiveReflectionsRange,
+    setPositiveReflectionsRange,
+    positiveReflectionsRangeOptions: POSITIVE_REFLECTIONS_RANGE_OPTIONS,
+    refreshPositiveReflections: fetchPositiveReflections,
     learnedResponses,
     learnedResponsesLoading,
     refreshLearnedResponses: fetchLearnedResponses,
