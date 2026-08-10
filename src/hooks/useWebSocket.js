@@ -1,6 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { buildNightlyReviewHref, storeNightlyReviewPayload } from '../lib/schedulerReview/nightlyReviewNotification';
+import {
+  buildMentorBehaviorHref,
+  getMentorBehaviorBody,
+  getMentorBehaviorTitle,
+  storeMentorBehaviorPayload,
+} from '../lib/schedulerReview/mentorBehaviorNotification';
 
 export const useWebSocket = ({
   url,
@@ -221,12 +227,14 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
     const isMissionReminder = notification.type === 'MISSION_REMINDER';
     const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
     const isLearnedResponseReview = notification.type === 'LEARNED_RESPONSE_REVIEW';
+    const isMentorBehavior = notification.type === 'MENTOR_BEHAVIOR';
     const isPatternDetected = notification.type === 'PATTERN_DETECTED';
 
     let title;
     if (isMissionReminder) title = '🎯 Recordatorio de misión';
     else if (isNightlyReview) title = '🌙 Resumen nocturno';
     else if (isLearnedResponseReview) title = '🌱 Conducta en práctica';
+    else if (isMentorBehavior) title = `🧭 ${getMentorBehaviorTitle(payload)}`;
     else if (isPatternDetected) title = getPatternNotificationTitle(payload);
     else title = '⏰ Tarea por empezar';
 
@@ -235,6 +243,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       body = payload.message || `Recuerda tu misión: ${payload.mission_title || ''}`;
     } else if (isNightlyReview) {
       body = payload.summary || payload.message || 'Tu resumen nocturno está disponible.';
+    } else if (isMentorBehavior) {
+      body = getMentorBehaviorBody(payload) || 'El Mentor tiene algo que contarte.';
     } else if (isLearnedResponseReview) {
       body = payload.learned_response_reviews?.[0]?.question || 'Tienes una conducta que revisar.';
     } else if (isPatternDetected) {
@@ -252,6 +262,8 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       ? `nightly-review-${payload.review_date || notification.id}`
       : isLearnedResponseReview
       ? `learned-response-review-${notification.history_id || notification.id}`
+      : isMentorBehavior
+      ? `mentor-behavior-${payload.pattern_date || notification.id}`
       : isPatternDetected
       ? `pattern-${payload.reflection_id || notification.id}`
       : payload.task_id;
@@ -279,6 +291,9 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       if (isNightlyReview) {
         storeNightlyReviewPayload(payload);
         window.location.href = buildNightlyReviewHref(payload);
+      } else if (isMentorBehavior) {
+        storeMentorBehaviorPayload(payload);
+        window.location.href = buildMentorBehaviorHref(payload);
       } else if (isLearnedResponseReview) {
         window.location.href = '/dashboard';
       } else if (isMissionReminder) window.location.href = '/character';
@@ -301,6 +316,7 @@ export function isSupportedNotificationType(type) {
     type === 'MISSION_REMINDER' ||
     type === 'NIGHTLY_REVIEW_SUMMARY' ||
     type === 'LEARNED_RESPONSE_REVIEW' ||
+    type === 'MENTOR_BEHAVIOR' ||
     type === 'PATTERN_DETECTED'
   );
 }
@@ -309,6 +325,7 @@ export function buildNotificationFromWsData(data) {
   const isMissionReminder = data.type === 'MISSION_REMINDER';
   const isNightlyReview = data.type === 'NIGHTLY_REVIEW_SUMMARY';
   const isLearnedResponseReview = data.type === 'LEARNED_RESPONSE_REVIEW';
+  const isMentorBehavior = data.type === 'MENTOR_BEHAVIOR';
   const isPatternDetected = data.type === 'PATTERN_DETECTED';
   const baseId = isMissionReminder
     ? data.mission_id || data.notification_id
@@ -316,6 +333,8 @@ export function buildNotificationFromWsData(data) {
     ? data.review_date || data.notification_id
     : isLearnedResponseReview
     ? data.notification_id
+    : isMentorBehavior
+    ? data.pattern_date || data.notification_id
     : isPatternDetected
     ? data.reflection_id || data.notification_id
     : data.task_id;
@@ -348,6 +367,22 @@ export function buildNotificationFromWsData(data) {
       review_date: data.review_date || data.context?.review_date,
       learned_response_reviews:
         data.learned_response_reviews || data.context?.learned_response_reviews || [],
+      priority: data.priority || 'low',
+      context: data.context || {},
+    };
+  } else if (isMentorBehavior) {
+    // Flat fields: the event carries no nested `context` (§9) because the JSONB
+    // adapter cannot resolve dotted keys.
+    payload = {
+      pattern_date: data.pattern_date,
+      title: data.title,
+      body: data.body || data.message,
+      message: data.body || data.message,
+      focus_type: data.focus_type,
+      focus_key: data.focus_key,
+      related_item_id: data.related_item_id,
+      has_today_context: Boolean(data.has_today_context),
+      proposed_missions: data.proposed_missions || [],
       priority: data.priority || 'low',
       context: data.context || {},
     };

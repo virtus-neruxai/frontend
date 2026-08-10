@@ -10,6 +10,13 @@ import {
   getNightlyReviewProposalStatusLabel,
   storeNightlyReviewPayload,
 } from '../lib/schedulerReview/nightlyReviewNotification';
+import {
+  buildMentorBehaviorHref,
+  getMentorBehaviorBody,
+  getMentorBehaviorProposals,
+  getMentorBehaviorTitle,
+  storeMentorBehaviorPayload,
+} from '../lib/schedulerReview/mentorBehaviorNotification';
 import { getPatternNotificationTitle } from '../hooks/useWebSocket';
 
 
@@ -301,6 +308,15 @@ export const NotificationPanel = ({ onClose }) => {
                       proposed_missions: item.context?.proposed_missions || [],
                       proposal_status: item.context?.proposal_status,
                       learned_response_reviews: item.context?.learned_response_reviews || [],
+                      // MENTOR_BEHAVIOR travels flat on the event but nested
+                      // under `context` in the history, like NightlyReview (§9).
+                      pattern_date: item.context?.pattern_date,
+                      title: item.context?.title,
+                      body: item.context?.body,
+                      focus_type: item.context?.focus_type,
+                      focus_key: item.context?.focus_key,
+                      related_item_id: item.context?.related_item_id,
+                      has_today_context: item.context?.has_today_context,
                       context: item.context || {},
                     },
                     read: item.status === 'read',
@@ -324,9 +340,11 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
   const isLearnedResponseReview = notification.type === 'LEARNED_RESPONSE_REVIEW';
+  const isMentorBehavior = notification.type === 'MENTOR_BEHAVIOR';
   const isPatternDetected = notification.type === 'PATTERN_DETECTED';
   const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
   const nightlyReviewProposalStatusLabel = getNightlyReviewProposalStatusLabel(nightlyReviewProposalStatus);
+  const mentorBehaviorProposals = getMentorBehaviorProposals(payload);
 
   // Priority colors
   const getPriorityConfig = (priority) => {
@@ -382,6 +400,18 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
     window.location.href = buildNightlyReviewHref(payload);
   };
 
+  // MENTOR_BEHAVIOR §10 — same treatment as the nightly summary: the notice is
+  // read here, and its proposed mission is confirmed on Character.
+  const openMentorBehavior = async () => {
+    storeMentorBehaviorPayload(payload);
+    if (onRemove) {
+      await onRemove(notification);
+    } else if (!read) {
+      await onMarkAsRead(notification.id);
+    }
+    window.location.href = buildMentorBehaviorHref(payload);
+  };
+
   // NRRM F8 §14.3 — the review asks; acting on it happens in the panel, with
   // the behaviour and its history in front of you. Deliberately not a one-tap
   // "register"/"pause" from the notification itself.
@@ -397,6 +427,10 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
   const handleClick = () => {
     if (isNightlyReview) {
       openNightlyReview();
+      return;
+    }
+    if (isMentorBehavior) {
+      openMentorBehavior();
       return;
     }
     if (isLearnedResponseReview) {
@@ -437,6 +471,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                 ? '🌙 Resumen nocturno'
                 : isLearnedResponseReview
                 ? '🌱 Conducta en práctica'
+                : isMentorBehavior
+                ? `🧭 ${getMentorBehaviorTitle(payload)}`
                 : isPatternDetected
                 ? getPatternNotificationTitle(payload)
                 : payload.task_title}
@@ -471,6 +507,23 @@ const NotificationItem = ({ notification, onMarkAsRead, onRemove }) => {
                 {nightlyReviewProposalStatus || (payload.proposed_missions || []).length === 0
                   ? 'Ver revisión →'
                   : 'Abrir propuesta →'}
+              </a>
+            </>
+          ) : isMentorBehavior ? (
+            <>
+              <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
+                {getMentorBehaviorBody(payload)}
+              </p>
+              <a
+                href={buildMentorBehaviorHref(payload)}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  await openMentorBehavior();
+                }}
+                className="text-xs text-primary mt-1 hover:underline inline-block"
+              >
+                {mentorBehaviorProposals.length === 0 ? 'Ver en Carácter →' : 'Ver la misión propuesta →'}
               </a>
             </>
           ) : isLearnedResponseReview ? (

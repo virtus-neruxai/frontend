@@ -23,6 +23,10 @@ function getNotificationKey(notification) {
     if (payload.review_date) return `nightly-review:${payload.review_date}`;
   }
 
+  if (notification.type === 'MENTOR_BEHAVIOR') {
+    if (payload.pattern_date) return `mentor-behavior:${payload.pattern_date}`;
+  }
+
   if (notification.type === 'PATTERN_DETECTED') {
     if (payload.reflection_id) return `pattern:${payload.reflection_id}`;
   }

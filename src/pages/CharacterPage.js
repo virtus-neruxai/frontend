@@ -26,6 +26,7 @@ import { buildRelativeDateRange } from '../lib/dateRangeUtils';
 import { formatMentorResponseText } from '../lib/mentorTextFormat';
 import { formatStatLabel } from '../lib/statUtils';
 import { consumeNightlyReviewPayload } from '../lib/schedulerReview/nightlyReviewNotification';
+import { consumeMentorBehaviorPayload } from '../lib/schedulerReview/mentorBehaviorNotification';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
@@ -83,6 +84,7 @@ const dedupeReflections = (items = []) => {
 export default function CharacterPageRefactored() {
   const [searchParams, setSearchParams] = useSearchParams();
   const linkedNightlyReview = searchParams.get('nightly_review') === '1';
+  const linkedMentorBehavior = searchParams.get('mentor_behavior') === '1';
   // Custom hooks for state management
   const {
     character,
@@ -107,6 +109,7 @@ export default function CharacterPageRefactored() {
     generatingMissions,
     nightlyReviewLoading,
     nightlyReviewResult,
+    mentorBehaviorNotice,
     showConfirmModal,
     proposedMissions,
     showScheduleModal,
@@ -119,6 +122,8 @@ export default function CharacterPageRefactored() {
     generateMissions,
     performNightlyReview,
     hydrateNightlyReviewResult,
+    hydrateMentorBehaviorNotice,
+    dismissMentorBehaviorNotice,
     confirmMissionAt,
     confirmAllProposedMissions,
     rejectMissionAt,
@@ -297,6 +302,22 @@ export default function CharacterPageRefactored() {
     nextParams.delete('review_date');
     setSearchParams(nextParams, { replace: true });
   }, [linkedNightlyReview, hydrateNightlyReviewResult, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!linkedMentorBehavior) return;
+
+    const payload = consumeMentorBehaviorPayload();
+    if (payload) {
+      hydrateMentorBehaviorNotice(payload);
+    } else {
+      toast.info('El aviso del Mentor ya no está disponible en esta sesión.');
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('mentor_behavior');
+    nextParams.delete('pattern_date');
+    setSearchParams(nextParams, { replace: true });
+  }, [linkedMentorBehavior, hydrateMentorBehaviorNotice, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!pendingReflectionDraft) return undefined;
@@ -721,6 +742,21 @@ export default function CharacterPageRefactored() {
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowConfirmModal(false)}>✕</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* MENTOR_BEHAVIOR notice (if opened from its notification) */}
+        {mentorBehaviorNotice && (
+          <Card className="border-primary/30 bg-primary/10" data-testid="mentor-behavior-notice">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="font-semibold text-primary mb-2">🧭 {mentorBehaviorNotice.title}</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{mentorBehaviorNotice.body}</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={dismissMentorBehaviorNotice}>✕</Button>
               </div>
             </CardContent>
           </Card>
