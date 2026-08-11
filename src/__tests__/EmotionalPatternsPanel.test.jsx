@@ -280,6 +280,41 @@ describe('EmotionalPatternsPanel', () => {
     expect(screen.getByText(/Otra vez aparece frustración/)).toBeInTheDocument();
   });
 
+  test('labels timeline-only signals with their domain when the same emotion has different contexts', () => {
+    const gratitudeInLeisure = {
+      ...timelineEvent,
+      id: 'gratitude-leisure',
+      emotion: 'gratitud',
+      emotion_label: 'Gratitud',
+      emoji: '🙏',
+      polarity: 'positive',
+      domain: 'Ocio',
+      pattern_keys: ['recurring_emotion_in_context:gratitud:ocio'],
+    };
+    const gratitudeInPersonal = {
+      ...gratitudeInLeisure,
+      id: 'gratitude-personal',
+      domain: 'Personal',
+      pattern_keys: ['recurring_emotion_in_context:gratitud:personal'],
+    };
+
+    render(
+      <EmotionalPatternsPanel
+        data={baseData({
+          by_pattern: [],
+          timeline: [gratitudeInLeisure, gratitudeInPersonal],
+        })}
+        loading={false}
+        onAcknowledge={vi.fn()}
+      />
+    );
+
+    const leisureGroup = screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:gratitud:ocio');
+    const personalGroup = screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:gratitud:personal');
+    expect(within(leisureGroup).getByText('Gratitud en Ocio')).toBeInTheDocument();
+    expect(within(personalGroup).getByText('Gratitud en Personal')).toBeInTheDocument();
+  });
+
   test('renders a single visual group when one reflection contributes several internal pattern keys', () => {
     const routineEvent = {
       id: 'routine-emotion-1',

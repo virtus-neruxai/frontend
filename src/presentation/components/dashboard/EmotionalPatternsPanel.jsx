@@ -320,10 +320,15 @@ function mergePatternMeta(existing, incoming) {
 }
 
 function getEventPatternLabel(event, patternKey) {
-  if (event.pattern_labels && typeof event.pattern_labels === 'object') {
-    return event.pattern_labels[patternKey];
+  const labelled = event.pattern_labels && typeof event.pattern_labels === 'object'
+    ? event.pattern_labels[patternKey]
+    : null;
+  const label = labelled || event.pattern_label || event.emotion_label || patternKey;
+  const domain = String(event.domain || '').trim();
+  if (!domain || label.toLocaleLowerCase('es-ES').includes(domain.toLocaleLowerCase('es-ES'))) {
+    return label;
   }
-  return event.pattern_label || event.emotion_label || patternKey;
+  return `${label} en ${domain}`;
 }
 
 function isPrimaryPatternKey(patternKey) {
