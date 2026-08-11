@@ -2,6 +2,10 @@ import { useState, useCallback } from 'react';
 import { missionsApi, statsApi, tasksApi, reflectionsApi, notificationsApi } from '../../lib/api';
 import { toast } from 'sonner';
 
+// The three bands MissionEngine can put on a draft (`preferred_time_of_day`).
+const BAND_HOURS = { morning: 8, afternoon: 14, evening: 19 };
+const LATEST_SCHEDULED_HOUR = 22;
+
 const sortMissionsByCreatedAt = (items = []) => [...items].sort((a, b) => {
   const aTime = a?.created_at ? new Date(a.created_at).getTime() : 0;
   const bTime = b?.created_at ? new Date(b.created_at).getTime() : 0;
@@ -153,13 +157,25 @@ export const useMissions = () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const missionsWithDates = drafts.map((m, i) => ({
-        ...m,
-        addToCalendar: true,
-        scheduled_datetime: new Date(tomorrow.setHours(
-          m.mission_type === 'reflection' ? 8 + i : 14 + i, 0, 0, 0
-        )).toISOString()
-      }));
+      // MissionEngine states which part of the day the action belongs to,
+      // because only the LLM that wrote it knows «Noche de recuperación» is an
+      // evening thing. The positional hour below is the fallback for missions
+      // that fit any hour -- using it on one that named its moment schedules
+      // the mission against its own text.
+      const usedHours = new Set();
+      const missionsWithDates = drafts.map((m, i) => {
+        const band = BAND_HOURS[m.preferred_time_of_day];
+        let hour = band ?? (m.mission_type === 'reflection' ? 8 + i : 14 + i);
+        // Two missions sharing a band would otherwise stack on the same slot.
+        while (usedHours.has(hour) && hour < LATEST_SCHEDULED_HOUR) hour += 1;
+        usedHours.add(hour);
+
+        return {
+          ...m,
+          addToCalendar: true,
+          scheduled_datetime: new Date(tomorrow.setHours(hour, 0, 0, 0)).toISOString()
+        };
+      });
 
       setProposedMissions(missionsWithDates);
       setShowConfirmModal(true);
