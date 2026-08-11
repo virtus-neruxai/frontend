@@ -60,6 +60,7 @@ export const statsApi = {
   getEmotionalPatterns: (params = {}) => api.get('/stats/emotional-patterns', { params }),
   acknowledgeEmotionalPattern: (patternKey, data) =>
     api.patch(`/stats/emotional-patterns/${encodeURIComponent(patternKey)}/acknowledge`, data),
+  getPositiveReflections: (params = {}) => api.get('/stats/positive-reflections', { params }),
 };
 
 // Character API

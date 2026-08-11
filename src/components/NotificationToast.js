@@ -7,7 +7,14 @@ import {
   getNightlyReviewProposalStatus,
   getNightlyReviewProposalStatusLabel,
   storeNightlyReviewPayload,
-} from '../lib/nightlyReviewNotification';
+} from '../lib/schedulerReview/nightlyReviewNotification';
+import {
+  buildMentorBehaviorHref,
+  getMentorBehaviorBody,
+  getMentorBehaviorProposals,
+  getMentorBehaviorTitle,
+  storeMentorBehaviorPayload,
+} from '../lib/schedulerReview/mentorBehaviorNotification';
 import { getPatternNotificationTitle } from '../hooks/useWebSocket';
 
 export const NotificationToast = () => {
@@ -55,17 +62,27 @@ const Toast = ({ notification, onDismiss }) => {
   const isMissionReminder = notification.type === 'MISSION_REMINDER';
   const isNightlyReview = notification.type === 'NIGHTLY_REVIEW_SUMMARY';
   const isLearnedResponseReview = notification.type === 'LEARNED_RESPONSE_REVIEW';
+  const isMentorBehavior = notification.type === 'MENTOR_BEHAVIOR';
   const isPatternDetected = notification.type === 'PATTERN_DETECTED';
-  const isRoutine = !isMissionReminder && !isNightlyReview && !isLearnedResponseReview && !isPatternDetected && payload?.task_kind === 'routine';
+  const isRoutine = !isMissionReminder && !isNightlyReview && !isLearnedResponseReview && !isMentorBehavior && !isPatternDetected && payload?.task_kind === 'routine';
   const nightlyReviewHref = buildNightlyReviewHref(payload);
   const nightlyReviewProposalStatus = getNightlyReviewProposalStatus(payload);
   const nightlyReviewProposalStatusLabel = getNightlyReviewProposalStatusLabel(nightlyReviewProposalStatus);
+  const mentorBehaviorHref = buildMentorBehaviorHref(payload);
+  const mentorBehaviorProposals = getMentorBehaviorProposals(payload);
 
   const handleNightlyReviewOpen = async (event) => {
     event.preventDefault();
     storeNightlyReviewPayload(payload);
     await onDismiss();
     window.location.href = nightlyReviewHref;
+  };
+
+  const handleMentorBehaviorOpen = async (event) => {
+    event.preventDefault();
+    storeMentorBehaviorPayload(payload);
+    await onDismiss();
+    window.location.href = mentorBehaviorHref;
   };
 
   const handleLearnedResponseReviewOpen = async (event) => {
@@ -157,6 +174,8 @@ const Toast = ({ notification, onDismiss }) => {
               ? '🌙 Resumen nocturno'
               : isLearnedResponseReview
               ? '🌱 Conducta en práctica'
+              : isMentorBehavior
+              ? `🧭 ${getMentorBehaviorTitle(payload)}`
               : isPatternDetected
               ? getPatternNotificationTitle(payload)
               : isRoutine
@@ -196,6 +215,19 @@ const Toast = ({ notification, onDismiss }) => {
                 {nightlyReviewProposalStatus || (payload.proposed_missions || []).length === 0
                   ? 'Ver revisión →'
                   : 'Abrir propuesta →'}
+              </a>
+            </>
+          ) : isMentorBehavior ? (
+            <>
+              <p className="text-sm text-foreground mt-1 whitespace-pre-wrap line-clamp-4">
+                {getMentorBehaviorBody(payload)}
+              </p>
+              <a
+                href={mentorBehaviorHref}
+                onClick={handleMentorBehaviorOpen}
+                className="text-xs text-primary mt-1 hover:underline inline-block"
+              >
+                {mentorBehaviorProposals.length === 0 ? 'Ver en Carácter →' : 'Ver la misión propuesta →'}
               </a>
             </>
           ) : isLearnedResponseReview ? (
@@ -238,7 +270,7 @@ const Toast = ({ notification, onDismiss }) => {
           )}
 
           {/* Sprint 2.1: Show next task */}
-          {!isMissionReminder && !isNightlyReview && !isLearnedResponseReview && payload.context?.next_task && (
+          {!isMissionReminder && !isNightlyReview && !isLearnedResponseReview && !isMentorBehavior && payload.context?.next_task && (
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <span className="font-medium">Siguiente:</span>
               <span className="truncate">{payload.context.next_task.title}</span>

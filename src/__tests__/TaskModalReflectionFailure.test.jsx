@@ -498,6 +498,107 @@ describe('TaskModal reflection failure handling', () => {
     })));
   });
 
+  test('allows adding a reflection to a task reopened after completion', async () => {
+    const closedTask = {
+      ...task,
+      status: 'done',
+      is_complete: true,
+      progress_percent: 100,
+      date_start: '2026-06-26T08:00:00+00:00',
+      date_end: '2026-06-26T08:15:00+00:00',
+    };
+    reflectionsApi.create.mockResolvedValue({
+      data: {
+        id: 'late-task-reflection',
+        reflection_type: 'task',
+        task_id: 'task-1',
+        content: 'Al terminar vi que podía haber empezado antes.',
+      },
+    });
+
+    render(
+      <TaskModal
+        open
+        onClose={vi.fn()}
+        task={closedTask}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    );
+
+    fireEvent.change(await screen.findByTestId('task-completion-reflection-input'), {
+      target: { value: 'Al terminar vi que podía haber empezado antes.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '😐 Neutra' }));
+    fireEvent.click(screen.getByRole('button', { name: '🧠 Concentración' }));
+    fireEvent.click(screen.getByTestId('task-save-btn'));
+
+    await waitFor(() => expect(reflectionsApi.create).toHaveBeenCalledWith(expect.objectContaining({
+      content: 'Al terminar vi que podía haber empezado antes.',
+      reflection_type: 'task',
+      task_id: 'task-1',
+      emotion_snapshot: {
+        polarity: 'neutral',
+        emotion: 'Concentración',
+        intensity: 3,
+        note: null,
+      },
+    })));
+    expect(screen.queryByTestId('task-mark-done-btn')).not.toBeInTheDocument();
+  });
+
+  test('allows adding a reflection to a linked mission reopened after completion', async () => {
+    const closedLinkedTask = {
+      ...task,
+      linked_mission_id: 'mission-1',
+      status: 'done',
+      is_complete: true,
+      progress_percent: 100,
+      date_start: '2026-06-26T08:00:00+00:00',
+      date_end: '2026-06-26T08:15:00+00:00',
+    };
+    missionsApi.getAll.mockResolvedValue({
+      data: [{
+        id: 'mission-1',
+        title: 'Cerrar la semana',
+        description: 'Finalizar el informe',
+        status: 'done',
+      }],
+    });
+    reflectionsApi.create.mockResolvedValue({
+      data: {
+        id: 'late-mission-reflection',
+        reflection_type: 'mission',
+        mission_id: 'mission-1',
+        task_id: 'task-1',
+        content: 'El cierre me dio claridad.',
+      },
+    });
+
+    render(
+      <TaskModal
+        open
+        onClose={vi.fn()}
+        task={closedLinkedTask}
+        onSaved={vi.fn()}
+        onDeleted={vi.fn()}
+      />
+    );
+
+    fireEvent.change(await screen.findByTestId('task-completion-reflection-input'), {
+      target: { value: 'El cierre me dio claridad.' },
+    });
+    fireEvent.click(screen.getByTestId('task-save-btn'));
+
+    await waitFor(() => expect(reflectionsApi.create).toHaveBeenCalledWith(expect.objectContaining({
+      content: 'El cierre me dio claridad.',
+      reflection_type: 'mission',
+      task_id: 'task-1',
+      mission_id: 'mission-1',
+    })));
+    expect(screen.queryByTestId('task-complete-mission-btn')).not.toBeInTheDocument();
+  });
+
   test('shows the emotion badge for a stored item reflection', async () => {
     const calmTask = {
       ...task,

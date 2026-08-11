@@ -124,7 +124,7 @@ export default function DashboardPageRefactored() {
   const handleTaskModalSaved = async () => {
     setTaskModalOpen(false);
     setEditingTask(null);
-    await refreshStats();
+    await Promise.all([refreshStats(), refreshPositiveReflections()]);
     setListOpen(true);
   };
 

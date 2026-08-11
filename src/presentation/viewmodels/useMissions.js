@@ -2,6 +2,10 @@ import { useState, useCallback } from 'react';
 import { missionsApi, statsApi, tasksApi, reflectionsApi, notificationsApi } from '../../lib/api';
 import { toast } from 'sonner';
 
+// The three bands MissionEngine can put on a draft (`preferred_time_of_day`).
+const BAND_HOURS = { morning: 8, afternoon: 14, evening: 19 };
+const LATEST_SCHEDULED_HOUR = 22;
+
 const sortMissionsByCreatedAt = (items = []) => [...items].sort((a, b) => {
   const aTime = a?.created_at ? new Date(a.created_at).getTime() : 0;
   const bTime = b?.created_at ? new Date(b.created_at).getTime() : 0;
@@ -42,6 +46,10 @@ const buildMissionConfirmPayload = (mission) => ({
   base_template_id: mission.base_template_id || null,
   semantic_fingerprint: mission.semantic_fingerprint || null,
   related_to: mission.related_to || null,
+  // MENTOR_BEHAVIOR §8.3 — the notice this mission was proposed in. Arrives
+  // already stamped on the proposal by the scheduler; the client only forwards
+  // it so the confirmed item can show "propuesta por el Mentor".
+  mentor_behavior_id: mission.mentor_behavior_id || null,
   scheduled_datetime: mission.addToCalendar === false ? null : (mission.scheduled_datetime || mission.start_date || null),
   addToCalendar: mission.addToCalendar !== false,
   expires_at: mission.due_date || mission.expires_at || null,
@@ -68,6 +76,7 @@ export const useMissions = () => {
   const [nightlyReviewLoading, setNightlyReviewLoading] = useState(false);
   const [nightlyReviewResult, setNightlyReviewResult] = useState(null);
   const [activeNightlyReviewDate, setActiveNightlyReviewDate] = useState(null);
+  const [mentorBehaviorNotice, setMentorBehaviorNotice] = useState(null);
   const [missionStatsHistory, setMissionStatsHistory] = useState([]);
   const [missionStatsLoading, setMissionStatsLoading] = useState(false);
   
@@ -148,13 +157,25 @@ export const useMissions = () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const missionsWithDates = drafts.map((m, i) => ({
-        ...m,
-        addToCalendar: true,
-        scheduled_datetime: new Date(tomorrow.setHours(
-          m.mission_type === 'reflection' ? 8 + i : 14 + i, 0, 0, 0
-        )).toISOString()
-      }));
+      // MissionEngine states which part of the day the action belongs to,
+      // because only the LLM that wrote it knows «Noche de recuperación» is an
+      // evening thing. The positional hour below is the fallback for missions
+      // that fit any hour -- using it on one that named its moment schedules
+      // the mission against its own text.
+      const usedHours = new Set();
+      const missionsWithDates = drafts.map((m, i) => {
+        const band = BAND_HOURS[m.preferred_time_of_day];
+        let hour = band ?? (m.mission_type === 'reflection' ? 8 + i : 14 + i);
+        // Two missions sharing a band would otherwise stack on the same slot.
+        while (usedHours.has(hour) && hour < LATEST_SCHEDULED_HOUR) hour += 1;
+        usedHours.add(hour);
+
+        return {
+          ...m,
+          addToCalendar: true,
+          scheduled_datetime: new Date(tomorrow.setHours(hour, 0, 0, 0)).toISOString()
+        };
+      });
 
       setProposedMissions(missionsWithDates);
       setShowConfirmModal(true);
@@ -184,6 +205,42 @@ export const useMissions = () => {
     setProposedMissions(missionsWithDates);
     setShowConfirmModal(missionsWithDates.length > 0 && !result.proposal_status);
     return missionsWithDates;
+  }, []);
+
+  /**
+   * MENTOR_BEHAVIOR §10 — hydrates the Mentor notice into the same proposal
+   * state NightlyReview uses, so the mission is confirmed with the same modal.
+   *
+   * It deliberately clears the NightlyReview state: this notice has no
+   * `proposal_status` of its own (§8.3 measures it through `mentor_behavior_id`
+   * on the confirmed item), and leaving `activeNightlyReviewDate` set would make
+   * confirming a Mentor mission stamp a status onto that day's nightly summary.
+   */
+  const hydrateMentorBehaviorNotice = useCallback((payload) => {
+    if (!payload) return [];
+    setNightlyReviewResult(null);
+    setActiveNightlyReviewDate(null);
+    setMentorBehaviorNotice({
+      pattern_date: payload.pattern_date || null,
+      title: payload.title || 'Aviso del Mentor',
+      body: payload.body || payload.message || '',
+      focus_type: payload.focus_type || null,
+      focus_key: payload.focus_key || null,
+    });
+
+    const missionsWithDates = (payload.proposed_missions || []).map((m) => ({
+      ...m,
+      addToCalendar: true,
+      scheduled_datetime: m.suggested_datetime || null,
+    }));
+
+    setProposedMissions(missionsWithDates);
+    setShowConfirmModal(missionsWithDates.length > 0);
+    return missionsWithDates;
+  }, []);
+
+  const dismissMentorBehaviorNotice = useCallback(() => {
+    setMentorBehaviorNotice(null);
   }, []);
 
   const markActiveNightlyReviewProposalStatus = useCallback(async (status) => {
@@ -483,6 +540,7 @@ export const useMissions = () => {
     generatingMissions,
     nightlyReviewLoading,
     nightlyReviewResult,
+    mentorBehaviorNotice,
     missionStatsHistory,
     missionStatsLoading,
     showConfirmModal,
@@ -499,6 +557,8 @@ export const useMissions = () => {
     generateMissions,
     performNightlyReview,
     hydrateNightlyReviewResult,
+    hydrateMentorBehaviorNotice,
+    dismissMentorBehaviorNotice,
     confirmMissionAt,
     confirmAllProposedMissions,
     rejectMissionAt,

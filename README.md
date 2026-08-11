@@ -90,6 +90,8 @@ El selector compartido `EmotionPicker` se muestra en el Diario y en los flujos d
 
 Las reflexiones vinculadas conservan el perfil activo en el momento de escritura, que determina su análisis y estadísticas. El área Diario filtra por ese perfil de forma explícita. Al editar una tarea o misión se muestran todas sus reflexiones vinculadas sin filtrar por perfil; en rutinas se mantiene además el filtro por la fecha de ocurrencia seleccionada.
 
+El Dashboard añade `PositiveReflectionsPanel` justo antes de Patrones detectados. Consume `GET /api/v1/stats/positive-reflections` con ventanas independientes de 7, 30 o 90 días y agrupa las reflexiones marcadas positivas por emoción. Es una superficie read-only distinta de Patrones emocionales: muestra el texto original, la anotación del Mentor y el perfil desde el que se escribió, sin acknowledgments ni análisis adicional.
+
 ## Check-in corporal (body check-ins)
 
 La primera pestaña de Caracter incluye el apartado "Check-in corporal", una

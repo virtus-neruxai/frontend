@@ -162,7 +162,7 @@ function PatternColumn({ testId, title, description, icon: Icon, tone, count, em
   );
 }
 
-function NeutralSection({ groups, defaultOpen, divided }) {
+function NeutralSection({ groups, defaultOpen, divided, onEdit }) {
   const [open, setOpen] = useState(defaultOpen);
   if (!groups.length) return null;
 
@@ -196,7 +196,7 @@ function NeutralSection({ groups, defaultOpen, divided }) {
         </p>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {groups.map((group) => (
-            <PatternEvidenceGroup key={group.key} group={group} />
+            <PatternEvidenceGroup key={group.key} group={group} onEdit={onEdit} />
           ))}
         </div>
       </CollapsibleContent>
@@ -241,12 +241,12 @@ function EmotionalPatternChip({ item, onEdit, selected, onSelect }) {
   );
 }
 
-function TimelineEvent({ event }) {
+function TimelineEvent({ event, positive = false }) {
   const source = SOURCE_LABELS[event.source_type] || { label: event.source_type, icon: BookOpen };
   const SourceIcon = source.icon;
   return (
-    <div className="flex gap-3 py-3 border-b last:border-0">
-      <div className="mt-0.5 p-1.5 rounded-md bg-muted text-muted-foreground shrink-0">
+    <div className={`flex gap-3 py-3 ${positive ? 'my-2 rounded-lg border border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/10 px-3' : 'border-b last:border-0'}`}>
+      <div className={`mt-0.5 p-1.5 rounded-md shrink-0 ${positive ? 'bg-[hsl(var(--success))]/15 text-[hsl(var(--success))]' : 'bg-muted text-muted-foreground'}`}>
         <SourceIcon size={14} />
       </div>
       <div className="flex-1 min-w-0">
@@ -257,7 +257,7 @@ function TimelineEvent({ event }) {
               <span className="text-muted-foreground font-normal"> · {event.title}</span>
             )}
           </span>
-          <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+          <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${positive ? 'bg-[hsl(var(--success))]/15 text-foreground' : 'text-muted-foreground bg-muted'}`}>
             {event.intensity}/5
           </span>
         </div>
@@ -320,10 +320,15 @@ function mergePatternMeta(existing, incoming) {
 }
 
 function getEventPatternLabel(event, patternKey) {
-  if (event.pattern_labels && typeof event.pattern_labels === 'object') {
-    return event.pattern_labels[patternKey];
+  const labelled = event.pattern_labels && typeof event.pattern_labels === 'object'
+    ? event.pattern_labels[patternKey]
+    : null;
+  const label = labelled || event.pattern_label || event.emotion_label || patternKey;
+  const domain = String(event.domain || '').trim();
+  if (!domain || label.toLocaleLowerCase('es-ES').includes(domain.toLocaleLowerCase('es-ES'))) {
+    return label;
   }
-  return event.pattern_label || event.emotion_label || patternKey;
+  return `${label} en ${domain}`;
 }
 
 function isPrimaryPatternKey(patternKey) {
@@ -448,17 +453,18 @@ function buildUniquePatternList(byPattern = []) {
   ));
 }
 
-function PatternEvidenceGroup({ group, defaultOpen = false }) {
+function PatternEvidenceGroup({ group, defaultOpen = false, onEdit }) {
   const [open, setOpen] = useState(defaultOpen);
   const isOpen = defaultOpen || open;
   const item = group.meta;
   const eventCount = group.events.length;
+  const isPositive = item.polarity === 'positive';
 
   return (
     <Collapsible
       open={isOpen}
       onOpenChange={setOpen}
-      className="rounded-lg border bg-card overflow-hidden"
+      className={`rounded-lg border overflow-hidden ${isPositive ? 'border-[hsl(var(--success))]/50 bg-[hsl(var(--success-soft))]' : 'bg-card'}`}
       data-testid={`emotional-pattern-group-${item.pattern_key}`}
     >
       <div className="flex items-start gap-3 p-3">
@@ -472,7 +478,7 @@ function PatternEvidenceGroup({ group, defaultOpen = false }) {
                   icon: the label wraps cleanly and a screen reader no longer
                   announces the emoji before an already-labelled emotion. */}
               <span
-                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-base leading-none"
+                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base leading-none ${isPositive ? 'bg-[hsl(var(--success-soft))] text-[hsl(var(--success))]' : 'bg-muted'}`}
                 aria-hidden="true"
               >
                 {item.emoji || '·'}
@@ -504,11 +510,27 @@ function PatternEvidenceGroup({ group, defaultOpen = false }) {
             <ChevronDown size={16} className={`mt-0.5 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </CollapsibleTrigger>
+        {/* A sibling of the trigger, not nested inside it — a button inside a
+            button is invalid HTML and would fire both handlers on one tap.
+            Always visible: the chip's pencil is easy to miss entirely. */}
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(item)}
+            className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Pencil size={12} /> Editar
+          </button>
+        )}
       </div>
       <CollapsibleContent>
-        <div className="border-t px-3">
+        <div className={`border-t px-3 ${isPositive ? 'border-[hsl(var(--success))]/30 bg-[hsl(var(--success-soft))]' : ''}`}>
           {group.events.map((event) => (
-            <TimelineEvent key={`${group.key}-${event.source_type}-${event.id}-${event.created_at}`} event={event} />
+            <TimelineEvent
+              key={`${group.key}-${event.source_type}-${event.id}-${event.created_at}`}
+              event={event}
+              positive={isPositive}
+            />
           ))}
         </div>
       </CollapsibleContent>
@@ -709,7 +731,7 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
             groupedTimeline.length > 0 ? (
               <div className="space-y-3">
                 {groupedTimeline.map((group) => (
-                  <PatternEvidenceGroup key={group.key} group={group} defaultOpen />
+                  <PatternEvidenceGroup key={group.key} group={group} defaultOpen onEdit={openDialog} />
                 ))}
               </div>
             ) : (
@@ -731,7 +753,7 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                     emptyHint="Aún no hay emociones positivas recurrentes."
                   >
                     {buckets.positive.map((group) => (
-                      <PatternEvidenceGroup key={group.key} group={group} />
+                      <PatternEvidenceGroup key={group.key} group={group} onEdit={openDialog} />
                     ))}
                   </PatternColumn>
                   <PatternColumn
@@ -744,7 +766,7 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                     emptyHint="Aún no hay emociones difíciles recurrentes."
                   >
                     {buckets.negative.map((group) => (
-                      <PatternEvidenceGroup key={group.key} group={group} />
+                      <PatternEvidenceGroup key={group.key} group={group} onEdit={openDialog} />
                     ))}
                   </PatternColumn>
                 </div>
@@ -755,6 +777,7 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                 groups={buckets.neutral}
                 defaultOpen={!hasPolarised}
                 divided={hasPolarised}
+                onEdit={openDialog}
               />
               {groupedTimeline.length === 0 && timeline.length > 0 && (
                 <p className="text-sm text-muted-foreground py-4 text-center">

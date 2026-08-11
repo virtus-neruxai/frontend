@@ -643,8 +643,15 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
   const selectedRoutineReflections = isRoutine ? routineReflectionsForDate(selectedCompletionKey) : [];
   const taskWasAlreadyComplete = !!(task?.is_complete || task?.status === 'done');
   const canMarkRoutineToday = isRoutine && isEditing && !occurrenceIsFuture;
-  const canAddTaskCompletionReflection = !isRoutine && isEditing && !taskWasAlreadyComplete && !linkedMission;
-  const canMarkTaskDone = canAddTaskCompletionReflection && !formData.is_complete;
+  // A reflection belongs to the item, not to its open/closed state.  It must
+  // remain available when reopening a completed task or a completed linked
+  // mission from the calendar.
+  const canAddTaskCompletionReflection = !isRoutine && isEditing;
+  const canMarkTaskDone = !isRoutine
+    && isEditing
+    && !taskWasAlreadyComplete
+    && !linkedMission
+    && !formData.is_complete;
   const canCompleteLinkedMission = linkedMissionIsActive;
   const showCompletionReflection = isEditing && (
     isRoutine
@@ -684,21 +691,34 @@ export default function TaskModal({ open, onClose, task, initialDate, occurrence
             >
               {isEditing ? (isRoutine ? 'Editar rutina' : 'Editar Tarea') : isRoutine ? 'Nueva rutina' : 'Nueva Tarea'}
             </DialogTitle>
-            {(() => {
-              const profile = task?.prompt_profile || linkedMission?.prompt_profile;
-              if (!profile || !PROFILE_THEMES[profile]) return null;
-              return (
+            <div className="flex items-center gap-2 shrink-0">
+              {/* MENTOR_BEHAVIOR §8.3 — where the mission came from. The mark is
+                  read off the mission because the linked calendar task does not
+                  carry the field. */}
+              {(linkedMission?.mentor_behavior_id || task?.mentor_behavior_id) && (
                 <span
-                  className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0"
-                  style={{
-                    color: PROFILE_THEMES[profile].primary,
-                    backgroundColor: PROFILE_THEMES[profile].soft,
-                  }}
+                  className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary"
+                  data-testid="task-modal-mentor-behavior-mark"
                 >
-                  {getProfileEmoji(profile)} {getProfileName(profile)}
+                  🧭 Propuesta por el Mentor
                 </span>
-              );
-            })()}
+              )}
+              {(() => {
+                const profile = task?.prompt_profile || linkedMission?.prompt_profile;
+                if (!profile || !PROFILE_THEMES[profile]) return null;
+                return (
+                  <span
+                    className="text-xs font-medium px-2 py-0.5 rounded-full"
+                    style={{
+                      color: PROFILE_THEMES[profile].primary,
+                      backgroundColor: PROFILE_THEMES[profile].soft,
+                    }}
+                  >
+                    {getProfileEmoji(profile)} {getProfileName(profile)}
+                  </span>
+                );
+              })()}
+            </div>
           </div>
         </DialogHeader>
 
