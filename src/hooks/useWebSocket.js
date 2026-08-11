@@ -7,6 +7,24 @@ import {
   getMentorBehaviorTitle,
   storeMentorBehaviorPayload,
 } from '../lib/schedulerReview/mentorBehaviorNotification';
+import {
+  buildNotificationFromHistoryItem,
+  buildNotificationFromWsData,
+  getPatternNotificationTitle,
+  isSupportedNotificationType,
+} from '../lib/notificationMapping';
+
+// Re-exported so existing consumers (components, tests) keep importing these
+// from '../hooks/useWebSocket' unchanged. NotificationContext.js is the one
+// exception: it must import from '../lib/notificationMapping' directly,
+// since this file imports useNotificationContext from that same context —
+// importing back from here would form a cycle.
+export {
+  buildNotificationFromHistoryItem,
+  buildNotificationFromWsData,
+  getPatternNotificationTitle,
+  isSupportedNotificationType,
+};
 
 export const useWebSocket = ({
   url,
@@ -301,131 +319,6 @@ function showBrowserNotification(notification, clientSettings = { enabled: true 
       else window.location.href = '/calendar';
     };
   }
-}
-
-export function getPatternNotificationTitle(payload) {
-  if (payload?.kind === 'value_conflict') {
-    return `⚠️ Posible conflicto con tus valores (tu valor frágil: ${payload.pattern || ''})`;
-  }
-  return `⚠️ Patrón detectado: ${payload?.pattern || ''}`;
-}
-
-export function isSupportedNotificationType(type) {
-  return (
-    type === 'TASK_DUE_SOON' ||
-    type === 'MISSION_REMINDER' ||
-    type === 'NIGHTLY_REVIEW_SUMMARY' ||
-    type === 'LEARNED_RESPONSE_REVIEW' ||
-    type === 'MENTOR_BEHAVIOR' ||
-    type === 'PATTERN_DETECTED'
-  );
-}
-
-export function buildNotificationFromWsData(data) {
-  const isMissionReminder = data.type === 'MISSION_REMINDER';
-  const isNightlyReview = data.type === 'NIGHTLY_REVIEW_SUMMARY';
-  const isLearnedResponseReview = data.type === 'LEARNED_RESPONSE_REVIEW';
-  const isMentorBehavior = data.type === 'MENTOR_BEHAVIOR';
-  const isPatternDetected = data.type === 'PATTERN_DETECTED';
-  const baseId = isMissionReminder
-    ? data.mission_id || data.notification_id
-    : isNightlyReview
-    ? data.review_date || data.notification_id
-    : isLearnedResponseReview
-    ? data.notification_id
-    : isMentorBehavior
-    ? data.pattern_date || data.notification_id
-    : isPatternDetected
-    ? data.reflection_id || data.notification_id
-    : data.task_id;
-
-  let payload;
-  if (isMissionReminder) {
-    payload = {
-      mission_id: data.mission_id,
-      mission_title: data.mission_title,
-      expires_at: data.expires_at,
-      minutes_left: data.minutes_left,
-      message: data.message || `Recuerda tu misión: ${data.mission_title || ''}`,
-      priority: data.priority || 'medium',
-      context: data.context || {},
-    };
-  } else if (isNightlyReview) {
-    payload = {
-      review_date: data.review_date,
-      summary: data.summary || data.message,
-      message: data.message || data.summary,
-      tasks_completed: data.tasks_completed || 0,
-      tasks_failed: data.tasks_failed || 0,
-      proposed_missions: data.proposed_missions || [],
-      proposal_status: data.proposal_status || data.context?.proposal_status,
-      priority: data.priority || 'low',
-      context: data.context || {},
-    };
-  } else if (isLearnedResponseReview) {
-    payload = {
-      review_date: data.review_date || data.context?.review_date,
-      learned_response_reviews:
-        data.learned_response_reviews || data.context?.learned_response_reviews || [],
-      priority: data.priority || 'low',
-      context: data.context || {},
-    };
-  } else if (isMentorBehavior) {
-    // Flat fields: the event carries no nested `context` (§9) because the JSONB
-    // adapter cannot resolve dotted keys.
-    payload = {
-      pattern_date: data.pattern_date,
-      title: data.title,
-      body: data.body || data.message,
-      message: data.body || data.message,
-      focus_type: data.focus_type,
-      focus_key: data.focus_key,
-      related_item_id: data.related_item_id,
-      has_today_context: Boolean(data.has_today_context),
-      proposed_missions: data.proposed_missions || [],
-      priority: data.priority || 'low',
-      context: data.context || {},
-    };
-  } else if (isPatternDetected) {
-    payload = {
-      pattern: data.pattern,
-      friction: data.friction,
-      detected_text: data.detected_text,
-      reflection_id: data.reflection_id,
-      kind: data.kind || 'pressure_signal',
-      message: data.message || `Patrón detectado: ${data.pattern || ''}`,
-      priority: data.priority || 'medium',
-      context: data.context || {},
-    };
-  } else {
-    payload = {
-      task_id: data.task_id,
-      task_title: data.task_title || 'Sin título',
-      task_domain: data.task_domain,
-      task_progress: data.task_progress,
-      date_start: data.date_start,
-      minutes_left: data.minutes_left,
-      message:
-        data.summary ||
-        data.message ||
-        data.context?.summary ||
-        data.context?.support_message ||
-        null,
-      priority: data.priority || 'medium',
-      context: data.context || {},
-    };
-  }
-
-  return {
-    id: `${baseId || 'notification'}-${Date.now()}`,
-    history_id: data.notification_id,
-    type: data.type,
-    user_id: data.user_id,
-    payload,
-    timestamp: new Date().toISOString(),
-    server_timestamp: data.server_timestamp,
-    read: false,
-  };
 }
 
 const NOTIFICATION_SETTINGS_KEY = 'notification_settings';

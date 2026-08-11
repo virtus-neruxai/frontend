@@ -162,7 +162,7 @@ function PatternColumn({ testId, title, description, icon: Icon, tone, count, em
   );
 }
 
-function NeutralSection({ groups, defaultOpen, divided }) {
+function NeutralSection({ groups, defaultOpen, divided, onEdit }) {
   const [open, setOpen] = useState(defaultOpen);
   if (!groups.length) return null;
 
@@ -196,7 +196,7 @@ function NeutralSection({ groups, defaultOpen, divided }) {
         </p>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {groups.map((group) => (
-            <PatternEvidenceGroup key={group.key} group={group} />
+            <PatternEvidenceGroup key={group.key} group={group} onEdit={onEdit} />
           ))}
         </div>
       </CollapsibleContent>
@@ -448,7 +448,7 @@ function buildUniquePatternList(byPattern = []) {
   ));
 }
 
-function PatternEvidenceGroup({ group, defaultOpen = false }) {
+function PatternEvidenceGroup({ group, defaultOpen = false, onEdit }) {
   const [open, setOpen] = useState(defaultOpen);
   const isOpen = defaultOpen || open;
   const item = group.meta;
@@ -505,6 +505,18 @@ function PatternEvidenceGroup({ group, defaultOpen = false }) {
             <ChevronDown size={16} className={`mt-0.5 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </CollapsibleTrigger>
+        {/* A sibling of the trigger, not nested inside it — a button inside a
+            button is invalid HTML and would fire both handlers on one tap.
+            Always visible: the chip's pencil is easy to miss entirely. */}
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(item)}
+            className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Pencil size={12} /> Editar
+          </button>
+        )}
       </div>
       <CollapsibleContent>
         <div className={`border-t px-3 ${isPositive ? 'border-[hsl(var(--success))]/30 bg-[hsl(var(--success-soft))]' : ''}`}>
@@ -714,7 +726,7 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
             groupedTimeline.length > 0 ? (
               <div className="space-y-3">
                 {groupedTimeline.map((group) => (
-                  <PatternEvidenceGroup key={group.key} group={group} defaultOpen />
+                  <PatternEvidenceGroup key={group.key} group={group} defaultOpen onEdit={openDialog} />
                 ))}
               </div>
             ) : (
@@ -736,7 +748,7 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                     emptyHint="Aún no hay emociones positivas recurrentes."
                   >
                     {buckets.positive.map((group) => (
-                      <PatternEvidenceGroup key={group.key} group={group} />
+                      <PatternEvidenceGroup key={group.key} group={group} onEdit={openDialog} />
                     ))}
                   </PatternColumn>
                   <PatternColumn
@@ -749,7 +761,7 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                     emptyHint="Aún no hay emociones difíciles recurrentes."
                   >
                     {buckets.negative.map((group) => (
-                      <PatternEvidenceGroup key={group.key} group={group} />
+                      <PatternEvidenceGroup key={group.key} group={group} onEdit={openDialog} />
                     ))}
                   </PatternColumn>
                 </div>
@@ -760,6 +772,7 @@ export function EmotionalPatternsPanel({ data, loading, range = '7', onRangeChan
                 groups={buckets.neutral}
                 defaultOpen={!hasPolarised}
                 divided={hasPolarised}
+                onEdit={openDialog}
               />
               {groupedTimeline.length === 0 && timeline.length > 0 && (
                 <p className="text-sm text-muted-foreground py-4 text-center">

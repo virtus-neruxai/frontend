@@ -459,4 +459,42 @@ describe('EmotionalPatternsPanel', () => {
       expect(screen.getByTestId('emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo')).toBeInTheDocument();
     });
   });
+
+  describe('editing from the evidence card', () => {
+    // The chip's pencil is a 10px icon at 40% opacity — easy to miss entirely.
+    // Every card also carries a plainly labelled "Editar" button of its own,
+    // independent of the chip, so the dialog is reachable without it.
+    test('the card itself opens the acknowledge dialog, without touching the chip', async () => {
+      const onAcknowledge = vi.fn().mockResolvedValue(undefined);
+      render(<EmotionalPatternsPanel data={baseData()} loading={false} onAcknowledge={onAcknowledge} />);
+
+      const card = screen.getByTestId(
+        'emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo'
+      );
+      fireEvent.click(within(card).getByRole('button', { name: /editar/i }));
+      fireEvent.click(screen.getByLabelText('¿Reconoces este patrón en ti?'));
+      fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+
+      await vi.waitFor(() => {
+        expect(onAcknowledge).toHaveBeenCalledWith(
+          'recurring_emotion_in_context:frustracion:trabajo',
+          { confirmed: true, working_on_it: false, progress: 1, notes: null }
+        );
+      });
+    });
+
+    test('the card button does not also toggle the collapsible open/closed', () => {
+      render(<EmotionalPatternsPanel data={baseData()} loading={false} onAcknowledge={vi.fn()} />);
+
+      const card = screen.getByTestId(
+        'emotional-pattern-group-recurring_emotion_in_context:frustracion:trabajo'
+      );
+      expect(within(card).queryByText('Me costó empezar de nuevo.')).not.toBeInTheDocument();
+
+      fireEvent.click(within(card).getByRole('button', { name: /editar/i }));
+
+      // Still collapsed: a sibling button, not a nested one firing both handlers.
+      expect(within(card).queryByText('Me costó empezar de nuevo.')).not.toBeInTheDocument();
+    });
+  });
 });

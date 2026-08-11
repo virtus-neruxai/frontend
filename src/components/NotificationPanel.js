@@ -17,7 +17,7 @@ import {
   getMentorBehaviorTitle,
   storeMentorBehaviorPayload,
 } from '../lib/schedulerReview/mentorBehaviorNotification';
-import { getPatternNotificationTitle } from '../hooks/useWebSocket';
+import { buildNotificationFromHistoryItem, getPatternNotificationTitle } from '../hooks/useWebSocket';
 
 
 function getTaskNotificationBody(payload) {
@@ -285,43 +285,7 @@ export const NotificationPanel = ({ onClose }) => {
               historyItems.map((item) => (
                 <NotificationItem
                   key={item.id}
-                  notification={{
-                    id: item.id,
-                    type: item.type,
-                    payload: {
-                      task_title: item.task_title,
-                      task_domain: item.task_domain,
-                      task_progress: item.task_progress,
-                      minutes_left: item.minutes_left,
-                      priority: item.priority,
-                      suggestion_type: item.context?.suggestion_type,
-                      proposal_family: item.context?.proposal_family,
-                      message:
-                        item.context?.summary ||
-                        item.task_title ||
-                        item.context?.support_message,
-                      occurred_at: item.context?.occurred_at,
-                      review_date: item.context?.review_date,
-                      summary: item.context?.summary,
-                      tasks_completed: item.context?.tasks_completed,
-                      tasks_failed: item.context?.tasks_failed,
-                      proposed_missions: item.context?.proposed_missions || [],
-                      proposal_status: item.context?.proposal_status,
-                      learned_response_reviews: item.context?.learned_response_reviews || [],
-                      // MENTOR_BEHAVIOR travels flat on the event but nested
-                      // under `context` in the history, like NightlyReview (§9).
-                      pattern_date: item.context?.pattern_date,
-                      title: item.context?.title,
-                      body: item.context?.body,
-                      focus_type: item.context?.focus_type,
-                      focus_key: item.context?.focus_key,
-                      related_item_id: item.context?.related_item_id,
-                      has_today_context: item.context?.has_today_context,
-                      context: item.context || {},
-                    },
-                    read: item.status === 'read',
-                    timestamp: item.created_at,
-                  }}
+                  notification={buildNotificationFromHistoryItem(item)}
                   onMarkAsRead={() => markHistoryAsRead(item.id)}
                   onRemove={undefined}
                 />

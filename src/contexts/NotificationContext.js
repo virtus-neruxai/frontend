@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { notificationsApi } from '../lib/api';
+import { buildNotificationFromHistoryItem, isSupportedNotificationType } from '../lib/notificationMapping';
+
+// How many recent unread items to catch up on at load. Matches the page size
+// the history tab already uses — anything older than that is still one click
+// away in "Historial", it just does not need to interrupt "En vivo".
+const UNREAD_CATCHUP_LIMIT = 50;
 
 const NotificationContext = createContext(undefined);
 
@@ -146,6 +153,35 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(dismissedStorageKey, JSON.stringify(dismissedKeys));
   }, [dismissedKeys, dismissedStorageKey]);
+
+  // Catches up "En vivo" with whatever arrived while nobody had a tab open —
+  // a WebSocket has no memory, so a cron notification fired with the browser
+  // closed would otherwise exist only in "Historial" and never move the bell.
+  // Runs once per login (and again if a dismiss changes what should be
+  // filtered out), not on every render: `addNotification` only changes
+  // identity when `dismissedKeys` does.
+  useEffect(() => {
+    if (!userId) return undefined;
+    let cancelled = false;
+
+    notificationsApi
+      .getHistory({ status: 'unread', limit: UNREAD_CATCHUP_LIMIT })
+      .then((response) => {
+        if (cancelled) return;
+        const items = response?.data?.items || [];
+        items
+          .filter((item) => isSupportedNotificationType(item.type))
+          .forEach((item) => addNotification(buildNotificationFromHistoryItem(item)));
+      })
+      .catch((error) => {
+        console.error('Error catching up on unread notifications:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, addNotification]);
 
   return (
     <NotificationContext.Provider
