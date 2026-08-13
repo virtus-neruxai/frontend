@@ -315,7 +315,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
                       )}
                       {msg.mode && (
                         <div className="mt-1 text-xs opacity-75">
-                          Modo: {msg.mode}
+                          Modo: {msg.mode === 'TASK' && msg.taskKind === 'routine' ? 'RUTINA' : msg.mode}
                         </div>
                       )}
                     </div>

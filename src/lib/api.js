@@ -303,6 +303,7 @@ export const conversationsApi = {
           friction: item.observer_output?.primary_friction,
           patternEligible: item.observer_output?.pattern_eligible === true,
           mode: item.selected_mode,
+          taskKind: item.ui_action?.data?.task_kind,
         },
       ].filter(Boolean));
 
