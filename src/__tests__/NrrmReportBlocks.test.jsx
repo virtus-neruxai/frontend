@@ -216,6 +216,22 @@ describe('Transformative companion card', () => {
     expect(screen.queryByText('Adoptar esta respuesta')).toBeNull();
   });
 
+  it('tells the user what to do about reduced_sparse instead of just explaining it', () => {
+    // Regression: a first-time user with no positive_resources yet had no
+    // idea why the companion stayed in "acompañar" mode or how to change
+    // that — the note only explained the state, never the next step.
+    render(
+      <TransformativeCompanionCard
+        companion={{ ...COMPANION, prudence_level: 'reduced_sparse' }}
+      />
+    );
+
+    expect(
+      screen.getByText(/Cuando reflexiones sobre algo que te ayudó, funcionó o rompió un patrón/)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Dashboard, en Patrones emocionales/)).toBeInTheDocument();
+  });
+
   it('does not turn a companion activity into an unstructured task', () => {
     const onConvertToTask = vi.fn();
     render(

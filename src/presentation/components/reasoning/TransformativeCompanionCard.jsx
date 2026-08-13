@@ -40,8 +40,16 @@ const STAGE_LABELS = {
 const CORRECTABLE_STAGES = new Set(['old_response', 'past_present_distinction']);
 
 const PRUDENCE_NOTE = {
+  // Unlike reduced_sensitive/containment (safety-gated for a different
+  // reason each), this one is purely "not enough data yet" — the only
+  // prudence level where telling the user what to do next is both honest
+  // and actionable, so it gets a concrete next step instead of just an
+  // explanation.
   reduced_sparse:
-    'Todavía no hay suficientes registros tuyos para anclar una reescritura, así que este mensaje se queda en acompañar.',
+    'Todavía no hay suficientes registros tuyos para anclar una reescritura, así que este ' +
+    'mensaje se queda en acompañar. Cuando reflexiones sobre algo que te ayudó, funcionó o ' +
+    'rompió un patrón —aunque sea pequeño— queda guardado como evidencia para los próximos ' +
+    'mensajes. Puedes verla acumularse en tu Dashboard, en Patrones emocionales.',
   reduced_sensitive:
     'He detectado señales sensibles en el periodo, así que este mensaje acompaña y contextualiza, sin reinterpretar nada.',
   containment:
