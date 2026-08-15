@@ -148,6 +148,16 @@ export const agentApi = {
       project_plan: projectPlan,
     }),
   confirmDraft: (data) => agentApiInstance.post('/agent/draft/confirm', data),
+  // "Mi centro" → Crear tarea/misión/rutina (euler-application.md §6.5). Same
+  // plain-JWT handoff the diary reflection already uses — the frontend never
+  // sends more than the final reflection's text, its provenance and the
+  // action the user explicitly picked.
+  reviewHandoff: (message, actionType) =>
+    agentApiInstance.post('/agent/review/handoff', {
+      message,
+      source: 'center',
+      action_type: actionType,
+    }),
 };
 
 // Projects API — planificaciones (item_type="project") con sus tasks/routines hijas.
@@ -227,6 +237,23 @@ export const reasoningApi = {
     reasoningApiInstance.post(`/reasoning/reports/${reportId}/feedback/resource`, {
       resource_id: resourceId,
       resource_feedback: resourceFeedback,
+    }),
+};
+
+// "Mi centro" API (euler-application.md §12) — 404 while REASONING_CENTER_ENABLED
+// is off, same "hide the surface" convention as the NRRM endpoints above.
+export const centerApi = {
+  getCenter: () => reasoningApiInstance.get('/reasoning/center'),
+  generateCenter: () => reasoningApiInstance.post('/reasoning/center/generate'),
+  getCenterJob: (jobId) => reasoningApiInstance.get(`/reasoning/center/jobs/${jobId}`),
+  patchPanel: (key, { userAnnotation, expectedRevision }) =>
+    reasoningApiInstance.patch(`/reasoning/center/panels/${key}`, {
+      user_annotation: userAnnotation,
+      expected_revision: expectedRevision,
+    }),
+  regeneratePanel: (key, expectedRevision) =>
+    reasoningApiInstance.post(`/reasoning/center/panels/${key}/regenerate`, {
+      expected_revision: expectedRevision,
     }),
 };
 
