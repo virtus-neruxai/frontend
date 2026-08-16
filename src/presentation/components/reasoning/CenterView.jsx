@@ -3,6 +3,17 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../../components/ui/alert-dialog';
 import TaskDraftModal from '../../../components/TaskDraftModal';
 import MissionDraftModal from '../../../components/MissionDraftModal';
 import CenterPanelCard from './CenterPanelCard';
@@ -31,7 +42,7 @@ const PANEL_META = [
   { key: 'balance', label: 'Equilibrio', icon: Scale },
 ];
 
-// §6 — "Mi centro" content, embedded as a tab of the Tareas page (moved off
+// §6 — "Mi centro" content, embedded as a tab of the Mentor page (moved off
 // the top nav to avoid crowding it at intermediate widths). No <Layout> of
 // its own: the host page owns the shell.
 export default function CenterView() {
@@ -73,16 +84,17 @@ export default function CenterView() {
   }, [center, openDraftModal]);
 
   // The server, not local storage, is the source of truth for an active job —
-  // leaving the tab and coming back must recover it (§6.8).
+  // leaving the tab and coming back must recover it (§6.8). A "full" job can
+  // be either the first generation or a full regeneration (they can never
+  // run concurrently), so this resumes regardless of whether a center
+  // already exists.
   const loadCenter = useCallback(async () => {
     try {
       const { data } = await centerApi.getCenter();
       setCenter(data.center || null);
       setActiveJobs(data.active_jobs || []);
-      if (!data.center) {
-        const fullJob = (data.active_jobs || []).find((job) => job.target === 'full');
-        if (fullJob) setJobId(fullJob.job_id);
-      }
+      const fullJob = (data.active_jobs || []).find((job) => job.target === 'full');
+      if (fullJob) setJobId(fullJob.job_id);
     } catch {
       toast.error('No se pudo cargar tu centro.');
     } finally {
@@ -115,6 +127,25 @@ export default function CenterView() {
         loadCenter();
       } else {
         toast.error('No se pudo crear tu centro. Vuelve a intentarlo.');
+      }
+    } finally {
+      setStartingGeneration(false);
+    }
+  }, [loadCenter]);
+
+  // Reuses the same jobId/generating state as `generate` — a "full" job is
+  // mutually exclusive with itself server-side, so there is never a case
+  // where both would be in flight at once.
+  const regenerateCenter = useCallback(async () => {
+    setStartingGeneration(true);
+    try {
+      const { data } = await centerApi.regenerateCenter();
+      setJobId(data.job_id);
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        loadCenter();
+      } else {
+        toast.error('No se pudo regenerar tu centro. Vuelve a intentarlo.');
       }
     } finally {
       setStartingGeneration(false);
@@ -205,14 +236,43 @@ export default function CenterView() {
 
       {!loadingCenter && !generating && center && (
         <>
-          <p className="text-xs text-muted-foreground">
-            Última actualización: {(center.updated_at || '').slice(0, 16).replace('T', ' ')}.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Última actualización: {(center.updated_at || '').slice(0, 16).replace('T', ' ')}.
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Regenerar centro completo
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Regenerar tu centro completo?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Se generarán de nuevo las seis lecturas, la Brújula y la reflexión final a partir
+                    de tus registros actuales. Las notas que hayas guardado en los paneles se
+                    perderán. Esta acción no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={regenerateCenter}
+                  >
+                    Regenerar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
           <GeneralCompassCard
             alignment={center.alignment}
             bodyContextSummary={center.body_context_summary}
             missionLensRefs={center.mission_lens_refs}
             contributingProfiles={center.contributing_profiles}
+            centerSummary={center.center_summary}
           />
           <div className="grid gap-4 md:grid-cols-2">
             {PANEL_META.map(({ key, label, icon }) => {

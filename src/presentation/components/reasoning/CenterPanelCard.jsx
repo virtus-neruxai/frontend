@@ -25,6 +25,8 @@ export default function CenterPanelCard({
 }) {
   const [annotation, setAnnotation] = useState(panel.user_annotation || '');
   const [expanded, setExpanded] = useState(false);
+  const [snippets, setSnippets] = useState({});
+  const [loadingSnippets, setLoadingSnippets] = useState(false);
   const [saving, setSaving] = useState(false);
   const [starting, setStarting] = useState(false);
   const [jobId, setJobId] = useState(initialJobId);
@@ -123,6 +125,28 @@ export default function CenterPanelCard({
   // (the whole 30-day window's total, identical across all six panels).
   const evidenceCount = (panel.evidence_refs || []).length;
 
+  // §11.3: evidence_refs never carries source text, so a preview is resolved
+  // live, only on demand (first expand), and never written back to the panel.
+  const toggleExpanded = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (!next || evidenceCount === 0 || Object.keys(snippets).length > 0) return;
+
+    setLoadingSnippets(true);
+    try {
+      const entries = await Promise.all(
+        panel.evidence_refs.map((ref) =>
+          centerApi.getEvidenceSnippet(ref.evidence_id)
+            .then(({ data }) => [ref.evidence_id, data.snippet])
+            .catch(() => [ref.evidence_id, null])
+        )
+      );
+      setSnippets(Object.fromEntries(entries));
+    } finally {
+      setLoadingSnippets(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 space-y-0">
@@ -148,17 +172,22 @@ export default function CenterPanelCard({
         <div>
           <button
             type="button"
-            onClick={() => setExpanded((s) => !s)}
+            onClick={toggleExpanded}
             className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
             {evidenceCount > 0 ? `Basado en ${evidenceCount} registro${evidenceCount === 1 ? '' : 's'}` : 'Ver procedencia'}
           </button>
           {expanded && (
-            <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-              {(panel.evidence_refs || []).length === 0 && <li>Sin referencias registradas.</li>}
+            <ul className="mt-1 space-y-1 text-xs text-muted-foreground" aria-live="polite">
+              {evidenceCount === 0 && <li>Sin referencias registradas.</li>}
               {(panel.evidence_refs || []).map((ref) => (
                 <li key={ref.evidence_id}>
-                  {ref.source} · {(ref.occurred_at || '').slice(0, 10)}
+                  <span>{ref.source} · {(ref.occurred_at || '').slice(0, 10)}</span>
+                  {loadingSnippets ? (
+                    <span className="block italic">Cargando…</span>
+                  ) : snippets[ref.evidence_id] ? (
+                    <span className="block italic">«{snippets[ref.evidence_id]}»</span>
+                  ) : null}
                 </li>
               ))}
             </ul>

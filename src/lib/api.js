@@ -245,6 +245,9 @@ export const reasoningApi = {
 export const centerApi = {
   getCenter: () => reasoningApiInstance.get('/reasoning/center'),
   generateCenter: () => reasoningApiInstance.post('/reasoning/center/generate'),
+  // Replaces the whole center — wipes every panel's saved notes. The client
+  // must confirm with the user before calling this (§12.2-bis).
+  regenerateCenter: () => reasoningApiInstance.post('/reasoning/center/regenerate'),
   getCenterJob: (jobId) => reasoningApiInstance.get(`/reasoning/center/jobs/${jobId}`),
   patchPanel: (key, { userAnnotation, expectedRevision }) =>
     reasoningApiInstance.patch(`/reasoning/center/panels/${key}`, {
@@ -255,6 +258,9 @@ export const centerApi = {
     reasoningApiInstance.post(`/reasoning/center/panels/${key}/regenerate`, {
       expected_revision: expectedRevision,
     }),
+  // On-demand only (§11.3) — never persisted alongside evidence_refs.
+  getEvidenceSnippet: (evidenceId) =>
+    reasoningApiInstance.get(`/reasoning/center/evidence/${encodeURIComponent(evidenceId)}`),
 };
 
 export const behaviorsApi = {
