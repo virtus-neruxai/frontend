@@ -5,14 +5,8 @@ import { MessageCircle, ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { conversationsApi, statsApi } from '../../lib/api';
 import { getProfileName } from '../../lib/profileUtils';
+import { getStartupRetryDelay, isRetryableStartupError } from '../../lib/startupRetry';
 import { useProfileTheme } from '../../theme/useProfileTheme';
-
-// Retry with a tight, near-constant cadence (not exponential backoff): the
-// backend is only unavailable during its own startup window, so we want to
-// recover within ~2s of it coming up rather than waiting for a widening gap.
-const MAX_FETCH_RETRIES = 18;
-const RETRY_STEP_MS = 500;
-const RETRY_MAX_MS = 2000;
 
 const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation }, ref) => {
   const { persistedProfileId, isProfileSynced } = useProfileTheme();
@@ -28,18 +22,24 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
   // still starting up right after a deploy) so the UI can reassure the user.
   const [connecting, setConnecting] = useState(false);
   const retryTimerRef = useRef(null);
+  const retryAttemptRef = useRef(0);
+  const fetchInFlightRef = useRef(false);
 
   // Fetch the conversation list, retrying transient failures with backoff.
   // Right after a deploy the frontend can load before the agent service is
   // accepting connections; without retries the first request fails and the list
   // stays empty until the next profile switch re-triggers it. Retrying (while
   // keeping the spinner up) makes the list self-heal.
-  const fetchConversations = useCallback(async (attempt = 0) => {
+  const fetchConversations = useCallback(async () => {
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
     }
+    if (fetchInFlightRef.current) return;
+
+    fetchInFlightRef.current = true;
     setLoading(true);
+    let retryDelay = null;
     try {
       const response = await conversationsApi.getAll({ prompt_profile: persistedProfileId });
       const data = response.data;
@@ -47,12 +47,13 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
       setLoadError(false);
       setConnecting(false);
       setLoading(false);
+      retryAttemptRef.current = 0;
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      if (attempt < MAX_FETCH_RETRIES) {
-        const delay = Math.min(RETRY_STEP_MS * (attempt + 1), RETRY_MAX_MS);
+      if (isRetryableStartupError(error)) {
+        retryDelay = getStartupRetryDelay(retryAttemptRef.current);
+        retryAttemptRef.current += 1;
         setConnecting(true);
-        retryTimerRef.current = setTimeout(() => fetchConversations(attempt + 1), delay);
         // Keep loading=true so the UI shows a spinner, not "no conversations".
       } else {
         setLoadError(true);
@@ -60,6 +61,14 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
         setConversations([]);
         setLoading(false);
         toast.error('Error al cargar el historial');
+      }
+    } finally {
+      fetchInFlightRef.current = false;
+      if (retryDelay != null) {
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
+          fetchConversations();
+        }, retryDelay);
       }
     }
   }, [persistedProfileId]);

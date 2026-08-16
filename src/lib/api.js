@@ -243,7 +243,7 @@ export const reasoningApi = {
 // "Mi centro" API (euler-application.md §12) — 404 while REASONING_CENTER_ENABLED
 // is off, same "hide the surface" convention as the NRRM endpoints above.
 export const centerApi = {
-  getCenter: () => reasoningApiInstance.get('/reasoning/center'),
+  getCenter: (config = {}) => reasoningApiInstance.get('/reasoning/center', config),
   generateCenter: () => reasoningApiInstance.post('/reasoning/center/generate'),
   // Replaces the whole center — wipes every panel's saved notes. The client
   // must confirm with the user before calling this (§12.2-bis).
@@ -354,7 +354,7 @@ export const profileApi = {
 
 // User Settings API (prompt profile selection)
 export const userSettingsApi = {
-  getSettings: () => api.get('/user/settings'),
+  getSettings: (config = {}) => api.get('/user/settings', config),
   saveSettings: (data) => api.patch('/user/settings', data),
 };
 

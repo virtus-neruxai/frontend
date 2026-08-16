@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '../../../components/ui/button';
@@ -21,6 +21,7 @@ import GeneralCompassCard from './GeneralCompassCard';
 import FinalReflectionCard from './FinalReflectionCard';
 import { useDrafts } from '../../viewmodels/useDrafts';
 import { agentApi, centerApi } from '../../../lib/api';
+import { getStartupRetryDelay, isRetryableStartupError } from '../../../lib/startupRetry';
 import { Eye, Loader2, Orbit, Puzzle, RefreshCw, RotateCw, Scale, Split } from 'lucide-react';
 
 const DISCLAIMER = 'Esta es una lectura reflexiva basada en tus propios registros. No es una '
@@ -49,8 +50,18 @@ export default function CenterView() {
   const [center, setCenter] = useState(null);
   const [activeJobs, setActiveJobs] = useState([]);
   const [loadingCenter, setLoadingCenter] = useState(true);
+  const [centerAvailable, setCenterAvailable] = useState(true);
+  const [centerLoadError, setCenterLoadError] = useState(false);
   const [startingGeneration, setStartingGeneration] = useState(false);
   const [jobId, setJobId] = useState(null);
+  const centerRetryTimerRef = useRef(null);
+  const centerRequestControllerRef = useRef(null);
+  const centerRequestSequenceRef = useRef(0);
+  const activeCenterRequestRef = useRef(null);
+  const centerRetryAttemptRef = useRef(0);
+  const centerMountedRef = useRef(false);
+  const centerHasLoadedRef = useRef(false);
+  const centerUnavailableRef = useRef(false);
 
   const generating = startingGeneration || Boolean(jobId);
 
@@ -88,19 +99,74 @@ export default function CenterView() {
   // be either the first generation or a full regeneration (they can never
   // run concurrently), so this resumes regardless of whether a center
   // already exists.
-  const loadCenter = useCallback(async () => {
+  const clearCenterRetry = useCallback(() => {
+    if (centerRetryTimerRef.current) {
+      window.clearTimeout(centerRetryTimerRef.current);
+      centerRetryTimerRef.current = null;
+    }
+  }, []);
+
+  const loadCenter = useCallback(async ({ resetRetry = false } = {}) => {
+    if (!centerMountedRef.current || centerUnavailableRef.current || activeCenterRequestRef.current != null) {
+      return;
+    }
+    if (resetRetry) {
+      centerRetryAttemptRef.current = 0;
+      clearCenterRetry();
+    }
+
+    const requestId = ++centerRequestSequenceRef.current;
+    const controller = new AbortController();
+    activeCenterRequestRef.current = requestId;
+    centerRequestControllerRef.current = controller;
+
     try {
-      const { data } = await centerApi.getCenter();
+      const { data } = await centerApi.getCenter({ signal: controller.signal });
+      if (!centerMountedRef.current || activeCenterRequestRef.current !== requestId) return;
+
       setCenter(data.center || null);
       setActiveJobs(data.active_jobs || []);
       const fullJob = (data.active_jobs || []).find((job) => job.target === 'full');
       if (fullJob) setJobId(fullJob.job_id);
-    } catch {
-      toast.error('No se pudo cargar tu centro.');
-    } finally {
+      centerHasLoadedRef.current = true;
+      centerUnavailableRef.current = false;
+      centerRetryAttemptRef.current = 0;
+      setCenterAvailable(true);
+      setCenterLoadError(false);
       setLoadingCenter(false);
+    } catch (error) {
+      if (!centerMountedRef.current || controller.signal.aborted || activeCenterRequestRef.current !== requestId) {
+        return;
+      }
+
+      if (error?.response?.status === 404) {
+        // A disabled center feature deliberately responds with 404. It is not
+        // a missing user center and must not offer a creation action.
+        centerUnavailableRef.current = true;
+        centerRetryAttemptRef.current = 0;
+        setCenterAvailable(false);
+        setCenterLoadError(false);
+        setLoadingCenter(false);
+      } else if (isRetryableStartupError(error)) {
+        const delay = getStartupRetryDelay(centerRetryAttemptRef.current);
+        centerRetryAttemptRef.current += 1;
+        setCenterLoadError(false);
+        if (!centerHasLoadedRef.current) setLoadingCenter(true);
+        centerRetryTimerRef.current = window.setTimeout(() => {
+          centerRetryTimerRef.current = null;
+          loadCenter();
+        }, delay);
+      } else {
+        setCenterLoadError(true);
+        setLoadingCenter(false);
+      }
+    } finally {
+      if (activeCenterRequestRef.current === requestId) {
+        activeCenterRequestRef.current = null;
+        centerRequestControllerRef.current = null;
+      }
     }
-  }, []);
+  }, [clearCenterRetry]);
 
   const handleAnnotationSaved = useCallback((updatedPanel) => {
     // §6.7/§9.1: saving a note never recalculates the Brújula itself, but the
@@ -114,8 +180,24 @@ export default function CenterView() {
   }, []);
 
   useEffect(() => {
+    centerMountedRef.current = true;
+    const retryOnReconnect = () => {
+      if (!centerUnavailableRef.current) loadCenter({ resetRetry: true });
+    };
+    window.addEventListener('focus', retryOnReconnect);
+    window.addEventListener('online', retryOnReconnect);
     loadCenter();
-  }, [loadCenter]);
+
+    return () => {
+      centerMountedRef.current = false;
+      clearCenterRetry();
+      activeCenterRequestRef.current = null;
+      centerRequestControllerRef.current?.abort();
+      centerRequestControllerRef.current = null;
+      window.removeEventListener('focus', retryOnReconnect);
+      window.removeEventListener('online', retryOnReconnect);
+    };
+  }, [clearCenterRetry, loadCenter]);
 
   const generate = useCallback(async () => {
     setStartingGeneration(true);
@@ -215,7 +297,26 @@ export default function CenterView() {
         </Card>
       )}
 
-      {!loadingCenter && !generating && !center && (
+      {!loadingCenter && !centerAvailable && (
+        <Card>
+          <CardContent className="pt-6 text-sm text-muted-foreground" aria-live="polite">
+            Mi centro no está disponible en este momento.
+          </CardContent>
+        </Card>
+      )}
+
+      {!loadingCenter && centerAvailable && centerLoadError && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6 text-sm text-muted-foreground" role="alert">
+            <span>No se pudo cargar tu centro. Comprueba tu conexión y vuelve a intentarlo.</span>
+            <Button variant="outline" size="sm" onClick={() => loadCenter({ resetRetry: true })}>
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Reintentar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loadingCenter && centerAvailable && !centerLoadError && !generating && !center && (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
             <Orbit className="h-10 w-10 text-primary" />
@@ -234,7 +335,7 @@ export default function CenterView() {
         </Card>
       )}
 
-      {!loadingCenter && !generating && center && (
+      {!loadingCenter && centerAvailable && !centerLoadError && !generating && center && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
