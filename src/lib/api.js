@@ -148,6 +148,16 @@ export const agentApi = {
       project_plan: projectPlan,
     }),
   confirmDraft: (data) => agentApiInstance.post('/agent/draft/confirm', data),
+  // "Mi centro" → Crear tarea/misión/rutina (euler-application.md §6.5). Same
+  // plain-JWT handoff the diary reflection already uses — the frontend never
+  // sends more than the final reflection's text, its provenance and the
+  // action the user explicitly picked.
+  reviewHandoff: (message, actionType) =>
+    agentApiInstance.post('/agent/review/handoff', {
+      message,
+      source: 'center',
+      action_type: actionType,
+    }),
 };
 
 // Projects API — planificaciones (item_type="project") con sus tasks/routines hijas.
@@ -228,6 +238,29 @@ export const reasoningApi = {
       resource_id: resourceId,
       resource_feedback: resourceFeedback,
     }),
+};
+
+// "Mi centro" API (euler-application.md §12) — 404 while REASONING_CENTER_ENABLED
+// is off, same "hide the surface" convention as the NRRM endpoints above.
+export const centerApi = {
+  getCenter: (config = {}) => reasoningApiInstance.get('/reasoning/center', config),
+  generateCenter: () => reasoningApiInstance.post('/reasoning/center/generate'),
+  // Replaces the whole center — wipes every panel's saved notes. The client
+  // must confirm with the user before calling this (§12.2-bis).
+  regenerateCenter: () => reasoningApiInstance.post('/reasoning/center/regenerate'),
+  getCenterJob: (jobId) => reasoningApiInstance.get(`/reasoning/center/jobs/${jobId}`),
+  patchPanel: (key, { userAnnotation, expectedRevision }) =>
+    reasoningApiInstance.patch(`/reasoning/center/panels/${key}`, {
+      user_annotation: userAnnotation,
+      expected_revision: expectedRevision,
+    }),
+  regeneratePanel: (key, expectedRevision) =>
+    reasoningApiInstance.post(`/reasoning/center/panels/${key}/regenerate`, {
+      expected_revision: expectedRevision,
+    }),
+  // On-demand only (§11.3) — never persisted alongside evidence_refs.
+  getEvidenceSnippet: (evidenceId) =>
+    reasoningApiInstance.get(`/reasoning/center/evidence/${encodeURIComponent(evidenceId)}`),
 };
 
 export const behaviorsApi = {
@@ -321,7 +354,7 @@ export const profileApi = {
 
 // User Settings API (prompt profile selection)
 export const userSettingsApi = {
-  getSettings: () => api.get('/user/settings'),
+  getSettings: (config = {}) => api.get('/user/settings', config),
   saveSettings: (data) => api.patch('/user/settings', data),
 };
 

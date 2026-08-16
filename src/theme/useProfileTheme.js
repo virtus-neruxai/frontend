@@ -12,6 +12,7 @@ export const ProfileThemeContext = createContext({
   // localStorage is empty, so the initial value is the DEFAULT profile — and
   // querying with it silently returns another profile's (usually empty) data.
   isProfileSynced: false,
+  beginProfileSync: () => {},
   previewProfile: () => {},
   persistProfile: () => DEFAULT_PROFILE_THEME_ID,
   syncPersistedProfile: () => DEFAULT_PROFILE_THEME_ID,

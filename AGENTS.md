@@ -35,7 +35,7 @@ Tres instancias axios, una por backend, cada una con interceptor que inyecta
 |---|---|---|
 | `api` (default) + `tasksApi`, `projectsApi`, `missionsApi`, `statsApi`… | `${VITE_BACKEND_URL}/api/v1` | backend |
 | `agentApi` | `.../agent-api/v1` | agent-service |
-| `reasoningApi` | `.../reasoning-api/v1` | reasoning-service |
+| `reasoningApi` + `centerApi` | `.../reasoning-api/v1` | reasoning-service |
 
 **Proxy (Traefik):** stripea `/api`, `/agent-api`, `/reasoning-api`, así que el
 backend recibe `/v1/...` (p. ej. `/api/v1/projects` → backend `/v1/projects`).
@@ -142,6 +142,44 @@ en vez de duplicarla.
 Nada de lo anterior borra aplicaciones ni reflexiones. La guía transversal,
 incluidos RAG, read-model, consumidores y fallo seguro, está en
 [`infra/virtus/docs/personalization-feedback-conductas.md`](../infra/virtus/docs/personalization-feedback-conductas.md).
+
+### 4.2 Mi centro (pestaña del Mentor)
+
+`presentation/components/reasoning/CenterView.jsx` es la superficie completa, y
+vive como **pestaña de `MentorPage`** (entre "Mentor {perfil}" y "Desafíos"),
+no como ruta propia: se sacó del nav superior para no saturarlo en anchos
+intermedios. Por eso no monta su propio `<Layout>` — la página anfitriona posee
+el shell. Si algún día vuelve a ser página, eso es lo único que hay que añadir.
+
+Componentes: `GeneralCompassCard.jsx` (Brújula + `center_summary` + contexto
+corporal), `CenterPanelCard.jsx` (×6) y `FinalReflectionCard.jsx`.
+
+- **Las claves, etiquetas, iconos y orden de los seis paneles son del cliente**
+  (`PANEL_META` en `CenterView.jsx`), nunca del LLM. El backend devuelve claves
+  (`change`, `perspective`, `cycle`, `opposition`, `integration`, `balance`); la
+  presentación es contrato de la app.
+- **Generación asíncrona**: `POST /reasoning/center/generate` devuelve `job_id`
+  y la vista consulta `GET /reasoning/center/jobs/{id}` hasta cerrarlo. Al
+  cargar, si `active_jobs` trae un job `full`, retoma el polling — también con
+  un centro ya existente, porque una regeneración completa corre sobre uno.
+- **Regenerar el centro completo** (`centerApi.regenerateCenter`) **borra las
+  notas guardadas de los seis paneles**. Va obligatoriamente detrás de un
+  `AlertDialog` con acción destructiva; no lo llames sin confirmación explícita.
+  Regenerar **un** panel (`regeneratePanel`) sí conserva su nota y además la
+  usa como entrada del prompt.
+- **Optimistic locking**: `patchPanel` y `regeneratePanel` envían
+  `expected_revision`. Un `409` significa que el panel cambió por debajo —
+  recarga, no reintentes con la misma revisión.
+- **El texto de las evidencias no viene en el payload** (§11.3). `CenterPanelCard`
+  lo pide bajo demanda con `centerApi.getEvidenceSnippet(id)` al desplegar, y
+  no lo cachea entre sesiones. `snippet: null` es normal (check-ins corporales,
+  o un registro que ya no existe): no lo trates como error.
+- **Convertir una pregunta en acción** usa `agentApi.reviewHandoff(texto,
+  actionType)` con `action_type` explícito, y reutiliza `useDrafts` +
+  `TaskDraftModal`/`MissionDraftModal` ya existentes. No hay modal propio del
+  centro.
+- El disclaimer de la medida general no es opcional: viaja siempre con el
+  número.
 
 ## 5) Items, tareas y proyectos
 

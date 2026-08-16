@@ -13,8 +13,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { NotificationSystem } from "./components/NotificationSystem";
 import { ThemeProvider } from "./components/theme-provider";
 import { ProfileThemeProvider } from "./presentation/components/profile-theme/ProfileThemeProvider";
-import { useProfileTheme } from "./theme/useProfileTheme";
-import { userSettingsApi, notificationsApi } from "./lib/api";
+import ProfileSettingsSync from "./components/ProfileSettingsSync";
+import { notificationsApi } from "./lib/api";
 import { cacheNotificationSettings } from "./hooks/useWebSocket";
 import { useEffect } from "react";
 import "./App.css";
@@ -123,45 +123,6 @@ function AppRoutes() {
       <Route path="*" element={<Navigate to="/calendar/day" replace />} />
     </Routes>
   );
-}
-
-function ProfileSettingsSync() {
-  const { isAuthenticated, loading } = useAuth();
-  const { syncPersistedProfile, markProfileSynced } = useProfileTheme();
-
-  useEffect(() => {
-    if (loading) return undefined;
-    // Nothing to resolve when signed out: release the gate so profile-scoped
-    // views never wait forever on a request that will not happen.
-    if (!isAuthenticated) {
-      markProfileSynced();
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    userSettingsApi.getSettings()
-      .then((response) => {
-        if (cancelled) return;
-        const resolved = response?.data?.resolved_prompt_profile || response?.data?.prompt_profile;
-        if (resolved) {
-          syncPersistedProfile(resolved);
-        } else {
-          markProfileSynced();
-        }
-      })
-      .catch(() => {
-        // Settings sync should never block the authenticated app shell: fall
-        // back to the cached profile rather than leaving consumers pending.
-        if (!cancelled) markProfileSynced();
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, loading, syncPersistedProfile, markProfileSynced]);
-
-  return null;
 }
 
 function NotificationSettingsSync() {

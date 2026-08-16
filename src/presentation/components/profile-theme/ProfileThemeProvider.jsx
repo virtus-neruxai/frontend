@@ -40,6 +40,11 @@ export function ProfileThemeProvider({ children }) {
 
   const markProfileSynced = useCallback(() => setIsProfileSynced(true), []);
 
+  // A login can happen without recreating this provider. Resetting the gate
+  // keeps profile-scoped requests from using the previous session's visual
+  // cache while the backend resolves the authenticated user's profile.
+  const beginProfileSync = useCallback(() => setIsProfileSynced(false), []);
+
   const syncPersistedProfile = useCallback((nextProfileId) => {
     const normalized = persistProfile(nextProfileId);
     setIsProfileSynced(true);
@@ -58,6 +63,7 @@ export function ProfileThemeProvider({ children }) {
     theme: PROFILE_THEMES[profileId],
     persistedTheme: PROFILE_THEMES[persistedProfileId],
     isProfileSynced,
+    beginProfileSync,
     previewProfile,
     persistProfile,
     syncPersistedProfile,
@@ -67,6 +73,7 @@ export function ProfileThemeProvider({ children }) {
     profileId,
     persistedProfileId,
     isProfileSynced,
+    beginProfileSync,
     previewProfile,
     persistProfile,
     syncPersistedProfile,

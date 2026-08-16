@@ -72,16 +72,19 @@ export const NotificationPanel = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('live');
   const [historyItems, setHistoryItems] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyUnreadCount, setHistoryUnreadCount] = useState(0);
   const [analytics, setAnalytics] = useState(null);
+  // "En vivo" is the user's inbox. A notification only moves to history
+  // after it has been read, never merely because it was persisted server-side.
+  const liveNotifications = notifications.filter((notification) => !notification.read);
 
   const fetchHistory = async () => {
     try {
       setHistoryLoading(true);
-      const response = await notificationsApi.getHistory({ limit: 50, offset: 0 });
+      const response = await notificationsApi.getHistory({ status: 'read', limit: 50, offset: 0 });
       const items = response?.data?.items || [];
-      setHistoryItems(items);
-      setHistoryUnreadCount(response?.data?.unread_count || 0);
+      // Keep the client-side guard as well: a delayed or non-conforming
+      // response must not leak an unread entry into Historial.
+      setHistoryItems(items.filter((item) => item.status === 'read'));
     } catch (error) {
       console.error('Error loading notification history:', error);
     } finally {
@@ -95,18 +98,6 @@ export const NotificationPanel = ({ onClose }) => {
       setAnalytics(response?.data || null);
     } catch (error) {
       console.error('Error loading notification analytics:', error);
-    }
-  };
-
-  const markHistoryAsRead = async (id) => {
-    try {
-      await notificationsApi.markRead({ ids: [id], mark_all: false });
-      setHistoryItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: 'read' } : item))
-      );
-      setHistoryUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
     }
   };
 
@@ -150,16 +141,6 @@ export const NotificationPanel = ({ onClose }) => {
     }
   };
 
-  const markAllHistoryAsRead = async () => {
-    try {
-      await notificationsApi.markRead({ ids: [], mark_all: true });
-      setHistoryItems((prev) => prev.map((item) => ({ ...item, status: 'read' })));
-      setHistoryUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-    }
-  };
-
   useEffect(() => {
     if (activeTab === 'history') {
       fetchHistory();
@@ -172,7 +153,7 @@ export const NotificationPanel = ({ onClose }) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-semibold text-foreground">
-          Notificaciones {activeTab === 'live' ? (unreadCount > 0 && `(${unreadCount})`) : (historyUnreadCount > 0 && `(${historyUnreadCount})`)}
+          Notificaciones {activeTab === 'live' && unreadCount > 0 && `(${unreadCount})`}
         </h3>
         <div className="flex items-center gap-2">
           {activeTab === 'live' && unreadCount > 0 && (
@@ -184,22 +165,13 @@ export const NotificationPanel = ({ onClose }) => {
               <Check className="w-4 h-4" />
             </button>
           )}
-          {activeTab === 'live' && notifications.length > 0 && (
+          {activeTab === 'live' && liveNotifications.length > 0 && (
             <button
               onClick={clearAll}
               className="text-sm text-muted-foreground hover:text-foreground"
               title="Limpiar todas"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-          {activeTab === 'history' && historyUnreadCount > 0 && (
-            <button
-              onClick={markAllHistoryAsRead}
-              className="text-sm text-primary hover:opacity-80"
-              title="Marcar historial como leído"
-            >
-              <Check className="w-4 h-4" />
             </button>
           )}
           <button
@@ -229,13 +201,13 @@ export const NotificationPanel = ({ onClose }) => {
       {/* Notification List */}
       <div className="max-h-96 overflow-y-auto">
         {activeTab === 'live' ? (
-          notifications.length === 0 ? (
+          liveNotifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <Bell className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>No hay notificaciones</p>
             </div>
           ) : (
-            notifications.map((notification) => (
+            liveNotifications.map((notification) => (
               <NotificationItem
                 key={notification.id}
                 notification={notification}
@@ -286,7 +258,7 @@ export const NotificationPanel = ({ onClose }) => {
                 <NotificationItem
                   key={item.id}
                   notification={buildNotificationFromHistoryItem(item)}
-                  onMarkAsRead={() => markHistoryAsRead(item.id)}
+                  onMarkAsRead={undefined}
                   onRemove={undefined}
                 />
               ))

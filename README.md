@@ -47,11 +47,19 @@ src/
 │       │   ├── TimeseriesChart.js
 │       │   ├── DetectedPatternsPanel.jsx   # Panel de patrones de fricción detectados
 │       │   └── FrictionAcknowledgeDialog.jsx  # Dialog para confirmar/progresar/resolver fricciones
-│       └── calendar/    # Calendar page components
-│           ├── CalendarNavigation.js
-│           ├── ViewSelector.js
-│           ├── CalendarGrid.js
-│           └── StatusLegend.js
+│       ├── calendar/    # Calendar page components
+│       │   ├── CalendarNavigation.js
+│       │   ├── ViewSelector.js
+│       │   ├── CalendarGrid.js
+│       │   └── StatusLegend.js
+│       └── reasoning/   # Informe razonado, companion y "Mi centro"
+│           ├── ReasonedReportView.jsx
+│           ├── TransformativeCompanionCard.jsx
+│           ├── FeedbackControl.jsx
+│           ├── CenterView.jsx          # "Mi centro" completo (pestaña de MentorPage)
+│           ├── GeneralCompassCard.jsx  # Brújula general + síntesis del centro
+│           ├── CenterPanelCard.jsx     # uno de los seis paneles
+│           └── FinalReflectionCard.jsx
 │
 ├── pages/               # Page components
 │   ├── CharacterPage.js   # Character + missions
@@ -102,6 +110,32 @@ narrativa. Una vez guardado, el check-in del día queda bloqueado y muestra
 draft existentes), KPIs de puntos, evolución e historial. Arquitectura
 completa:
 [BODY-CHECKIN-ARCHITECTURE.md](../infra/virtus/docs/BODY-CHECKIN-ARCHITECTURE.md).
+
+## Mi centro (pestaña del Mentor)
+
+La página de Mentor tiene tres pestañas: `Mentor {perfil}`, **`Mi centro`** y
+`Desafíos`. "Mi centro" es una lectura de 30 días del usuario contrastada con su
+misión y sus lentes de misión, servida por `reasoning-service` detrás del flag
+`REASONING_CENTER_ENABLED` (apagado, los endpoints responden 404 y la pestaña
+muestra el estado vacío).
+
+Vive en `presentation/components/reasoning/CenterView.jsx` (+ `GeneralCompassCard`,
+`CenterPanelCard`, `FinalReflectionCard`), no en `pages/`, precisamente porque es
+una pestaña y no una ruta: el shell lo pone `MentorPage`.
+
+- La generación es asíncrona (`job_id` + polling), como el informe razonado:
+  salir de la pestaña no la cancela.
+- Regenerar **un panel** conserva la nota que el usuario haya escrito y la usa
+  como entrada. Regenerar el **centro completo** rehace las seis lecturas, la
+  Brújula y la frase de síntesis, y **borra todas las notas**: siempre detrás de
+  un `AlertDialog` de confirmación.
+- Las evidencias citadas muestran las primeras palabras del registro original,
+  pedidas bajo demanda al desplegar cada panel — el texto no se guarda junto al
+  centro, por diseño.
+- Cada pregunta de panel puede convertirse en tarea, misión o rutina; reutiliza
+  los modales de draft del Mentor, con el tipo ya elegido por el usuario.
+
+Diseño completo: [`euler-application.md`](../infra/virtus/docs/pending/euler-application.md).
 
 ## Notificaciones del Mentor
 
