@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { agentApi } from '../../lib/api';
+import { apiErrorMessage } from '../../lib/quotaError';
 import { toast } from 'sonner';
 
 const generateSessionId = () =>
@@ -133,7 +134,7 @@ export const useAgentChat = (profileId = 'default') => {
 
       return response.data;
     } catch (error) {
-      toast.error('Error al comunicarse con el agente');
+      toast.error(apiErrorMessage(error, 'Error al comunicarse con el agente'));
       throw error;
     } finally {
       setChatLoading(false);

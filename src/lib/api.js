@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import { normalizeQuotaError } from './quotaError';
+
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
 const api = axios.create({
@@ -21,7 +23,7 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+    return Promise.reject(normalizeQuotaError(error));
   }
 );
 
@@ -134,7 +136,7 @@ agentApiInstance.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+    return Promise.reject(normalizeQuotaError(error));
   }
 );
 
@@ -189,7 +191,7 @@ reasoningApiInstance.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+    return Promise.reject(normalizeQuotaError(error));
   }
 );
 
@@ -238,6 +240,15 @@ export const reasoningApi = {
       resource_id: resourceId,
       resource_feedback: resourceFeedback,
     }),
+};
+
+// Fase 2 — plan y desbloqueos por actividad (backend, no reasoning-service).
+export const meApi = {
+  getPlan: () => api.get('/me/plan'),
+  getEntitlements: () => api.get('/me/entitlements'),
+  // Solo el desbloqueo de Mi centro por ahora (§2.6) — más barato que pedir
+  // entitlements completo cuando lo único que hace falta es esto.
+  getActivity: () => api.get('/me/activity'),
 };
 
 // "Mi centro" API (euler-application.md §12) — 404 while REASONING_CENTER_ENABLED

@@ -11,6 +11,7 @@ import ReasonedReportView from '../presentation/components/reasoning/ReasonedRep
 import TransformativeCompanionCard from '../presentation/components/reasoning/TransformativeCompanionCard';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { reasoningApi, tasksApi } from '../lib/api';
+import { apiErrorMessage } from '../lib/quotaError';
 import { Brain, History, Loader2, Send } from 'lucide-react';
 
 const REPORT_RANGE_OPTIONS = [
@@ -183,7 +184,7 @@ export default function ReasoningReportPage() {
       } else if (status === 409) {
         toast.info(e.response?.data?.detail || 'No se puede generar el mensaje para este informe.');
       } else {
-        toast.error('No se pudo generar el mensaje. Vuelve a intentarlo.');
+        toast.error(apiErrorMessage(e, 'No se pudo generar el mensaje. Vuelve a intentarlo.'));
       }
     } finally {
       setCompanionLoading(false);
@@ -212,7 +213,7 @@ export default function ReasoningReportPage() {
       persistPendingReportJobId(data.job_id);
       toast.info('El informe se está generando en segundo plano. Puedes salir de esta pantalla.');
     } catch (e) {
-      toast.error('No se pudo generar el informe. Vuelve a intentarlo.');
+      toast.error(apiErrorMessage(e, 'No se pudo generar el informe. Vuelve a intentarlo.'));
     } finally {
       setStartingGeneration(false);
     }
@@ -317,8 +318,14 @@ export default function ReasoningReportPage() {
       const { data } = await reasoningApi.chat(q, sessionRef.current, reportId, 'ask_about_report');
       sessionRef.current = data.session_id;
       setThread((t) => [...t, { role: 'assistant', content: data.response }]);
-    } catch {
-      setThread((t) => [...t, { role: 'assistant', content: 'No he podido responder ahora mismo.' }]);
+    } catch (e) {
+      // El corte por cuota se cuenta en el propio hilo, no en un toast: aquí el
+      // usuario está leyendo una conversación, y un turno que explica el límite
+      // encaja mejor que un aviso flotante que tapa lo que estaba leyendo.
+      setThread((t) => [
+        ...t,
+        { role: 'assistant', content: apiErrorMessage(e, 'No he podido responder ahora mismo.') },
+      ]);
     } finally {
       setAsking(false);
     }

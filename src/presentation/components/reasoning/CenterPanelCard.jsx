@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Textarea } from '../../../components/ui/textarea';
 import { centerApi } from '../../../lib/api';
+import { apiErrorMessage } from '../../../lib/quotaError';
 
 const MAX_ANNOTATION_LENGTH = 2000;
 
@@ -77,7 +78,7 @@ export default function CenterPanelCard({
         toast.info('Este panel cambió en otra pestaña. Recargando la versión más reciente.');
         onReloadCenter();
       } else {
-        toast.error('No se pudo regenerar este panel. Vuelve a intentarlo.');
+        toast.error(apiErrorMessage(e, 'No se pudo regenerar este panel. Vuelve a intentarlo.'));
       }
     } finally {
       setStarting(false);
