@@ -763,19 +763,19 @@ export default function CharacterPageRefactored() {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="body-checkin" className="space-y-4">
+        <Tabs defaultValue="missions" className="space-y-4">
           <TabsList className="bg-muted p-1 rounded-full">
-            <TabsTrigger value="body-checkin" className="rounded-full data-[state=active]:bg-card">
-              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Registro corporal
+            <TabsTrigger value="missions" className="rounded-full data-[state=active]:bg-card">
+              <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Misiones
             </TabsTrigger>
             <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-card">
               <Scroll className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Diario
             </TabsTrigger>
-            <TabsTrigger value="missions" className="rounded-full data-[state=active]:bg-card">
-              <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Misiones
+            <TabsTrigger value="body-checkin" className="rounded-full data-[state=active]:bg-card">
+              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Registro corporal
             </TabsTrigger>
           </TabsList>
 

@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Calendar, LayoutDashboard, LogOut, Sparkles, ClipboardList, Settings, MessageCircle, Brain, Rocket, Gauge } from 'lucide-react';
+import { Calendar, LayoutDashboard, LogOut, Sparkles, ClipboardList, Settings, MessageCircle, Rocket, Gauge } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { NotificationPermissionBanner } from './NotificationPermissionBanner';
 import { ThemeToggle } from './ThemeToggle';
@@ -41,12 +41,11 @@ export default function Layout({ children, ambient = false }) {
   }, []);
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/calendar', label: 'Tareas', icon: Calendar },
     { path: '/character', label: 'Carácter', icon: Sparkles },
+    { path: '/calendar', label: 'Tareas', icon: Calendar },
     { path: '/mentor', label: 'Mentor', icon: MessageCircle },
     { path: '/proyectos', label: 'Proyectos', icon: Rocket },
-    { path: '/informe-razonado', label: 'Informe Razonado', icon: Brain },
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/profile', label: 'Perfil', icon: ClipboardList },
   ];
 

@@ -6,7 +6,6 @@ import DashboardPage from "./pages/DashboardPage";
 import CharacterPage from "./pages/CharacterPage";
 import MentorPage from "./pages/MentorPage";
 import ProjectsPage from "./pages/ProjectsPage";
-import ReasoningReportPage from "./pages/ReasoningReportPage";
 import QuestionnairePage from "./pages/QuestionnairePage";
 import SettingsPage from "./pages/SettingsPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -94,15 +93,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/informe-razonado" element={<Navigate to="/mentor" replace />} />
       <Route
-        path="/informe-razonado"
-        element={
-          <ProtectedRoute>
-            <ReasoningReportPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route 
         path="/profile" 
         element={
           <ProtectedRoute>

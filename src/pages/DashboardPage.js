@@ -165,6 +165,14 @@ export default function DashboardPageRefactored() {
         {/* Challenges — seguimiento de cumplimiento de desafíos */}
         <ChallengesCard />
 
+        {/* Conductas adoptadas (NRRM §13.2) — se oculta si no hay ninguna */}
+        <LearnedResponsesPanel
+          data={learnedResponses}
+          loading={learnedResponsesLoading}
+          onRecordApplication={recordBehaviorApplication}
+          onSetStatus={setBehaviorStatus}
+        />
+
         {loading ? (
           <div className="h-96 flex items-center justify-center">
             <div className="animate-pulse text-muted-foreground">Cargando estadísticas...</div>
@@ -307,14 +315,6 @@ export default function DashboardPageRefactored() {
               range={emotionalPatternsRange}
               onRangeChange={setEmotionalPatternsRange}
               onAcknowledge={acknowledgeEmotionalPattern}
-            />
-
-            {/* Conductas adoptadas (NRRM §13.2) — se oculta si no hay ninguna */}
-            <LearnedResponsesPanel
-              data={learnedResponses}
-              loading={learnedResponsesLoading}
-              onRecordApplication={recordBehaviorApplication}
-              onSetStatus={setBehaviorStatus}
             />
           </div>
         )}

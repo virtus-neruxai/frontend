@@ -279,6 +279,17 @@ export function useDashboard(initialProfile) {
     fetchStats();
   }, [fetchStats]);
 
+  // The top range is the dashboard-wide default: changing it re-seeds every
+  // panel's own range so they read consistently on first glance. A panel the
+  // user then adjusts by hand stays independent — this only fires again on
+  // the next top-range change, never in response to a panel's own filter.
+  useEffect(() => {
+    setFrictionsRange(range);
+    setEmotionalPatternsRange(range);
+    handleTotalStatsRangeChange(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range]);
+
   useEffect(() => {
     fetchStatusSummary();
   }, [fetchStatusSummary]);

@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import Layout from '../components/Layout';
-import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Textarea } from '../components/ui/textarea';
-import TaskDraftModal from '../components/TaskDraftModal';
-import ReasonedReportView from '../presentation/components/reasoning/ReasonedReportView';
-import TransformativeCompanionCard from '../presentation/components/reasoning/TransformativeCompanionCard';
-import { useProfileTheme } from '../theme/useProfileTheme';
-import { reasoningApi, tasksApi } from '../lib/api';
-import { apiErrorMessage } from '../lib/quotaError';
+import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { Textarea } from '../../../components/ui/textarea';
+import TaskDraftModal from '../../../components/TaskDraftModal';
+import ReasonedReportView from './ReasonedReportView';
+import TransformativeCompanionCard from './TransformativeCompanionCard';
+import { useProfileTheme } from '../../../theme/useProfileTheme';
+import { reasoningApi, tasksApi } from '../../../lib/api';
+import { apiErrorMessage } from '../../../lib/quotaError';
 import { Brain, History, Loader2, Send } from 'lucide-react';
 
 const REPORT_RANGE_OPTIONS = [
@@ -72,7 +71,7 @@ function defaultDraftFromRecommendation(rec) {
   };
 }
 
-export default function ReasoningReportPage() {
+export default function ReasoningReportTab() {
   const { theme } = useProfileTheme();
   const profileName = theme?.name || '';
 
@@ -349,157 +348,155 @@ export default function ReasoningReportPage() {
   }, []);
 
   return (
-    <Layout ambient>
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold">
-              <Brain className="h-6 w-6" /> Informe Razonado
-            </h1>
-            <div className="text-muted-foreground">
-              Tu lectura: {reportRangeLabel(selectedDaysBack)}
-              {profileName ? <> · <Badge variant="secondary">{profileName}</Badge></> : null}
-            </div>
-          </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Select value={String(selectedDaysBack)} onValueChange={(value) => setSelectedDaysBack(Number(value))}>
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {REPORT_RANGE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={String(option.value)}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={generate} disabled={generating}>
-              {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
-              Generar informe
-            </Button>
-            <Button variant="outline" onClick={() => setShowHistory((s) => !s)}>
-              <History className="mr-2 h-4 w-4" /> Historial
-            </Button>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Brain className="h-6 w-6" /> Informe Razonado
+          </h1>
+          <div className="text-muted-foreground">
+            Tu lectura: {reportRangeLabel(selectedDaysBack)}
+            {profileName ? <> · <Badge variant="secondary">{profileName}</Badge></> : null}
           </div>
         </div>
-
-        {showHistory && (
-          <Card>
-            <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <CardTitle className="text-base">Historial de informes</CardTitle>
-                <Select value={String(selectedDaysBack)} onValueChange={(value) => setSelectedDaysBack(Number(value))}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REPORT_RANGE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={String(option.value)}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aún no hay informes generados.</p>
-              ) : filteredHistory.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No hay informes para {reportRangeLabel(selectedDaysBack).toLowerCase()}.
-                </p>
-              ) : (
-                filteredHistory.map((r) => (
-                  <button
-                    key={r.report_id}
-                    onClick={() => openReport(r.report_id)}
-                    className="block w-full rounded-md border p-2 text-left text-sm hover:bg-muted"
-                  >
-                    <span className="text-muted-foreground">{(r.created_at || '').slice(0, 16).replace('T', ' ')}</span>
-                    {r.prompt_profile ? <Badge variant="outline" className="ml-2">{r.prompt_profile}</Badge> : null}
-                    <Badge variant="secondary" className="ml-2">{reportRangeLabel(r.days_back || 14)}</Badge>
-                    {r.summary ? <span> — {r.summary.slice(0, 90)}</span> : null}
-                  </button>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {generating && (
-          <Card>
-            <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              El informe se está generando en segundo plano. Puedes navegar con normalidad; aparecerá en el historial al terminar.
-            </CardContent>
-          </Card>
-        )}
-
-        {report?.report_markdown && report?.mode === 'SAFE_NO_ACTION' && (
-          <Card><CardContent className="whitespace-pre-wrap pt-6 text-sm">{report.report_markdown}</CardContent></Card>
-        )}
-
-        {reportJson && (
-          <ReasonedReportView
-            report={reportJson}
-            onConvertToTask={convertToTask}
-            feedbackFor={companionAvailable ? feedbackFor : undefined}
-            onFeedback={companionAvailable ? submitFeedback : undefined}
-            onResourceFeedback={companionAvailable ? submitResourceFeedback : undefined}
-          />
-        )}
-
-        {/* "Un mensaje para ti": misma pantalla que el informe (§13.1), pero
-            visualmente distinto — el usuario debe saber siempre si lee análisis
-            o acompañamiento. */}
-        {reportJson && schemaVersion === '3' && companionAvailable && (
-          <TransformativeCompanionCard
-            companion={companion}
-            loading={companionLoading}
-            onGenerate={generateCompanion}
-            onAdopt={adopt}
-            adopting={adopting}
-            adopted={adopted}
-            feedbackFor={feedbackFor}
-            onFeedback={submitFeedback}
-          />
-        )}
-
-        {reportJson && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">Preguntar sobre este informe</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {thread.map((m, i) => (
-                <div key={i} className={m.role === 'user' ? 'text-right' : ''}>
-                  <span className={`inline-block max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
-                    m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                  }`}>{m.content}</span>
-                </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Select value={String(selectedDaysBack)} onValueChange={(value) => setSelectedDaysBack(Number(value))}>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {REPORT_RANGE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={String(option.value)}>
+                  {option.label}
+                </SelectItem>
               ))}
-              <div className="flex gap-2">
-                <Textarea
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } }}
-                  placeholder="¿Qué patrón ves? ¿Por dónde empiezo?"
-                  rows={2}
-                />
-                <Button onClick={ask} disabled={asking || !question.trim()}>
-                  {asking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {!reportJson && !generating && (
-          <Card><CardContent className="pt-6 text-center text-muted-foreground">
-            Pulsa <strong>Generar informe</strong> para tu lectura razonada: {reportRangeLabel(selectedDaysBack).toLowerCase()}.
-          </CardContent></Card>
-        )}
+            </SelectContent>
+          </Select>
+          <Button onClick={generate} disabled={generating}>
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+            Generar informe
+          </Button>
+          <Button variant="outline" onClick={() => setShowHistory((s) => !s)}>
+            <History className="mr-2 h-4 w-4" /> Historial
+          </Button>
+        </div>
       </div>
+
+      {showHistory && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-base">Historial de informes</CardTitle>
+              <Select value={String(selectedDaysBack)} onValueChange={(value) => setSelectedDaysBack(Number(value))}>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPORT_RANGE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={String(option.value)}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aún no hay informes generados.</p>
+            ) : filteredHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay informes para {reportRangeLabel(selectedDaysBack).toLowerCase()}.
+              </p>
+            ) : (
+              filteredHistory.map((r) => (
+                <button
+                  key={r.report_id}
+                  onClick={() => openReport(r.report_id)}
+                  className="block w-full rounded-md border p-2 text-left text-sm hover:bg-muted"
+                >
+                  <span className="text-muted-foreground">{(r.created_at || '').slice(0, 16).replace('T', ' ')}</span>
+                  {r.prompt_profile ? <Badge variant="outline" className="ml-2">{r.prompt_profile}</Badge> : null}
+                  <Badge variant="secondary" className="ml-2">{reportRangeLabel(r.days_back || 14)}</Badge>
+                  {r.summary ? <span> — {r.summary.slice(0, 90)}</span> : null}
+                </button>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {generating && (
+        <Card>
+          <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            El informe se está generando en segundo plano. Puedes navegar con normalidad; aparecerá en el historial al terminar.
+          </CardContent>
+        </Card>
+      )}
+
+      {report?.report_markdown && report?.mode === 'SAFE_NO_ACTION' && (
+        <Card><CardContent className="whitespace-pre-wrap pt-6 text-sm">{report.report_markdown}</CardContent></Card>
+      )}
+
+      {reportJson && (
+        <ReasonedReportView
+          report={reportJson}
+          onConvertToTask={convertToTask}
+          feedbackFor={companionAvailable ? feedbackFor : undefined}
+          onFeedback={companionAvailable ? submitFeedback : undefined}
+          onResourceFeedback={companionAvailable ? submitResourceFeedback : undefined}
+        />
+      )}
+
+      {/* "Un mensaje para ti": misma pantalla que el informe (§13.1), pero
+          visualmente distinto — el usuario debe saber siempre si lee análisis
+          o acompañamiento. */}
+      {reportJson && schemaVersion === '3' && companionAvailable && (
+        <TransformativeCompanionCard
+          companion={companion}
+          loading={companionLoading}
+          onGenerate={generateCompanion}
+          onAdopt={adopt}
+          adopting={adopting}
+          adopted={adopted}
+          feedbackFor={feedbackFor}
+          onFeedback={submitFeedback}
+        />
+      )}
+
+      {reportJson && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Preguntar sobre este informe</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {thread.map((m, i) => (
+              <div key={i} className={m.role === 'user' ? 'text-right' : ''}>
+                <span className={`inline-block max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
+                  m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                }`}>{m.content}</span>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <Textarea
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } }}
+                placeholder="¿Qué patrón ves? ¿Por dónde empiezo?"
+                rows={2}
+              />
+              <Button onClick={ask} disabled={asking || !question.trim()}>
+                {asking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!reportJson && !generating && (
+        <Card><CardContent className="pt-6 text-center text-muted-foreground">
+          Pulsa <strong>Generar informe</strong> para tu lectura razonada: {reportRangeLabel(selectedDaysBack).toLowerCase()}.
+        </CardContent></Card>
+      )}
 
       <TaskDraftModal
         isOpen={showDraftModal}
@@ -508,6 +505,6 @@ export default function ReasoningReportPage() {
         onConfirm={confirmDraft}
         onReject={() => setShowDraftModal(false)}
       />
-    </Layout>
+    </div>
   );
 }
