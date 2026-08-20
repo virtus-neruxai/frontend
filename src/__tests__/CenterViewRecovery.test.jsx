@@ -9,6 +9,7 @@ vi.mock('sonner', () => ({
 vi.mock('../lib/api', () => ({
   agentApi: { reviewHandoff: vi.fn() },
   centerApi: { getCenter: vi.fn(), generateCenter: vi.fn(), regenerateCenter: vi.fn(), getCenterJob: vi.fn() },
+  meApi: { getActivity: vi.fn().mockResolvedValue({ data: {} }) },
 }));
 
 vi.mock('../presentation/viewmodels/useDrafts', () => ({

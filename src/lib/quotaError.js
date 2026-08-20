@@ -27,7 +27,7 @@ const ACTIVITY_GATE_NOT_MET = 'activity_gate_not_met';
  * regeneraciones…») y la mitad de estos sustantivos son femeninos: con un
  * `los` fijo salía «Los regeneraciones de panel».
  */
-const FEATURE_LABELS = {
+export const FEATURE_LABELS = {
   chat: ['los', 'mensajes con el mentor'],
   datos_app: ['las', 'preguntas sobre tus datos'],
   razonar: ['los', 'análisis profundos'],
@@ -39,12 +39,17 @@ const FEATURE_LABELS = {
   informe_pregunta: ['las', 'preguntas sobre el informe'],
   companion: ['los', 'mensajes transformadores'],
   misiones_retos: ['las', 'generaciones de misiones y retos'],
-  perfil_ia: ['los', 'perfiles con IA'],
+  perfil_ia: ['las', 'actualizaciones de tu perfil con IA'],
+  // Enforcement "scheduler" — nunca generan un 429 (se filtran al encolar, no
+  // por request), así que quotaMessage() no los usa. Existen aquí solo para
+  // que la pantalla de Uso tenga un sustantivo que mostrar.
+  nightly_review: ['la', 'revisión nocturna'],
+  behaviour_mentor: ['el', 'mentor de comportamiento'],
 };
 
-const PLAN_LABELS = { free: 'Free', plus: 'Plus', pro: 'Pro' };
+export const PLAN_LABELS = { free: 'Free', plus: 'Plus', pro: 'Pro', admin: 'Admin' };
 
-const PERIOD_LABELS = {
+export const PERIOD_LABELS = {
   dia: 'hoy',
   semana: 'esta semana',
   mes: 'este mes',

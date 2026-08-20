@@ -41,7 +41,6 @@ vi.mock('../components/ui/select', () => ({
       value={value}
       onChange={(event) => onValueChange(event.target.value)}
     >
-      <option value="1">Diario</option>
       <option value="7">Última semana</option>
       <option value="14">Últimas 2 semanas</option>
       <option value="30">Último mes</option>

@@ -15,7 +15,6 @@ import { apiErrorMessage } from '../lib/quotaError';
 import { Brain, History, Loader2, Send } from 'lucide-react';
 
 const REPORT_RANGE_OPTIONS = [
-  { value: 1, label: 'Diario' },
   { value: 7, label: 'Última semana' },
   { value: 14, label: 'Últimas 2 semanas' },
   { value: 30, label: 'Último mes' },
