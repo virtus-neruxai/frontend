@@ -38,7 +38,7 @@ export function StatsHistoryChart({
     { value: '7', label: '7d' },
     { value: '14', label: '14d' },
     { value: '30', label: '30d' },
-    { value: '60', label: '60d' }
+    { value: '90', label: '90d' }
   ];
 
   // Derive stat keys from the first data item (exclude 'date')

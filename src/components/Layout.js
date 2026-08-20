@@ -41,8 +41,8 @@ export default function Layout({ children, ambient = false }) {
   }, []);
 
   const navItems = [
-    { path: '/character', label: 'Carácter', icon: Sparkles },
     { path: '/calendar', label: 'Tareas', icon: Calendar },
+    { path: '/character', label: 'Carácter', icon: Sparkles },
     { path: '/mentor', label: 'Mentor', icon: MessageCircle },
     { path: '/proyectos', label: 'Proyectos', icon: Rocket },
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },

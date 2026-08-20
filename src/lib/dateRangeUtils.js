@@ -29,3 +29,23 @@ export function buildRelativeDateRange(days, endDate = new Date()) {
     toDate: formatDateInput(end),
   };
 }
+
+// Each chart's range filter remembers the user's last choice across visits,
+// under its own localStorage key — independent filters must not clobber
+// each other. Falls back to 7 days (the shared default) whenever nothing was
+// saved yet, or localStorage is unavailable (private browsing, quota full).
+export function getPersistedRange(key, fallback = '7') {
+  try {
+    return window.localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function persistRange(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Best-effort only: losing the saved preference is not worth surfacing.
+  }
+}

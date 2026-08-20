@@ -22,7 +22,7 @@ import { ProfileHeroCard } from '../presentation/components/profile-theme/Profil
 import { useCharacter } from '../presentation/viewmodels/useCharacter';
 import { useMissions } from '../presentation/viewmodels/useMissions';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
-import { buildRelativeDateRange } from '../lib/dateRangeUtils';
+import { buildRelativeDateRange, getPersistedRange, persistRange } from '../lib/dateRangeUtils';
 import { formatMentorResponseText } from '../lib/mentorTextFormat';
 import { formatStatLabel } from '../lib/statUtils';
 import { consumeNightlyReviewPayload } from '../lib/schedulerReview/nightlyReviewNotification';
@@ -181,14 +181,26 @@ export default function CharacterPageRefactored() {
   const [draftNowTick, setDraftNowTick] = useState(Date.now()); // 1s ticker for TTL countdown
   
   // State for charts
-  const initialReflectionRange = buildRelativeDateRange(30);
-  const initialMissionRange = buildRelativeDateRange(30);
-  const [statsRange, setStatsRange] = useState('30');
+  const initialStatsRange = getPersistedRange('character_stats_range');
+  const initialMissionRangeValue = getPersistedRange('character_mission_range');
+  const initialReflectionRange = buildRelativeDateRange(parseInt(initialStatsRange, 10));
+  const initialMissionRange = buildRelativeDateRange(parseInt(initialMissionRangeValue, 10));
+  const [statsRange, setStatsRange] = useState(initialStatsRange);
   const [statsFromDate, setStatsFromDate] = useState(initialReflectionRange.fromDate);
   const [statsToDate, setStatsToDate] = useState(initialReflectionRange.toDate);
-  const [missionRange, setMissionRange] = useState('30');
+  const [missionRange, setMissionRange] = useState(initialMissionRangeValue);
   const [missionFromDate, setMissionFromDate] = useState(initialMissionRange.fromDate);
   const [missionToDate, setMissionToDate] = useState(initialMissionRange.toDate);
+
+  // 'custom' means an explicit from/to pick, not one of the day-count
+  // options — nothing meaningful to restore next visit, so it's skipped.
+  useEffect(() => {
+    if (statsRange !== 'custom') persistRange('character_stats_range', statsRange);
+  }, [statsRange]);
+
+  useEffect(() => {
+    if (missionRange !== 'custom') persistRange('character_mission_range', missionRange);
+  }, [missionRange]);
 
   useEffect(() => {
     const previousActiveProfile = lastActiveReflectionProfileRef.current;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { statsApi, characterApi, tasksApi, missionsApi, profileApi, behaviorsApi } from '../../lib/api';
-import { buildRelativeDateRange } from '../../lib/dateRangeUtils';
+import { buildRelativeDateRange, getPersistedRange, persistRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 import {
   filterTasksByDomain,
@@ -28,13 +28,14 @@ const RANGE_OPTIONS = [
 ];
 
 export function useDashboard(initialProfile) {
-  const initialTotalStatsRange = buildRelativeDateRange(30);
+  const initialRange = getPersistedRange('dashboard_range');
+  const initialTotalStatsRange = buildRelativeDateRange(parseInt(initialRange, 10));
 
   // Stats state
   const [summary, setSummary] = useState(null);
   const [timeseries, setTimeseries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState('30');
+  const [range, setRange] = useState(initialRange);
 
   // Raw tasks/missions backing the KPI cards, so a card click can show the matching list.
   const [allTasks, setAllTasks] = useState([]);
@@ -51,7 +52,7 @@ export function useDashboard(initialProfile) {
   // independent profile filter, decoupled from "Tareas por Estado".
   const [totalStatsHistory, setTotalStatsHistory] = useState([]);
   const [statsInfo, setStatsInfo] = useState({});
-  const [totalStatsRange, setTotalStatsRange] = useState('30');
+  const [totalStatsRange, setTotalStatsRange] = useState(initialRange);
   const [totalStatsFromDate, setTotalStatsFromDate] = useState(initialTotalStatsRange.fromDate);
   const [totalStatsToDate, setTotalStatsToDate] = useState(initialTotalStatsRange.toDate);
   const [totalStatsLoading, setTotalStatsLoading] = useState(false);
@@ -278,6 +279,11 @@ export function useDashboard(initialProfile) {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Persist range selection to localStorage for next session.
+  useEffect(() => {
+    persistRange('dashboard_range', range);
+  }, [range]);
 
   // The top range is the dashboard-wide default: changing it re-seeds every
   // panel's own range so they read consistently on first glance. A panel the

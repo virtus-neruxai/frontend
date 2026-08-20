@@ -5,6 +5,7 @@ import { HeartPulse, Lock } from 'lucide-react';
 import TaskDraftModal from '../../../../components/TaskDraftModal';
 import MissionDraftModal from '../../../../components/MissionDraftModal';
 import { StatsHistoryChart } from '../StatsHistoryChart';
+import { getPersistedRange, persistRange } from '../../../../lib/dateRangeUtils';
 import { useBodyCheckin, buildBodyCheckinRange } from '../../../viewmodels/useBodyCheckin';
 import { useDrafts } from '../../../viewmodels/useDrafts';
 import { calculateBodyCheckinKPIs } from '../../../viewmodels/bodyCheckinKpiUtils';
@@ -34,7 +35,11 @@ const DRAFT_TYPE_BY_ACTION = {
 export function BodyCheckinSection({ statsInfo = {}, onStatsChanged }) {
   const checkin = useBodyCheckin();
   const drafts = useDrafts();
-  const [evolutionRange, setEvolutionRange] = useState('30');
+  const [evolutionRange, setEvolutionRange] = useState(() => getPersistedRange('character_bodycheckin_range'));
+
+  useEffect(() => {
+    persistRange('character_bodycheckin_range', evolutionRange);
+  }, [evolutionRange]);
 
   const rangeDates = useMemo(
     () => buildBodyCheckinRange(evolutionRange),
