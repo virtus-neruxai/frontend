@@ -66,7 +66,7 @@ export default function EmotionPicker({ value, onChange, disabled = false }) {
     if (value?.emotion === label && value?.polarity === polarity) {
       onChange(null);
     } else {
-      onChange({ polarity, emotion: label, intensity: value?.intensity ?? 3, note: null });
+      onChange({ polarity, emotion: label, intensity: value?.intensity ?? 3 });
     }
   };
 

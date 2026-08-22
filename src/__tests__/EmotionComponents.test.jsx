@@ -26,7 +26,6 @@ describe('emotion UI components', () => {
           polarity: 'negative',
           emotion: 'Tristeza',
           intensity: 5,
-          note: null,
         }}
       />
     );
@@ -39,10 +38,10 @@ describe('emotion UI components', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test('disables every emotion choice when its parent flow is loading', () => {
+  test('disables every emotion choice when its parent flow is loading', async () => {
     render(<EmotionPicker value={null} onChange={vi.fn()} disabled />);
 
-    expect(screen.getByRole('button', { name: '😊 Positiva' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: '😊 Positiva' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '😐 Neutra' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '😔 Difícil' })).toBeDisabled();
   });
@@ -58,7 +57,6 @@ describe('emotion UI components', () => {
       polarity: 'negative',
       emotion: 'Tristeza',
       intensity: 3,
-      note: null,
     });
   });
 

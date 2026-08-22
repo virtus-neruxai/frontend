@@ -9,6 +9,11 @@ vi.mock('sonner', () => ({
 
 vi.mock('../lib/api', () => ({
   reflectionsApi: { create: vi.fn() },
+  emotionsApi: {
+    getCatalog: vi.fn().mockResolvedValue({
+      data: { catalog: { positive: [{ label: 'Calma', emoji: '😌' }], neutral: [], negative: [] } },
+    }),
+  },
 }));
 
 const panel = {
@@ -63,7 +68,6 @@ describe('CenterReflectionDialog', () => {
         polarity: 'positive',
         emotion: 'Calma',
         intensity: 3,
-        note: null,
       },
     });
     const payload = reflectionsApi.create.mock.calls[0][0];
