@@ -23,7 +23,7 @@ import { useCharacter } from '../presentation/viewmodels/useCharacter';
 import { useMissions } from '../presentation/viewmodels/useMissions';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { buildRelativeDateRange, getPersistedRange, persistRange } from '../lib/dateRangeUtils';
-import { formatMentorResponseText } from '../lib/mentorTextFormat';
+import { formatMentorHistoryResponseText, formatMentorResponseText } from '../lib/mentorTextFormat';
 import { formatStatLabel } from '../lib/statUtils';
 import { consumeNightlyReviewPayload } from '../lib/schedulerReview/nightlyReviewNotification';
 import { consumeMentorBehaviorPayload } from '../lib/schedulerReview/mentorBehaviorNotification';
@@ -1181,7 +1181,7 @@ export default function CharacterPageRefactored() {
                                     <div className="mt-3 p-3 bg-primary/10 border-l-4 border-primary rounded">
                                       <p className="text-xs font-semibold text-primary mb-1">Mentor:</p>
                                       <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                                        {formatMentorResponseText(reflection.ai_response)}
+                                        {formatMentorHistoryResponseText(reflection.ai_response)}
                                       </p>
                                     </div>
                                   )}
@@ -1253,7 +1253,7 @@ export default function CharacterPageRefactored() {
                             <div className="mt-3 p-3 bg-primary/10 border-l-4 border-primary rounded">
                               <p className="text-xs font-semibold text-primary mb-1">Mentor:</p>
                               <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                                {formatMentorResponseText(reflection.ai_response)}
+                                {formatMentorHistoryResponseText(reflection.ai_response)}
                               </p>
                             </div>
                           )}

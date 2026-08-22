@@ -85,6 +85,11 @@ export const missionsApi = {
   remove: (missionId) => api.delete(`/items/${missionId}`),
 };
 
+// Emotions API — canonical catalog, single source of truth shared with mobile/backend.
+export const emotionsApi = {
+  getCatalog: () => api.get('/emotions/catalog'),
+};
+
 // Reflections API
 export const reflectionsApi = {
   getAll: (params = {}) => {

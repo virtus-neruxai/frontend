@@ -17,6 +17,7 @@ import {
 import TaskDraftModal from '../../../components/TaskDraftModal';
 import MissionDraftModal from '../../../components/MissionDraftModal';
 import CenterPanelCard from './CenterPanelCard';
+import CenterReflectionDialog from './CenterReflectionDialog';
 import GeneralCompassCard from './GeneralCompassCard';
 import FinalReflectionCard from './FinalReflectionCard';
 import { useDrafts } from '../../viewmodels/useDrafts';
@@ -72,6 +73,7 @@ export default function CenterView() {
   const generating = startingGeneration || Boolean(jobId);
 
   const [pendingAction, setPendingAction] = useState(null);
+  const [reflectionPanel, setReflectionPanel] = useState(null);
   const {
     showTaskDraftModal, showMissionDraftModal, currentDraftData,
     openDraftModal, confirmTaskDraft, rejectTaskDraft,
@@ -99,6 +101,24 @@ export default function CenterView() {
       setPendingAction(null);
     }
   }, [center, openDraftModal]);
+
+  const openReflectionDraft = useCallback((reflection) => {
+    const action = reflection?.ui_action?.action;
+    const type = action === 'SHOW_MISSION_CONFIRMATION_MODAL'
+      ? 'mission'
+      : action === 'SHOW_TASK_CONFIRMATION_MODAL'
+        ? 'task'
+        : null;
+    if (!reflection?.draft_id || !type) {
+      toast.info('La propuesta ya no está disponible.');
+      return;
+    }
+    openDraftModal({
+      draftId: reflection.draft_id,
+      uiAction: reflection.ui_action,
+      type,
+    });
+  }, [openDraftModal]);
 
   // The server, not local storage, is the source of truth for an active job —
   // leaving the tab and coming back must recover it (§6.8). A "full" job can
@@ -428,6 +448,7 @@ export default function CenterView() {
                   icon={icon}
                   panel={panel}
                   initialJobId={activeJob?.job_id || null}
+                  onRegisterReflection={setReflectionPanel}
                   onAnnotationSaved={handleAnnotationSaved}
                   onReloadCenter={loadCenter}
                 />
@@ -443,6 +464,13 @@ export default function CenterView() {
           )}
         </>
       )}
+
+      <CenterReflectionDialog
+        open={Boolean(reflectionPanel)}
+        panel={reflectionPanel}
+        onOpenChange={(open) => { if (!open) setReflectionPanel(null); }}
+        onDraftReady={openReflectionDraft}
+      />
 
       <TaskDraftModal
         isOpen={showTaskDraftModal}

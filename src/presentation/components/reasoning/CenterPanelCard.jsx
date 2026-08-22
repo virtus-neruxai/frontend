@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { BookOpen, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Textarea } from '../../../components/ui/textarea';
@@ -21,6 +21,7 @@ export default function CenterPanelCard({
   icon: Icon,
   panel,
   initialJobId = null,
+  onRegisterReflection,
   onAnnotationSaved,
   onReloadCenter,
 }) {
@@ -166,7 +167,23 @@ export default function CenterPanelCard({
         ) : (
           <>
             <p className="text-sm">{panel.reading}</p>
-            <p className="text-sm font-medium text-muted-foreground">{panel.reflection_question}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-muted-foreground">{panel.reflection_question}</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs"
+                data-testid={`center-register-reflection-${panel.key}`}
+                onClick={() => onRegisterReflection?.({
+                  key: panel.key,
+                  label,
+                  question: panel.reflection_question,
+                })}
+              >
+                <BookOpen className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                Registrar reflexión
+              </Button>
+            </div>
           </>
         )}
 
