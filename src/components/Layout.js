@@ -1,4 +1,5 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -9,26 +10,44 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Calendar, LayoutDashboard, LogOut, Sparkles, ClipboardList, Settings, MessageCircle, Brain, Rocket } from 'lucide-react';
+import { Calendar, LayoutDashboard, LogOut, Sparkles, ClipboardList, Settings, MessageCircle, FileText, Rocket, Gauge } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { NotificationPermissionBanner } from './NotificationPermissionBanner';
 import { ThemeToggle } from './ThemeToggle';
 import { VirtusBrand } from './VirtusBrand';
 import { ProfileThemeBackground } from '../presentation/components/profile-theme/ProfileThemeBackground';
+import { UsageDialog } from '../presentation/components/account/UsageDialog';
+import { meApi } from '../lib/api';
+import { PLAN_LABELS } from '../lib/quotaError';
 
 export default function Layout({ children, ambient = false }) {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [usageOpen, setUsageOpen] = useState(false);
+  const [plan, setPlan] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    meApi
+      .getPlan()
+      .then((response) => {
+        if (!cancelled) setPlan(response.data?.plan || null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/calendar', label: 'Tareas', icon: Calendar },
     { path: '/character', label: 'Carácter', icon: Sparkles },
     { path: '/mentor', label: 'Mentor', icon: MessageCircle },
+    { path: '/informes', label: 'Informes', icon: FileText },
     { path: '/proyectos', label: 'Proyectos', icon: Rocket },
-    { path: '/informe-razonado', label: 'Informe Razonado', icon: Brain },
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/profile', label: 'Perfil', icon: ClipboardList },
-    { path: '/settings', label: 'Ajustes', icon: Settings },
   ];
 
   return (
@@ -78,8 +97,18 @@ export default function Layout({ children, ambient = false }) {
               <DropdownMenuContent align="end" className="w-52">
                 <div className="px-2 py-1.5">
                   <p className="text-sm font-medium">{user?.username}</p>
-                  <p className="text-xs text-muted-foreground">Cuenta Virtus</p>
+                  <p className="text-xs text-muted-foreground">
+                    Tier {plan ? PLAN_LABELS[plan] || plan : '…'}
+                  </p>
                 </div>
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Ajustes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setUsageOpen(true)}>
+                  <Gauge className="mr-2 h-4 w-4" />
+                  Uso
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -97,6 +126,7 @@ export default function Layout({ children, ambient = false }) {
       </main>
 
       <NotificationPermissionBanner />
+      <UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} />
     </div>
   );
 }

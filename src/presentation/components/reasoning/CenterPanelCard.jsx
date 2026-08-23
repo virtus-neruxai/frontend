@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { BookOpen, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Textarea } from '../../../components/ui/textarea';
 import { centerApi } from '../../../lib/api';
+import { apiErrorMessage } from '../../../lib/quotaError';
 
 const MAX_ANNOTATION_LENGTH = 2000;
 
@@ -20,6 +21,7 @@ export default function CenterPanelCard({
   icon: Icon,
   panel,
   initialJobId = null,
+  onRegisterReflection,
   onAnnotationSaved,
   onReloadCenter,
 }) {
@@ -77,7 +79,7 @@ export default function CenterPanelCard({
         toast.info('Este panel cambió en otra pestaña. Recargando la versión más reciente.');
         onReloadCenter();
       } else {
-        toast.error('No se pudo regenerar este panel. Vuelve a intentarlo.');
+        toast.error(apiErrorMessage(e, 'No se pudo regenerar este panel. Vuelve a intentarlo.'));
       }
     } finally {
       setStarting(false);
@@ -165,7 +167,23 @@ export default function CenterPanelCard({
         ) : (
           <>
             <p className="text-sm">{panel.reading}</p>
-            <p className="text-sm font-medium text-muted-foreground">{panel.reflection_question}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-muted-foreground">{panel.reflection_question}</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs"
+                data-testid={`center-register-reflection-${panel.key}`}
+                onClick={() => onRegisterReflection?.({
+                  key: panel.key,
+                  label,
+                  question: panel.reflection_question,
+                })}
+              >
+                <BookOpen className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                Registrar reflexión
+              </Button>
+            </div>
           </>
         )}
 

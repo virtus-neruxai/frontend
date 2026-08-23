@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { CheckSquare, Repeat, Target } from 'lucide-react';
 import { PROFILE_THEMES } from '../../../theme/profileThemes';
 import { getProfileName, getProfileEmoji } from '../../../lib/profileUtils';
+import { formatDateInput } from '../../../lib/dateRangeUtils';
 
 const INACTIVE_STATUSES = new Set(['done', 'completed', 'failed']);
 
@@ -15,6 +16,65 @@ const TYPE_FILTERS = [
 ];
 
 const LIMITS = [5, 10, 20, null];
+
+// Active items live in the future, so the presets look forward from today.
+const DATE_PRESETS = [
+  { key: 'all',   label: 'Todo',    days: null },
+  { key: 'today', label: 'Hoy',     days: 1 },
+  { key: '7',     label: '7 días',  days: 7 },
+  { key: '30',    label: '30 días', days: 30 },
+];
+
+const startOfDayFromInput = (value) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0).getTime();
+};
+
+const endOfDayFromInput = (value) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
+};
+
+const nextDaysRange = (days) => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + Math.max(1, days) - 1);
+  return { fromDate: formatDateInput(start), toDate: formatDateInput(end) };
+};
+
+/** [start, end] the item occupies. A recurring item runs until its `until`
+ *  (or forever), not until the end of its first occurrence. */
+const itemBounds = (item) => {
+  const startIso = item.date_start || item.date_end;
+  const endIso = item.date_end || item.date_start;
+  if (!startIso) return null;
+
+  const start = new Date(startIso).getTime();
+  if (Number.isNaN(start)) return null;
+
+  const rule = item.recurrence_rule;
+  if (rule && rule.type) {
+    const until = rule.until ? new Date(rule.until).getTime() : Infinity;
+    return { start, end: Number.isNaN(until) ? Infinity : Math.max(start, until) };
+  }
+
+  const end = new Date(endIso).getTime();
+  return { start, end: Number.isNaN(end) ? start : Math.max(start, end) };
+};
+
+/** True when the item overlaps the [fromDate, toDate] window (both optional,
+ *  `YYYY-MM-DD`). Items without any date never match a window. */
+export function isWithinDateRange(item, fromDate, toDate) {
+  if (!fromDate && !toDate) return true;
+
+  const bounds = itemBounds(item);
+  if (!bounds) return false;
+
+  const from = fromDate ? startOfDayFromInput(fromDate) : -Infinity;
+  const to = toDate ? endOfDayFromInput(toDate) : Infinity;
+  return bounds.start <= to && bounds.end >= from;
+}
 
 const STATUS_LABELS = {
   active:      'Activa',
@@ -62,6 +122,34 @@ const formatDate = (iso) => {
 export function ActiveItemsPanel({ tasks = [], onItemClick }) {
   const [typeFilter, setTypeFilter] = useState('all');
   const [limit, setLimit]           = useState(10);
+  const [datePreset, setDatePreset] = useState('all');
+  const [fromDate, setFromDate]     = useState('');
+  const [toDate, setToDate]         = useState('');
+
+  const applyPreset = (preset) => {
+    setDatePreset(preset.key);
+    if (preset.days === null) {
+      setFromDate('');
+      setToDate('');
+      return;
+    }
+    const range = nextDaysRange(preset.days);
+    setFromDate(range.fromDate);
+    setToDate(range.toDate);
+  };
+
+  // Typing a date by hand leaves the presets unselected (custom window).
+  const setCustomFrom = (value) => {
+    setDatePreset('custom');
+    setFromDate(value);
+  };
+
+  const setCustomTo = (value) => {
+    setDatePreset('custom');
+    setToDate(value);
+  };
+
+  const dateFilterActive = Boolean(fromDate || toDate);
 
   // All items come from the tasks array — linked tasks get mission icon
   const activeItems = tasks
@@ -73,9 +161,9 @@ export function ActiveItemsPanel({ tasks = [], onItemClick }) {
       return db.localeCompare(da);
     });
 
-  const filtered = typeFilter === 'all'
-    ? activeItems
-    : activeItems.filter((item) => item._kind === typeFilter);
+  const filtered = activeItems
+    .filter((item) => typeFilter === 'all' || item._kind === typeFilter)
+    .filter((item) => isWithinDateRange(item, fromDate, toDate));
 
   const visible = limit === null ? filtered : filtered.slice(0, limit);
 
@@ -104,6 +192,59 @@ export function ActiveItemsPanel({ tasks = [], onItemClick }) {
         ))}
       </div>
 
+      {/* Date range */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Fechas</span>
+          {dateFilterActive && (
+            <button
+              onClick={() => applyPreset(DATE_PRESETS[0])}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              Limpiar
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-1">
+          {DATE_PRESETS.map((preset) => (
+            <button
+              key={preset.key}
+              onClick={() => applyPreset(preset)}
+              className={[
+                'px-2 py-0.5 rounded-full text-xs font-medium transition-colors',
+                datePreset === preset.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70',
+              ].join(' ')}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="w-10 shrink-0">Desde</span>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(event) => setCustomFrom(event.target.value)}
+            aria-label="Desde"
+            className="flex-1 min-w-0 px-2 py-1 text-xs border border-input bg-background rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="w-10 shrink-0">Hasta</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(event) => setCustomTo(event.target.value)}
+            aria-label="Hasta"
+            className="flex-1 min-w-0 px-2 py-1 text-xs border border-input bg-background rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </label>
+      </div>
+
       {/* Count limit */}
       <div className="flex items-center gap-1.5">
         <span className="text-xs text-muted-foreground">Mostrar:</span>
@@ -127,7 +268,7 @@ export function ActiveItemsPanel({ tasks = [], onItemClick }) {
       <div className="flex flex-col gap-2">
         {visible.length === 0 && (
           <p className="text-xs text-muted-foreground py-4 text-center">
-            Sin elementos activos
+            {dateFilterActive ? 'Sin elementos en ese rango' : 'Sin elementos activos'}
           </p>
         )}
         {visible.map((item) => (

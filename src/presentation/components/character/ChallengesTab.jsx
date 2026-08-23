@@ -12,6 +12,7 @@ import { useChallenges } from '../../viewmodels/useChallenges';
 import ChallengeDraftModal from '../../../components/ChallengeDraftModal';
 import { FinishedList } from './FinishedList';
 import { StatRewardsChips } from '../stats/StatRewardsChips';
+import { ChallengeRoutineReflections } from './ChallengeRoutineReflections';
 
 const CHALLENGE_TYPE_LABEL = { daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual' };
 
@@ -93,6 +94,8 @@ function ChallengeBlock({
                 <Trash2 size={14} />
               </Button>
             </div>
+
+            <ChallengeRoutineReflections routineId={challenge.routine_id} />
           </div>
         ) : (
           <div className="space-y-2">

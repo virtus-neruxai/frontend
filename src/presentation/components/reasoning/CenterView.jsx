@@ -17,11 +17,13 @@ import {
 import TaskDraftModal from '../../../components/TaskDraftModal';
 import MissionDraftModal from '../../../components/MissionDraftModal';
 import CenterPanelCard from './CenterPanelCard';
+import CenterReflectionDialog from './CenterReflectionDialog';
 import GeneralCompassCard from './GeneralCompassCard';
 import FinalReflectionCard from './FinalReflectionCard';
 import { useDrafts } from '../../viewmodels/useDrafts';
-import { agentApi, centerApi } from '../../../lib/api';
+import { agentApi, centerApi, meApi } from '../../../lib/api';
 import { getStartupRetryDelay, isRetryableStartupError } from '../../../lib/startupRetry';
+import { apiErrorMessage } from '../../../lib/quotaError';
 import { Eye, Loader2, Orbit, Puzzle, RefreshCw, RotateCw, Scale, Split } from 'lucide-react';
 
 const DISCLAIMER = 'Esta es una lectura reflexiva basada en tus propios registros. No es una '
@@ -54,6 +56,11 @@ export default function CenterView() {
   const [centerLoadError, setCenterLoadError] = useState(false);
   const [startingGeneration, setStartingGeneration] = useState(false);
   const [jobId, setJobId] = useState(null);
+  // Desbloqueo por actividad (§2.6) — solo importa para el estado vacío, así
+  // que un fallo aquí no debe bloquear nada: `null` se trata como "aún no lo
+  // sé", y el botón se muestra habilitado por defecto (la puerta real, la que
+  // de verdad decide, vive en el servidor).
+  const [activity, setActivity] = useState(null);
   const centerRetryTimerRef = useRef(null);
   const centerRequestControllerRef = useRef(null);
   const centerRequestSequenceRef = useRef(0);
@@ -66,6 +73,7 @@ export default function CenterView() {
   const generating = startingGeneration || Boolean(jobId);
 
   const [pendingAction, setPendingAction] = useState(null);
+  const [reflectionPanel, setReflectionPanel] = useState(null);
   const {
     showTaskDraftModal, showMissionDraftModal, currentDraftData,
     openDraftModal, confirmTaskDraft, rejectTaskDraft,
@@ -87,12 +95,30 @@ export default function CenterView() {
       } else {
         toast.info(data.response || 'No se generó una propuesta esta vez.');
       }
-    } catch {
-      toast.error('No se pudo abrir esa propuesta. Vuelve a intentarlo.');
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'No se pudo abrir esa propuesta. Vuelve a intentarlo.'));
     } finally {
       setPendingAction(null);
     }
   }, [center, openDraftModal]);
+
+  const openReflectionDraft = useCallback((reflection) => {
+    const action = reflection?.ui_action?.action;
+    const type = action === 'SHOW_MISSION_CONFIRMATION_MODAL'
+      ? 'mission'
+      : action === 'SHOW_TASK_CONFIRMATION_MODAL'
+        ? 'task'
+        : null;
+    if (!reflection?.draft_id || !type) {
+      toast.info('La propuesta ya no está disponible.');
+      return;
+    }
+    openDraftModal({
+      draftId: reflection.draft_id,
+      uiAction: reflection.ui_action,
+      type,
+    });
+  }, [openDraftModal]);
 
   // The server, not local storage, is the source of truth for an active job —
   // leaving the tab and coming back must recover it (§6.8). A "full" job can
@@ -187,6 +213,9 @@ export default function CenterView() {
     window.addEventListener('focus', retryOnReconnect);
     window.addEventListener('online', retryOnReconnect);
     loadCenter();
+    meApi.getActivity()
+      .then(({ data }) => { if (centerMountedRef.current) setActivity(data); })
+      .catch(() => {}); // silencioso: solo afecta a un mensaje informativo
 
     return () => {
       centerMountedRef.current = false;
@@ -208,7 +237,10 @@ export default function CenterView() {
       if (e?.response?.status === 409) {
         loadCenter();
       } else {
-        toast.error('No se pudo crear tu centro. Vuelve a intentarlo.');
+        // La puerta de actividad (§2.6) puede rechazar aunque el botón se viera
+        // habilitado — p. ej. si `activity` quedó desfasado. apiErrorMessage()
+        // reconoce ese cuerpo y explica el motivo real en vez de un genérico.
+        toast.error(apiErrorMessage(e, 'No se pudo crear tu centro. Vuelve a intentarlo.'));
       }
     } finally {
       setStartingGeneration(false);
@@ -227,7 +259,7 @@ export default function CenterView() {
       if (e?.response?.status === 404) {
         loadCenter();
       } else {
-        toast.error('No se pudo regenerar tu centro. Vuelve a intentarlo.');
+        toast.error(apiErrorMessage(e, 'No se pudo regenerar tu centro. Vuelve a intentarlo.'));
       }
     } finally {
       setStartingGeneration(false);
@@ -320,13 +352,42 @@ export default function CenterView() {
         <Card>
           <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
             <Orbit className="h-10 w-10 text-primary" />
-            <p className="text-muted-foreground">
-              Aún no tienes un centro. Se construye a partir de tus reflexiones y conversaciones
-              reales — nada se rellena con generalidades.
-            </p>
-            <Button onClick={generate}>
-              <Orbit className="mr-2 h-4 w-4" /> Crear mi centro
-            </Button>
+            {activity && !activity.centro_completo_unlocked ? (
+              // Free, cuenta reciente (§2.6): el botón se ve pero está
+              // deshabilitado — la fricción es visible en vez de sorprender
+              // con un error al primer clic, y no oculta que Mi centro existe.
+              <>
+                <p className="text-muted-foreground">
+                  {`Mi centro se desbloquea a partir del ${activity.centro_completo_min_account_age_days}.º día desde tu alta`}
+                  {' — así se construye siempre desde reflexiones y conversaciones reales, '
+                    + 'nunca desde una cuenta recién creada.'}
+                </p>
+                <p className="text-sm font-medium">
+                  {(() => {
+                    const missing = Math.max(
+                      0,
+                      activity.centro_completo_min_account_age_days - activity.account_age_days,
+                    );
+                    return missing === 1
+                      ? 'Te falta 1 día para poder crearlo.'
+                      : `Te faltan ${missing} días para poder crearlo.`;
+                  })()}
+                </p>
+                <Button disabled title="Todavía no disponible">
+                  <Orbit className="mr-2 h-4 w-4" /> Crear mi centro
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground">
+                  Aún no tienes un centro. Se construye a partir de tus reflexiones y conversaciones
+                  reales — nada se rellena con generalidades.
+                </p>
+                <Button onClick={generate}>
+                  <Orbit className="mr-2 h-4 w-4" /> Crear mi centro
+                </Button>
+              </>
+            )}
             <p className="text-xs text-muted-foreground">
               ¿Todavía no tienes registros? Empieza en{' '}
               <Link to="/mentor" className="underline">Mentor</Link>.
@@ -387,6 +448,7 @@ export default function CenterView() {
                   icon={icon}
                   panel={panel}
                   initialJobId={activeJob?.job_id || null}
+                  onRegisterReflection={setReflectionPanel}
                   onAnnotationSaved={handleAnnotationSaved}
                   onReloadCenter={loadCenter}
                 />
@@ -402,6 +464,13 @@ export default function CenterView() {
           )}
         </>
       )}
+
+      <CenterReflectionDialog
+        open={Boolean(reflectionPanel)}
+        panel={reflectionPanel}
+        onOpenChange={(open) => { if (!open) setReflectionPanel(null); }}
+        onDraftReady={openReflectionDraft}
+      />
 
       <TaskDraftModal
         isOpen={showTaskDraftModal}

@@ -4,6 +4,20 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 
+// Day/Week must show FIRST_VISIBLE_HOUR → 24:00 without scrolling; the
+// remaining night hours stay one scroll away. The height is derived from the
+// slot size so it keeps matching `.fc .fc-timegrid-slot { height: 2rem }` in
+// index.css.
+const FIRST_VISIBLE_HOUR = 6;
+const LAST_VISIBLE_HOUR = 24;
+const SLOT_HEIGHT_PX = 32; // 2rem, per index.css
+const SLOTS_PER_HOUR = 2; // slotDuration 00:30
+const TIME_GRID_CHROME_PX = 88; // day header + "Todo el día" row
+const TIME_VIEW_HEIGHT_PX =
+  (LAST_VISIBLE_HOUR - FIRST_VISIBLE_HOUR) * SLOTS_PER_HOUR * SLOT_HEIGHT_PX +
+  TIME_GRID_CHROME_PX;
+const FIRST_VISIBLE_TIME = `${String(FIRST_VISIBLE_HOUR).padStart(2, '0')}:00:00`;
+
 const renderEventContent = (eventInfo) => {
   const { status, progress, taskKind, completedToday } = eventInfo.event.extendedProps;
   const start = eventInfo.event.start;
@@ -36,13 +50,15 @@ export function CalendarGrid({
   onEventDrop,
   onEventResize,
   onDatesSet,
-  currentScrollTime,
 }) {
   const isTimeView = initialView === 'timeGridDay' || initialView === 'timeGridWeek';
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div
+        className="h-full min-h-[480px] flex items-center justify-center"
+        style={isTimeView ? { height: TIME_VIEW_HEIGHT_PX } : undefined}
+      >
         <div className="animate-pulse text-muted-foreground">Cargando calendario...</div>
       </div>
     );
@@ -69,14 +85,14 @@ export function CalendarGrid({
       eventOrder="isRecurring,start,-duration,allDay,title"
       eventOrderStrict={true}
       weekends={true}
-      // Keep Day/Week tall enough to see a useful span of hours at once while
-      // preserving FullCalendar's internal scroll for the rest of the day.
-      height={isTimeView ? 920 : 'auto'}
+      // Day/Week get a fixed height that fits 04:00–24:00; FullCalendar keeps
+      // its internal scroll for the night hours left above the window.
+      height={isTimeView ? TIME_VIEW_HEIGHT_PX : 'auto'}
       contentHeight={isTimeView ? undefined : 'auto'}
       aspectRatio={isTimeView ? undefined : 1.8}
       firstDay={1}
       locale="es"
-      scrollTime={currentScrollTime || "08:00:00"}
+      scrollTime={FIRST_VISIBLE_TIME}
       slotMinTime="00:00:00"
       slotMaxTime="24:00:00"
       slotDuration="00:30:00"

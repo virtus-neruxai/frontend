@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { missionsApi, statsApi, tasksApi, reflectionsApi, notificationsApi } from '../../lib/api';
+import { apiErrorMessage } from '../../lib/quotaError';
 import { toast } from 'sonner';
 
 // The three bands MissionEngine can put on a draft (`preferred_time_of_day`).
@@ -181,7 +182,7 @@ export const useMissions = () => {
       setShowConfirmModal(true);
       return missionsWithDates;
     } catch (error) {
-      toast.error('Error al generar misiones');
+      toast.error(apiErrorMessage(error, 'Error al generar misiones'));
       throw error;
     } finally {
       setGeneratingMissions(false);
@@ -268,7 +269,7 @@ export const useMissions = () => {
       toast.success('Revisión nocturna completada');
       return response.data;
     } catch (error) {
-      toast.error('Error al generar revisión nocturna');
+      toast.error(apiErrorMessage(error, 'Error al generar revisión nocturna'));
       throw error;
     } finally {
       setNightlyReviewLoading(false);

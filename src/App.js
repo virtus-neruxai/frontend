@@ -5,8 +5,8 @@ import CalendarPage from "./pages/CalendarPage";
 import DashboardPage from "./pages/DashboardPage";
 import CharacterPage from "./pages/CharacterPage";
 import MentorPage from "./pages/MentorPage";
+import InformesPage from "./pages/InformesPage";
 import ProjectsPage from "./pages/ProjectsPage";
-import ReasoningReportPage from "./pages/ReasoningReportPage";
 import QuestionnairePage from "./pages/QuestionnairePage";
 import SettingsPage from "./pages/SettingsPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -87,6 +87,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/informes"
+        element={
+          <ProtectedRoute>
+            <InformesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/proyectos"
         element={
           <ProtectedRoute>
@@ -94,15 +102,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/informe-razonado" element={<Navigate to="/informes" replace />} />
       <Route
-        path="/informe-razonado"
-        element={
-          <ProtectedRoute>
-            <ReasoningReportPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route 
         path="/profile" 
         element={
           <ProtectedRoute>

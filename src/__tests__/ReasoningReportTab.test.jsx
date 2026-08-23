@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
-import ReasoningReportPage from '../pages/ReasoningReportPage';
+import ReasoningReportTab from '../presentation/components/reasoning/ReasoningReportTab';
 import { reasoningApi } from '../lib/api';
 
 vi.mock('sonner', () => ({
@@ -16,10 +16,6 @@ vi.mock('../lib/api', () => ({
     chat: vi.fn(),
   },
   tasksApi: { create: vi.fn() },
-}));
-
-vi.mock('../components/Layout', () => ({
-  default: ({ children }) => <div>{children}</div>,
 }));
 
 vi.mock('../components/TaskDraftModal', () => ({
@@ -41,7 +37,6 @@ vi.mock('../components/ui/select', () => ({
       value={value}
       onChange={(event) => onValueChange(event.target.value)}
     >
-      <option value="1">Diario</option>
       <option value="7">Última semana</option>
       <option value="14">Últimas 2 semanas</option>
       <option value="30">Último mes</option>
@@ -53,7 +48,7 @@ vi.mock('../components/ui/select', () => ({
   SelectValue: () => null,
 }));
 
-describe('ReasoningReportPage range selector', () => {
+describe('ReasoningReportTab range selector', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.sessionStorage.clear();
@@ -90,14 +85,14 @@ describe('ReasoningReportPage range selector', () => {
   });
 
   test('default range is 14 and is sent when generating', async () => {
-    render(<ReasoningReportPage />);
+    render(<ReasoningReportTab />);
 
     fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
     await waitFor(() => expect(reasoningApi.generateReport).toHaveBeenCalledWith(14));
   });
 
   test('the selected range is sent when generating', async () => {
-    render(<ReasoningReportPage />);
+    render(<ReasoningReportTab />);
 
     fireEvent.change(screen.getByTestId('range-select'), { target: { value: '7' } });
     fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
@@ -105,7 +100,7 @@ describe('ReasoningReportPage range selector', () => {
   });
 
   test('history is filtered by selected report range', async () => {
-    render(<ReasoningReportPage />);
+    render(<ReasoningReportTab />);
 
     fireEvent.click(screen.getByRole('button', { name: /historial/i }));
     expect(await screen.findByText(/informe de dos semanas/i)).toBeInTheDocument();
@@ -121,7 +116,7 @@ describe('ReasoningReportPage range selector', () => {
     // If the job cannot even be queued, the page keeps the retry action.
     reasoningApi.generateReport.mockRejectedValue(new Error('502'));
 
-    render(<ReasoningReportPage />);
+    render(<ReasoningReportTab />);
     fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
 
     await waitFor(() =>
@@ -155,7 +150,7 @@ describe('ReasoningReportPage range selector', () => {
       },
     });
 
-    render(<ReasoningReportPage />);
+    render(<ReasoningReportTab />);
     fireEvent.click(screen.getByRole('button', { name: /generar informe/i }));
 
     expect(await screen.findByText('Lectura 14')).toBeInTheDocument();

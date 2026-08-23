@@ -22,8 +22,8 @@ import { ProfileHeroCard } from '../presentation/components/profile-theme/Profil
 import { useCharacter } from '../presentation/viewmodels/useCharacter';
 import { useMissions } from '../presentation/viewmodels/useMissions';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
-import { buildRelativeDateRange } from '../lib/dateRangeUtils';
-import { formatMentorResponseText } from '../lib/mentorTextFormat';
+import { buildRelativeDateRange, getPersistedRange, persistRange } from '../lib/dateRangeUtils';
+import { formatMentorHistoryResponseText, formatMentorResponseText } from '../lib/mentorTextFormat';
 import { formatStatLabel } from '../lib/statUtils';
 import { consumeNightlyReviewPayload } from '../lib/schedulerReview/nightlyReviewNotification';
 import { consumeMentorBehaviorPayload } from '../lib/schedulerReview/mentorBehaviorNotification';
@@ -181,14 +181,26 @@ export default function CharacterPageRefactored() {
   const [draftNowTick, setDraftNowTick] = useState(Date.now()); // 1s ticker for TTL countdown
   
   // State for charts
-  const initialReflectionRange = buildRelativeDateRange(30);
-  const initialMissionRange = buildRelativeDateRange(30);
-  const [statsRange, setStatsRange] = useState('30');
+  const initialStatsRange = getPersistedRange('character_stats_range');
+  const initialMissionRangeValue = getPersistedRange('character_mission_range');
+  const initialReflectionRange = buildRelativeDateRange(parseInt(initialStatsRange, 10));
+  const initialMissionRange = buildRelativeDateRange(parseInt(initialMissionRangeValue, 10));
+  const [statsRange, setStatsRange] = useState(initialStatsRange);
   const [statsFromDate, setStatsFromDate] = useState(initialReflectionRange.fromDate);
   const [statsToDate, setStatsToDate] = useState(initialReflectionRange.toDate);
-  const [missionRange, setMissionRange] = useState('30');
+  const [missionRange, setMissionRange] = useState(initialMissionRangeValue);
   const [missionFromDate, setMissionFromDate] = useState(initialMissionRange.fromDate);
   const [missionToDate, setMissionToDate] = useState(initialMissionRange.toDate);
+
+  // 'custom' means an explicit from/to pick, not one of the day-count
+  // options — nothing meaningful to restore next visit, so it's skipped.
+  useEffect(() => {
+    if (statsRange !== 'custom') persistRange('character_stats_range', statsRange);
+  }, [statsRange]);
+
+  useEffect(() => {
+    if (missionRange !== 'custom') persistRange('character_mission_range', missionRange);
+  }, [missionRange]);
 
   useEffect(() => {
     const previousActiveProfile = lastActiveReflectionProfileRef.current;
@@ -763,19 +775,19 @@ export default function CharacterPageRefactored() {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="body-checkin" className="space-y-4">
+        <Tabs defaultValue="missions" className="space-y-4">
           <TabsList className="bg-muted p-1 rounded-full">
-            <TabsTrigger value="body-checkin" className="rounded-full data-[state=active]:bg-card">
-              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Registro corporal
+            <TabsTrigger value="missions" className="rounded-full data-[state=active]:bg-card">
+              <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Misiones
             </TabsTrigger>
             <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-card">
               <Scroll className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Diario
             </TabsTrigger>
-            <TabsTrigger value="missions" className="rounded-full data-[state=active]:bg-card">
-              <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Misiones
+            <TabsTrigger value="body-checkin" className="rounded-full data-[state=active]:bg-card">
+              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Registro corporal
             </TabsTrigger>
           </TabsList>
 
@@ -1169,7 +1181,7 @@ export default function CharacterPageRefactored() {
                                     <div className="mt-3 p-3 bg-primary/10 border-l-4 border-primary rounded">
                                       <p className="text-xs font-semibold text-primary mb-1">Mentor:</p>
                                       <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                                        {formatMentorResponseText(reflection.ai_response)}
+                                        {formatMentorHistoryResponseText(reflection.ai_response)}
                                       </p>
                                     </div>
                                   )}
@@ -1241,7 +1253,7 @@ export default function CharacterPageRefactored() {
                             <div className="mt-3 p-3 bg-primary/10 border-l-4 border-primary rounded">
                               <p className="text-xs font-semibold text-primary mb-1">Mentor:</p>
                               <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                                {formatMentorResponseText(reflection.ai_response)}
+                                {formatMentorHistoryResponseText(reflection.ai_response)}
                               </p>
                             </div>
                           )}

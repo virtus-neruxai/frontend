@@ -1,31 +1,7 @@
 import { useEffect, useState } from 'react';
+import { emotionsApi } from '../lib/api';
 
-const CATALOG = {
-  positive: [
-    { label: 'Alegría', emoji: '😄' },
-    { label: 'Calma', emoji: '😌' },
-    { label: 'Gratitud', emoji: '🙏' },
-    { label: 'Esperanza', emoji: '🌤️' },
-    { label: 'Motivación', emoji: '🔥' },
-    { label: 'Confianza', emoji: '💪' },
-  ],
-  neutral: [
-    { label: 'Concentración', emoji: '🧠' },
-    { label: 'Neutralidad', emoji: '😐' },
-    { label: 'Cansancio leve', emoji: '😮‍💨' },
-    { label: 'Dispersión', emoji: '🌫️' },
-    { label: 'Curiosidad', emoji: '🧭' },
-    { label: 'Contención', emoji: '🧱' },
-  ],
-  negative: [
-    { label: 'Tristeza', emoji: '😢' },
-    { label: 'Ansiedad', emoji: '😰' },
-    { label: 'Estrés', emoji: '😵‍💫' },
-    { label: 'Frustración', emoji: '😤' },
-    { label: 'Culpa', emoji: '😓' },
-    { label: 'Desánimo', emoji: '🫥' },
-  ],
-};
+const EMPTY_CATALOG = { positive: [], neutral: [], negative: [] };
 
 const POLARITY_LABELS = {
   positive: '😊 Positiva',
@@ -56,10 +32,24 @@ const POLARITY_STYLES = {
 
 export default function EmotionPicker({ value, onChange, disabled = false }) {
   const [activePolarity, setActivePolarity] = useState(value?.polarity || null);
+  const [catalog, setCatalog] = useState(EMPTY_CATALOG);
 
   useEffect(() => {
     setActivePolarity(value?.polarity || null);
   }, [value?.polarity]);
+
+  useEffect(() => {
+    let cancelled = false;
+    emotionsApi
+      .getCatalog()
+      .then(({ data }) => {
+        if (!cancelled && data?.catalog) setCatalog(data.catalog);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleTogglePolarity = (polarity) => {
     if (disabled) return;
@@ -76,7 +66,7 @@ export default function EmotionPicker({ value, onChange, disabled = false }) {
     if (value?.emotion === label && value?.polarity === polarity) {
       onChange(null);
     } else {
-      onChange({ polarity, emotion: label, intensity: value?.intensity ?? 3, note: null });
+      onChange({ polarity, emotion: label, intensity: value?.intensity ?? 3 });
     }
   };
 
@@ -91,7 +81,7 @@ export default function EmotionPicker({ value, onChange, disabled = false }) {
         ¿Cómo te sientes? <span className="normal-case font-normal">(opcional)</span>
       </p>
       <div className="flex gap-2">
-        {Object.entries(CATALOG).map(([polarity, emotions]) => {
+        {Object.entries(catalog).map(([polarity, emotions]) => {
           const styles = POLARITY_STYLES[polarity];
           const isOpen = activePolarity === polarity;
           return (

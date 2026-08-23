@@ -1,7 +1,22 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import EmotionBadge from '../components/EmotionBadge';
 import EmotionDiscardAlert from '../components/EmotionDiscardAlert';
 import EmotionPicker from '../components/EmotionPicker';
+
+vi.mock('../lib/api', () => ({
+  emotionsApi: {
+    getCatalog: vi.fn().mockResolvedValue({
+      data: {
+        catalog: {
+          positive: [{ label: 'Alegría', emoji: '😄' }],
+          neutral: [{ label: 'Concentración', emoji: '🧠' }],
+          negative: [{ label: 'Tristeza', emoji: '😢' }],
+        },
+      },
+    }),
+  },
+}));
 
 describe('emotion UI components', () => {
   test('renders the emotion badge using the compact history format', () => {
@@ -11,7 +26,6 @@ describe('emotion UI components', () => {
           polarity: 'negative',
           emotion: 'Tristeza',
           intensity: 5,
-          note: null,
         }}
       />
     );
@@ -24,26 +38,25 @@ describe('emotion UI components', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test('disables every emotion choice when its parent flow is loading', () => {
+  test('disables every emotion choice when its parent flow is loading', async () => {
     render(<EmotionPicker value={null} onChange={vi.fn()} disabled />);
 
-    expect(screen.getByRole('button', { name: '😊 Positiva' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: '😊 Positiva' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '😐 Neutra' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '😔 Difícil' })).toBeDisabled();
   });
 
-  test('returns the diary emotion shape unchanged', () => {
+  test('returns the diary emotion shape unchanged', async () => {
     const onChange = vi.fn();
     render(<EmotionPicker value={null} onChange={onChange} />);
 
     fireEvent.click(screen.getByRole('button', { name: '😔 Difícil' }));
-    fireEvent.click(screen.getByRole('button', { name: '😢 Tristeza' }));
+    fireEvent.click(await screen.findByRole('button', { name: '😢 Tristeza' }));
 
     expect(onChange).toHaveBeenCalledWith({
       polarity: 'negative',
       emotion: 'Tristeza',
       intensity: 3,
-      note: null,
     });
   });
 

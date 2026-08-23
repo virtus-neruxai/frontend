@@ -12,13 +12,6 @@ const VIEW_MAP = {
 const WEEKDAY_LABELS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 
 
-const getCurrentTimeScrollTarget = () => {
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  return `${hh}:${mm}:00`;
-};
-
 const parseRule = (raw) => {
   if (!raw || typeof raw !== 'object' || !raw.type) return null;
   return raw;
@@ -181,7 +174,6 @@ export function useCalendar() {
     start: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     end: new Date(new Date().setMonth(new Date().getMonth() + 2)),
   });
-  const currentScrollTime = useMemo(() => getCurrentTimeScrollTarget(), []);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -383,7 +375,6 @@ export function useCalendar() {
     openCreateModal,
     openCreateRoutineModal,
     createMode,
-    currentScrollTime,
     viewMap: VIEW_MAP,
   };
 }

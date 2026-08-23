@@ -35,6 +35,7 @@ vi.mock('../lib/api', () => ({
     getAll: vi.fn().mockResolvedValue({ data: [] }),
   },
   agentApi: {},
+  emotionsApi: { getCatalog: vi.fn().mockResolvedValue({ data: { catalog: {} } }) },
 }));
 
 vi.mock('../theme/useProfileTheme', () => ({

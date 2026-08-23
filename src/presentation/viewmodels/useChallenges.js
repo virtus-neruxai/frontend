@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { challengesApi, tasksApi } from '../../lib/api';
+import { apiErrorMessage } from '../../lib/quotaError';
 import { toast } from 'sonner';
 
 /**
@@ -70,7 +71,7 @@ export const useChallenges = () => {
       setShowDraftModal(true);
       return response.data;
     } catch (error) {
-      toast.error('Error al generar el desafío');
+      toast.error(apiErrorMessage(error, 'Error al generar el desafío'));
       throw error;
     } finally {
       setGeneratingType(null);

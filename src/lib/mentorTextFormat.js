@@ -10,3 +10,29 @@ export function formatMentorResponseText(text) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
+
+const HISTORY_PROPOSAL_START = /(?:^|\n)(?:---\n\n)?He preparado (?:esta|este|una|un) (?:tarea|misi[oó]n|rutina|micro-?acci[oó]n)\b/i;
+
+export function formatMentorHistoryResponseText(text) {
+  const formatted = formatMentorResponseText(text);
+  if (!formatted) return '';
+
+  const recordsMarker = '📎 Registros:';
+  const recordsIndex = formatted.indexOf(recordsMarker);
+  const beforeRecords = recordsIndex >= 0
+    ? formatted.slice(0, recordsIndex)
+    : formatted;
+  const proposalMatch = beforeRecords.match(HISTORY_PROPOSAL_START);
+
+  if (!proposalMatch) return formatted;
+
+  const mentorResponse = beforeRecords
+    .slice(0, proposalMatch.index)
+    .replace(/\s*---\s*$/, '')
+    .trim();
+  const records = recordsIndex >= 0
+    ? formatted.slice(recordsIndex).trim()
+    : '';
+
+  return [mentorResponse, records].filter(Boolean).join('\n\n---\n\n');
+}

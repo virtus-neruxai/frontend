@@ -37,7 +37,6 @@ export default function CalendarPageRefactored() {
     openCreateModal,
     openCreateRoutineModal,
     createMode,
-    currentScrollTime,
     viewMap,
   } = useCalendar();
 
@@ -90,7 +89,6 @@ export default function CalendarPageRefactored() {
               onEventDrop={handleEventDrop}
               onEventResize={handleEventResize}
               onDatesSet={handleDatesSet}
-              currentScrollTime={currentScrollTime}
             />
           </div>
 

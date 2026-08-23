@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { agentApi } from '../../lib/api';
+import { apiErrorMessage } from '../../lib/quotaError';
 import { toast } from 'sonner';
 
 export const useDrafts = () => {
@@ -10,15 +11,13 @@ export const useDrafts = () => {
   const [currentDraftData, setCurrentDraftData] = useState(null);
 
   const getDraftErrorMessage = useCallback((error, fallbackMessage) => {
-    const status = error?.response?.status;
-    const detail = error?.response?.data?.detail;
-    if (status === 404) {
+    // El 404 se queda aquí: es propio de los drafts (el borrador caduca a las
+    // 48 h) y el mensaje de la API no lo explicaría igual de bien. El resto ya
+    // lo cubre el helper compartido, cuota incluida.
+    if (error?.response?.status === 404) {
       return 'La propuesta ya no está disponible (expirada o confirmada). Pide una nueva.';
     }
-    if (typeof detail === 'string' && detail.trim()) {
-      return detail;
-    }
-    return fallbackMessage;
+    return apiErrorMessage(error, fallbackMessage);
   }, []);
 
   const openDraftModal = useCallback(({ draftId, uiAction, type }) => {

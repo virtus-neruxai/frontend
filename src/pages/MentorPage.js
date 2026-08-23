@@ -16,11 +16,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Textarea } from '../components/ui/textarea';
 import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
-import CenterView from '../presentation/components/reasoning/CenterView';
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { useProfileTheme } from '../theme/useProfileTheme';
-import { Clock, MessageCircle, Orbit, PlusCircle, Repeat, Rocket, Send } from 'lucide-react';
+import { Clock, MessageCircle, PlusCircle, Repeat, Rocket, Send } from 'lucide-react';
 
 const formatConvDate = (dateString) => {
   if (!dateString) return '';
@@ -186,10 +185,6 @@ export default function MentorPage() {
             <TabsTrigger value="agent" className="rounded-full data-[state=active]:bg-card">
               <MessageCircle className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Mentor {profileName}
-            </TabsTrigger>
-            <TabsTrigger value="centro" className="rounded-full data-[state=active]:bg-card">
-              <Orbit className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Mi centro
             </TabsTrigger>
             <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-card">
               <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
@@ -399,10 +394,6 @@ export default function MentorPage() {
                 />
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="centro" className="space-y-4">
-            <CenterView />
           </TabsContent>
 
           <TabsContent value="challenges" className="space-y-4">

@@ -26,6 +26,17 @@ vi.mock('../lib/api', () => ({
     getAll: vi.fn(),
     create: vi.fn(),
   },
+  emotionsApi: {
+    getCatalog: vi.fn().mockResolvedValue({
+      data: {
+        catalog: {
+          positive: [{ label: 'Alegría', emoji: '😄' }, { label: 'Gratitud', emoji: '🙏' }],
+          neutral: [{ label: 'Concentración', emoji: '🧠' }],
+          negative: [{ label: 'Ansiedad', emoji: '😰' }, { label: 'Tristeza', emoji: '😢' }],
+        },
+      },
+    }),
+  },
 }));
 
 beforeAll(() => {
@@ -106,7 +117,6 @@ describe('TaskModal reflection failure handling', () => {
         polarity: 'negative',
         emotion: 'Ansiedad',
         intensity: 3,
-        note: null,
       },
     }));
 
@@ -129,7 +139,6 @@ describe('TaskModal reflection failure handling', () => {
         polarity: 'negative',
         emotion: 'Ansiedad',
         intensity: 3,
-        note: null,
       },
     }));
     await waitFor(() => expect(screen.getByTestId('task-completion-reflection-input')).toHaveValue(''));
@@ -292,7 +301,6 @@ describe('TaskModal reflection failure handling', () => {
         polarity: 'positive',
         emotion: 'Gratitud',
         intensity: 5,
-        note: null,
       },
     }));
     expect(reflectionsApi.create.mock.calls[0][0]).not.toHaveProperty('task_id');
@@ -493,7 +501,6 @@ describe('TaskModal reflection failure handling', () => {
         polarity: 'neutral',
         emotion: 'Concentración',
         intensity: 3,
-        note: null,
       },
     })));
   });
@@ -541,7 +548,6 @@ describe('TaskModal reflection failure handling', () => {
         polarity: 'neutral',
         emotion: 'Concentración',
         intensity: 3,
-        note: null,
       },
     })));
     expect(screen.queryByTestId('task-mark-done-btn')).not.toBeInTheDocument();
@@ -616,7 +622,6 @@ describe('TaskModal reflection failure handling', () => {
           polarity: 'negative',
           emotion: 'Tristeza',
           intensity: 5,
-          note: null,
         },
       }],
     });

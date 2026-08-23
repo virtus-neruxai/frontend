@@ -178,6 +178,15 @@ corporal), `CenterPanelCard.jsx` (×6) y `FinalReflectionCard.jsx`.
   actionType)` con `action_type` explícito, y reutiliza `useDrafts` +
   `TaskDraftModal`/`MissionDraftModal` ya existentes. No hay modal propio del
   centro.
+- **Registrar reflexión** junto a la pregunta de cada panel abre un diálogo y usa
+  el mismo `POST /reflections` del Diario. Envía solo `content` y la emoción
+  opcional: queda como `reflection_type=journal` y el backend la etiqueta con
+  el perfil persistido activo; no se envían la clave del panel ni
+  `prompt_profile`.
+- El historial del Diario usa `formatMentorHistoryResponseText`: si la respuesta
+  incluía una propuesta confirmable, muestra solo la lectura breve y conserva
+  el footer `📎 Registros:`. El texto persistido y el resultado recién creado no
+  se recortan.
 - El disclaimer de la medida general no es opcional: viaja siempre con el
   número.
 

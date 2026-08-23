@@ -37,7 +37,6 @@ describe('useMissions completion reflections', () => {
       polarity: 'positive',
       emotion: 'Confianza',
       intensity: 4,
-      note: null,
     };
 
     await act(async () => {
@@ -75,7 +74,6 @@ describe('useMissions completion reflections', () => {
           polarity: 'negative',
           emotion: 'Frustración',
           intensity: 4,
-          note: null,
         },
         missionContext: { title: 'Misión sin comentario' },
       });
