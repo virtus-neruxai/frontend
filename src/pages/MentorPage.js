@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Textarea } from '../components/ui/textarea';
 import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
+import { agentApi, draftTypeFromAction } from '../lib/api';
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -101,6 +102,34 @@ export default function MentorPage() {
       setUserDataQa(false);
     }
   }, [pendingDraft, userDataQa, setUserDataQa]);
+
+  // A draft outlives the tab that received it — it sits in Redis for the full
+  // hour (REDIS_DRAFT_TTL) regardless of what the browser remembers. Only
+  // `pendingDraft` itself, plain React state, was lost on reload; this
+  // recovers it once per session so closing the tab does not mean starting
+  // the confirmation over. Scoped to `sessionId` so switching profile or
+  // starting a new conversation does not resurrect an older thread's draft.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    agentApi.getPendingDrafts(sessionId).then(({ data }) => {
+      if (cancelled) return;
+      const draft = data.drafts?.[0];
+      if (!draft?.ui_action) return;
+      const expiresAt = new Date(draft.expires_at).getTime();
+      if (Number.isNaN(expiresAt) || expiresAt <= Date.now()) return;
+      setPendingDraft({
+        draftId: draft.draft_id,
+        uiAction: draft.ui_action,
+        type: draftTypeFromAction(draft.ui_action.action),
+        expiresAt,
+      });
+    }).catch(() => {
+      // Recovery is a convenience, not the main flow: a failed lookup just
+      // means the person starts fresh, same as before this existed.
+    });
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   const formatDraftType = (type) => {
     if (type === 'task') return 'tarea';

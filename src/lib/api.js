@@ -145,6 +145,16 @@ agentApiInstance.interceptors.response.use(
   }
 );
 
+// Which confirmation modal a `ui_action` opens. Shared by a live chat turn
+// (useAgentChat/useHealthChat) and by draft recovery on page load
+// (MentorPage/HealthMentorPage): both end up with the same `{action}` shape
+// and must classify it the same way.
+export const draftTypeFromAction = (action) => {
+  if (action === 'SHOW_MISSION_CONFIRMATION_MODAL') return 'mission';
+  if (action === 'SHOW_PROJECT_CONFIRMATION_MODAL') return 'project';
+  return 'task';
+};
+
 export const agentApi = {
   chat: (message, sessionId, deepReasoning = false, userDataQa = false, projectPlan = false) =>
     agentApiInstance.post('/agent/chat', {
@@ -155,6 +165,13 @@ export const agentApi = {
       project_plan: projectPlan,
     }),
   confirmDraft: (data) => agentApiInstance.post('/agent/draft/confirm', data),
+  // A draft outlives the tab that received it — it sits in Redis for
+  // REDIS_DRAFT_TTL (1h) regardless of what the browser remembers. This is
+  // how a page recovers it after a reload: `sessionId` scopes the search to
+  // the active conversation so "Nueva Conversación" does not resurrect a
+  // proposal from a thread already left behind.
+  getPendingDrafts: (sessionId) =>
+    agentApiInstance.get('/agent/drafts', { params: { session_id: sessionId } }),
   // "Mi centro" → Crear tarea/misión/rutina (euler-application.md §6.5). Same
   // plain-JWT handoff the diary reflection already uses — the frontend never
   // sends more than the final reflection's text, its provenance and the
@@ -188,6 +205,10 @@ export const healthAgentApi = {
     agentApiInstance.get('/agent/health-chat/interactions', {
       params: { limit: 200, skip: 0, ...params },
     }),
+  // Same recovery as agentApi.getPendingDrafts, scoped server-side to the
+  // health surface's own drafts.
+  getPendingDrafts: (sessionId) =>
+    agentApiInstance.get('/agent/health-chat/drafts', { params: { session_id: sessionId } }),
 };
 
 // Projects API — planificaciones (item_type="project") con sus tasks/routines hijas.

@@ -13,7 +13,7 @@ import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { Textarea } from '../components/ui/textarea';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
-import { healthConversationsApi } from '../lib/api';
+import { draftTypeFromAction, healthAgentApi, healthConversationsApi } from '../lib/api';
 import { useHealthChat } from '../presentation/viewmodels/useHealthChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { Clock, HeartPulse, Info, PlusCircle, Rocket, RotateCcw, Send } from 'lucide-react';
@@ -82,6 +82,31 @@ export default function HealthMentorPage() {
       toast.info('La propuesta del mentor ha expirado');
     }
   }, [pendingDraft, draftNowTick]);
+
+  // Same recovery as the general Mentor (see MentorPage.js): the draft itself
+  // survives a closed tab in Redis for an hour, only this page's in-memory
+  // pendingDraft did not. Scoped to sessionId and to the health surface's own
+  // endpoint, so it can never resurface a Mentor `<perfil>` proposal here.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    healthAgentApi.getPendingDrafts(sessionId).then(({ data }) => {
+      if (cancelled) return;
+      const draft = data.drafts?.[0];
+      if (!draft?.ui_action) return;
+      const expiresAt = new Date(draft.expires_at).getTime();
+      if (Number.isNaN(expiresAt) || expiresAt <= Date.now()) return;
+      setPendingDraft({
+        draftId: draft.draft_id,
+        uiAction: draft.ui_action,
+        type: draftTypeFromAction(draft.ui_action.action),
+        expiresAt,
+      });
+    }).catch(() => {
+      // Recovery is a convenience, not the main flow.
+    });
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   const formatDraftType = (type) => {
     if (type === 'task') return 'tarea';

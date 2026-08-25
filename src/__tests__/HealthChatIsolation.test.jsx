@@ -33,6 +33,11 @@ vi.mock('../lib/api', () => ({
   statsApi: {
     getFrictionLabels: vi.fn(),
   },
+  draftTypeFromAction: (action) => {
+    if (action === 'SHOW_MISSION_CONFIRMATION_MODAL') return 'mission';
+    if (action === 'SHOW_PROJECT_CONFIRMATION_MODAL') return 'project';
+    return 'task';
+  },
 }));
 
 const HEALTH_KEY = 'agent_session_id_health';

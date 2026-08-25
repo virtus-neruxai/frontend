@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { healthAgentApi } from '../../lib/api';
+import { healthAgentApi, draftTypeFromAction } from '../../lib/api';
 import { apiErrorMessage } from '../../lib/quotaError';
 import { toast } from 'sonner';
 
@@ -125,11 +125,12 @@ export const useHealthChat = () => {
       setChatMessage('');
 
       if (response.data.draft_id && response.data.ui_action && onDraftReceived) {
-        const action = response.data.ui_action.action;
         onDraftReceived({
           draftId: response.data.draft_id,
           uiAction: response.data.ui_action,
-          type: action === 'SHOW_PROJECT_CONFIRMATION_MODAL' ? 'project' : 'task',
+          // Health never returns a mission draft, so the general helper's
+          // mission branch is simply dead code here rather than a divergence.
+          type: draftTypeFromAction(response.data.ui_action.action),
         });
       }
 

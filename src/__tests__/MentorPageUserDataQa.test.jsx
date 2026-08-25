@@ -13,6 +13,12 @@ vi.mock('sonner', () => ({
 vi.mock('../lib/api', () => ({
   agentApi: {
     chat: vi.fn(),
+    getPendingDrafts: vi.fn().mockResolvedValue({ data: { drafts: [] } }),
+  },
+  draftTypeFromAction: (action) => {
+    if (action === 'SHOW_MISSION_CONFIRMATION_MODAL') return 'mission';
+    if (action === 'SHOW_PROJECT_CONFIRMATION_MODAL') return 'project';
+    return 'task';
   },
 }));
 

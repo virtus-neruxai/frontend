@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { agentApi } from '../../lib/api';
+import { agentApi, draftTypeFromAction } from '../../lib/api';
 import { apiErrorMessage } from '../../lib/quotaError';
 import { toast } from 'sonner';
 
@@ -114,22 +114,12 @@ export const useAgentChat = (profileId = 'default') => {
       setChatMetadata(response.data.metadata || null);
       setChatMessage('');
 
-      if (response.data.draft_id && response.data.ui_action) {
-        if (onDraftReceived) {
-          let draftType = 'task';
-          if (response.data.ui_action.action === 'SHOW_MISSION_CONFIRMATION_MODAL') {
-            draftType = 'mission';
-          } else if (response.data.ui_action.action === 'SHOW_PROJECT_CONFIRMATION_MODAL') {
-            draftType = 'project';
-          } else if (response.data.ui_action.action === 'SHOW_TASK_CONFIRMATION_MODAL') {
-            draftType = 'task';
-          }
-          onDraftReceived({
-            draftId: response.data.draft_id,
-            uiAction: response.data.ui_action,
-            type: draftType,
-          });
-        }
+      if (response.data.draft_id && response.data.ui_action && onDraftReceived) {
+        onDraftReceived({
+          draftId: response.data.draft_id,
+          uiAction: response.data.ui_action,
+          type: draftTypeFromAction(response.data.ui_action.action),
+        });
       }
 
       return response.data;
