@@ -5,6 +5,7 @@ import CalendarPage from "./pages/CalendarPage";
 import DashboardPage from "./pages/DashboardPage";
 import CharacterPage from "./pages/CharacterPage";
 import MentorPage from "./pages/MentorPage";
+import HealthMentorPage from "./pages/HealthMentorPage";
 import InformesPage from "./pages/InformesPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import QuestionnairePage from "./pages/QuestionnairePage";
@@ -83,6 +84,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MentorPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mentor-salud"
+        element={
+          <ProtectedRoute>
+            <HealthMentorPage />
           </ProtectedRoute>
         }
       />

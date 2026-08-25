@@ -167,6 +167,29 @@ export const agentApi = {
     }),
 };
 
+// Health Mentor API — superficie sanitaria, separada del Mentor general.
+//
+// Comparte `agentApiInstance` (mismo host, mismo token, mismo manejo de 401)
+// pero NADA de su contrato: endpoint propio, historial propio y solo dos
+// toggles. "Datos de la app" no existe aquí — el backend devuelve 422 si
+// llega `user_data_qa`, así que enviarlo sería un error, no una opción.
+export const healthAgentApi = {
+  chat: (message, sessionId, deepReasoning = false, projectPlan = false, resetSession = false) =>
+    agentApiInstance.post('/agent/health-chat', {
+      message,
+      session_id: sessionId,
+      deep_reasoning: deepReasoning,
+      project_plan: projectPlan,
+      reset_session: resetSession,
+    }),
+  // Un único hilo por usuario, sin filtro de perfil: una lesión contada bajo una
+  // voz sigue siendo la misma lesión bajo otra.
+  getInteractions: (params = {}) =>
+    agentApiInstance.get('/agent/health-chat/interactions', {
+      params: { limit: 200, skip: 0, ...params },
+    }),
+};
+
 // Projects API — planificaciones (item_type="project") con sus tasks/routines hijas.
 // list/get devuelven el project + children + metrics agregadas (ver backend/routes/projects.py).
 export const projectsApi = {
@@ -300,10 +323,25 @@ const getAgentInteractions = async (params = {}) => {
   return { response, interactions: response.data?.interactions || [] };
 };
 
-// Conversations API — compatibility adapter over agent-service interactions.
-export const conversationsApi = {
+const getHealthInteractions = async (params = {}) => {
+  // prompt_profile is deliberately dropped: the health endpoint has no such
+  // filter, and forwarding it would only look like it partitioned something.
+  const { prompt_profile, ...rest } = params;
+  const response = await agentApiInstance.get('/agent/health-chat/interactions', {
+    params: { limit: 500, skip: 0, ...rest },
+  });
+  return { response, interactions: response.data?.interactions || [] };
+};
+
+// Conversations adapter — groups a flat interaction feed into conversations.
+//
+// Both mentors persist turns the same way (one row per turn, keyed by
+// session_id); they only differ in which endpoint serves them. So the grouping
+// lives here once and each surface supplies its own fetcher, rather than the
+// health history growing a second copy of this logic that can drift.
+const buildConversationsApi = (fetchInteractions) => ({
   getAll: async (params = {}) => {
-    const { response, interactions } = await getAgentInteractions(params);
+    const { response, interactions } = await fetchInteractions(params);
     const conversations = {};
 
     interactions.forEach((item) => {
@@ -332,7 +370,7 @@ export const conversationsApi = {
     };
   },
   getById: async (sessionId, params = {}) => {
-    const { response, interactions } = await getAgentInteractions(params);
+    const { response, interactions } = await fetchInteractions(params);
     const messages = interactions
       .filter((item) => (item.session_id || 'sin-sesion') === sessionId)
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
@@ -358,7 +396,13 @@ export const conversationsApi = {
 
     return { ...response, data: { session_id: sessionId, messages } };
   },
-};
+});
+
+export const conversationsApi = buildConversationsApi(getAgentInteractions);
+
+// Health history: same shape, different endpoint, and no prompt_profile — one
+// thread per user rather than one per mentor voice.
+export const healthConversationsApi = buildConversationsApi(getHealthInteractions);
 
 // Profile API
 export const profileApi = {
