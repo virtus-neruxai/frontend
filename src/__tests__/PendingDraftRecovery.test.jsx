@@ -2,11 +2,13 @@
  * A draft outlives the tab that received it: it sits in Redis for
  * REDIS_DRAFT_TTL (1h) regardless of what the browser remembers. Only the
  * page's in-memory `pendingDraft` was lost on reload — this is the recovery
- * that reads it back on mount, for both mentor surfaces.
+ * that reads it back on mount, for both mentors. Both live inside
+ * `MentorPage` — "Mentor <perfil>" and "Mentor Salud" are sibling tabs, same
+ * shape, each with its own chat/session/drafts — so the health case below
+ * switches tabs rather than rendering a separate page.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import MentorPage from '../pages/MentorPage';
-import HealthMentorPage from '../pages/HealthMentorPage';
 import { agentApi, healthAgentApi } from '../lib/api';
 
 vi.mock('sonner', () => ({
@@ -52,7 +54,6 @@ vi.mock('../components/chat/ConversationHistory', async () => {
 vi.mock('../components/TaskDraftModal', () => ({ default: () => null }));
 vi.mock('../components/MissionDraftModal', () => ({ default: () => null }));
 vi.mock('../components/ProjectDraftModal', () => ({ default: () => null }));
-vi.mock('../presentation/components/character/ChallengesTab', () => ({ ChallengesTab: () => null }));
 vi.mock('../presentation/components/profile-theme/ProfileHeroCard', () => ({
   ProfileHeroCard: ({ title }) => <div data-testid="profile-hero">{title}</div>,
 }));
@@ -151,20 +152,23 @@ describe('Health Mentor recovers a pending draft on load, isolated from the gene
       data: { drafts: [liveDraft({ surface: 'health' })] },
     });
 
-    render(<HealthMentorPage />);
+    render(<MentorPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Mentor Salud/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Tu mentor te propone una/i)).toBeInTheDocument();
     });
-    expect(agentApi.getPendingDrafts).not.toHaveBeenCalled();
   });
 
-  test('a general-Mentor draft never surfaces here', async () => {
-    // The general endpoint is mocked to return something; the health page
-    // must never call it, so this stays irrelevant to what it renders.
+  test('a general-Mentor draft never surfaces on the health tab', async () => {
+    // The general endpoint is mocked to return something; switching to the
+    // health tab unmounts "Mentor <perfil>"'s content entirely (Radix Tabs
+    // does not keep inactive panels mounted), so its draft card cannot leak
+    // into what "Mentor Salud" renders.
     agentApi.getPendingDrafts.mockResolvedValue({ data: { drafts: [liveDraft()] } });
 
-    render(<HealthMentorPage />);
+    render(<MentorPage />);
+    fireEvent.click(screen.getByRole('tab', { name: /Mentor Salud/i }));
 
     await waitFor(() => {
       expect(healthAgentApi.getPendingDrafts).toHaveBeenCalled();

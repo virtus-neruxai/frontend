@@ -88,7 +88,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/mentor-salud"
+        path="/health-data"
         element={
           <ProtectedRoute>
             <HealthMentorPage />

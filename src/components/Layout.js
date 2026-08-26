@@ -44,7 +44,7 @@ export default function Layout({ children, ambient = false }) {
     { path: '/calendar', label: 'Tareas', icon: Calendar },
     { path: '/character', label: 'Carácter', icon: Sparkles },
     { path: '/mentor', label: 'Mentor', icon: MessageCircle },
-    { path: '/mentor-salud', label: 'Salud', icon: HeartPulse },
+    { path: '/health-data', label: 'Salud', icon: HeartPulse },
     { path: '/informes', label: 'Informes', icon: FileText },
     { path: '/proyectos', label: 'Proyectos', icon: Rocket },
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },

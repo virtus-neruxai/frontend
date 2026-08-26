@@ -16,7 +16,7 @@ import { StatsHistoryChart } from '../presentation/components/character/StatsHis
 import { ReflectionKPIs } from '../presentation/components/character/ReflectionKPIs';
 import { MissionEvolutionChart } from '../presentation/components/character/MissionEvolutionChart';
 import { FinishedList } from '../presentation/components/character/FinishedList';
-import { BodyCheckinSection } from '../presentation/components/character/bodycheckin/BodyCheckinSection';
+import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
 import { ProfileEmptyState } from '../presentation/components/profile-theme/ProfileEmptyState';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { useCharacter } from '../presentation/viewmodels/useCharacter';
@@ -47,7 +47,7 @@ import { getProfileEmoji, getProfileName } from '../lib/profileUtils';
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { PROFILE_THEME_IDS, PROFILE_THEMES } from '../theme/profileThemes';
 import {
-  Target, Scroll, HeartPulse,
+  Target, Scroll, Repeat,
   XCircle, CheckCircle2, Clock
 } from 'lucide-react';
 
@@ -781,13 +781,13 @@ export default function CharacterPageRefactored() {
               <Target className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Misiones
             </TabsTrigger>
+            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-card">
+              <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Desafíos
+            </TabsTrigger>
             <TabsTrigger value="reflection" className="rounded-full data-[state=active]:bg-card">
               <Scroll className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Diario
-            </TabsTrigger>
-            <TabsTrigger value="body-checkin" className="rounded-full data-[state=active]:bg-card">
-              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Registro corporal
             </TabsTrigger>
           </TabsList>
 
@@ -852,11 +852,9 @@ export default function CharacterPageRefactored() {
             </Tabs>
           </TabsContent>
 
-          {/* Body Check-in Tab */}
-          <TabsContent value="body-checkin" className="space-y-4">
-            {/* Check-in corporal — unidad independiente de Misiones y Diario
-                (estado, guardado, errores y drafts propios). */}
-            <BodyCheckinSection statsInfo={statsInfo} onStatsChanged={fetchCharacter} />
+          {/* Challenges Tab */}
+          <TabsContent value="challenges" className="space-y-4">
+            <ChallengesTab />
           </TabsContent>
 
           {/* Reflection Tab */}

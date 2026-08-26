@@ -147,7 +147,7 @@ agentApiInstance.interceptors.response.use(
 
 // Which confirmation modal a `ui_action` opens. Shared by a live chat turn
 // (useAgentChat/useHealthChat) and by draft recovery on page load
-// (MentorPage/HealthMentorPage): both end up with the same `{action}` shape
+// (MentorPage/HealthMentorChatTab): both end up with the same `{action}` shape
 // and must classify it the same way.
 export const draftTypeFromAction = (action) => {
   if (action === 'SHOW_MISSION_CONFIRMATION_MODAL') return 'mission';

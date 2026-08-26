@@ -41,7 +41,6 @@ vi.mock('../components/chat/ConversationHistory', async () => {
 vi.mock('../components/TaskDraftModal', () => ({ default: () => null }));
 vi.mock('../components/MissionDraftModal', () => ({ default: () => null }));
 vi.mock('../components/ProjectDraftModal', () => ({ default: () => null }));
-vi.mock('../presentation/components/character/ChallengesTab', () => ({ ChallengesTab: () => null }));
 vi.mock('../presentation/components/profile-theme/ProfileHeroCard', () => ({
   ProfileHeroCard: ({ title }) => <div data-testid="profile-hero">{title}</div>,
 }));

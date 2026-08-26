@@ -14,13 +14,18 @@ import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Textarea } from '../components/ui/textarea';
-import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
+import HealthMentorChatTab from '../components/health/HealthMentorChatTab';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { agentApi, draftTypeFromAction } from '../lib/api';
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { useProfileTheme } from '../theme/useProfileTheme';
-import { Clock, MessageCircle, PlusCircle, Repeat, Rocket, Send } from 'lucide-react';
+import { Clock, HeartPulse, MessageCircle, PlusCircle, Rocket, Send } from 'lucide-react';
+
+const TAB_LABELS = {
+  agent: (profileName) => `Mentor ${profileName}`,
+  salud: () => 'Mentor Salud',
+};
 
 const formatConvDate = (dateString) => {
   if (!dateString) return '';
@@ -198,12 +203,12 @@ export default function MentorPage() {
         <ProfileHeroCard
           title={`Mentor · ${profileName}`}
           titleAs="h1"
-          description="Convierte conversaciones y desafíos en acciones concretas."
+          description="Convierte conversaciones en acciones concretas."
           action={
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Espacio activo</p>
               <p className="font-bold text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-                {activeTab === 'challenges' ? 'Desafíos' : `Mentor ${profileName}`}
+                {(TAB_LABELS[activeTab] || TAB_LABELS.agent)(profileName)}
               </p>
             </div>
           }
@@ -215,9 +220,9 @@ export default function MentorPage() {
               <MessageCircle className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Mentor {profileName}
             </TabsTrigger>
-            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-card">
-              <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Desafíos
+            <TabsTrigger value="salud" className="rounded-full data-[state=active]:bg-card">
+              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Mentor Salud
             </TabsTrigger>
           </TabsList>
 
@@ -425,8 +430,8 @@ export default function MentorPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="challenges" className="space-y-4">
-            <ChallengesTab />
+          <TabsContent value="salud">
+            <HealthMentorChatTab />
           </TabsContent>
         </Tabs>
 
