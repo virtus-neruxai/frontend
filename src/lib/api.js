@@ -211,6 +211,30 @@ export const healthAgentApi = {
     agentApiInstance.get('/agent/health-chat/drafts', { params: { session_id: sessionId } }),
 };
 
+// Health activities API — the person's own record of what they did (meals,
+// sessions, rest, measurements). Canonical data, never a retrieval candidate:
+// nothing here publishes to the outbox (see backend/routes/health_activities.py).
+export const healthActivitiesApi = {
+  getAll: (params = {}) => api.get('/health-activities', { params }),
+  get: (activityId) => api.get(`/health-activities/${activityId}`),
+  create: (data) => api.post('/health-activities', data),
+  update: (activityId, data) => api.patch(`/health-activities/${activityId}`, data),
+  remove: (activityId) => api.delete(`/health-activities/${activityId}`),
+};
+
+// Health notes API — what the Mentor de Salud has retained from conversation,
+// never the transcript itself. No POST: a note is born from the classifier,
+// the person can only correct (`update`) or remove (`remove`) it.
+export const healthNotesApi = {
+  getAll: (params = {}) => agentApiInstance.get('/agent/health-chat/notes', { params }),
+  update: (noteId, content) =>
+    agentApiInstance.patch(`/agent/health-chat/notes/${noteId}`, { content }),
+  remove: (noteId) => agentApiInstance.delete(`/agent/health-chat/notes/${noteId}`),
+  // Deletes every note at once, each purged from the health index too — the
+  // memory-side twin of resetting the conversation's context.
+  resetAll: () => agentApiInstance.post('/agent/health-chat/notes/reset'),
+};
+
 // Projects API — planificaciones (item_type="project") con sus tasks/routines hijas.
 // list/get devuelven el project + children + metrics agregadas (ver backend/routes/projects.py).
 export const projectsApi = {
@@ -289,6 +313,17 @@ export const reasoningApi = {
       resource_id: resourceId,
       resource_feedback: resourceFeedback,
     }),
+};
+
+// Health Report API (Informe Razonado de Salud) — own endpoints, own job
+// store, own history. Never a section of reasoningApi's general report: the
+// two never share a row, a query or a response (see health_report_store.py).
+export const healthReportApi = {
+  generateReport: (daysBack = 14) =>
+    reasoningApiInstance.post('/reasoning/health-report', { days_back: daysBack }),
+  getReportJob: (jobId) => reasoningApiInstance.get(`/reasoning/health-report-jobs/${jobId}`),
+  getReports: () => reasoningApiInstance.get('/reasoning/health-reports'),
+  getReport: (reportId) => reasoningApiInstance.get(`/reasoning/health-reports/${reportId}`),
 };
 
 // Fase 2 — plan y desbloqueos por actividad (backend, no reasoning-service).
