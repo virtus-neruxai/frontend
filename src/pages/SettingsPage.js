@@ -4,7 +4,8 @@ import Layout from '../components/Layout';
 import NotificationSettings from '../components/NotificationSettings';
 import PromptProfileSettings from '../components/PromptProfileSettings';
 import MentorNotificationSettings from '../components/MentorNotificationSettings';
-import { notificationsApi, userSettingsApi } from '../lib/api';
+import HealthNoteRecallSettings from '../components/HealthNoteRecallSettings';
+import { notificationsApi, userSettingsApi, healthConsentApi } from '../lib/api';
 import { cacheNotificationSettings } from '../hooks/useWebSocket';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { getProfileTheme } from '../theme/profileThemeUtils';
@@ -43,6 +44,12 @@ export default function SettingsPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [mentorNotificationsEnabled, setMentorNotificationsEnabled] = useState(true);
   const [mentorNotificationsSaving, setMentorNotificationsSaving] = useState(false);
+  // Defaults to true to match the backend default (health_consent_service.
+  // DEFAULT_GRANTED): until the real value loads, showing "on" is the
+  // account's actual starting state, not an assumption ahead of it.
+  const [healthNoteRecallEnabled, setHealthNoteRecallEnabled] = useState(true);
+  const [healthNoteRecallLoading, setHealthNoteRecallLoading] = useState(true);
+  const [healthNoteRecallSaving, setHealthNoteRecallSaving] = useState(false);
   const persistedPromptProfileRef = useRef(profileId);
   const selectedProfileTheme = getProfileTheme(promptProfile);
 
@@ -98,8 +105,23 @@ export default function SettingsPage() {
       }
     };
 
+    const loadHealthNoteRecall = async () => {
+      try {
+        const response = await healthConsentApi.getConsent();
+        setHealthNoteRecallEnabled(response?.data?.granted !== false);
+      } catch (error) {
+        // Fail open in the UI too, mirroring the backend default: an
+        // unreadable setting must not present as "off" when the account's
+        // real state (absent any override) is "on".
+        setHealthNoteRecallEnabled(true);
+      } finally {
+        setHealthNoteRecallLoading(false);
+      }
+    };
+
     loadSettings();
     loadPromptProfile();
+    loadHealthNoteRecall();
   }, [syncPersistedProfile]);
 
   const updateNested = (path, value) => {
@@ -205,6 +227,23 @@ export default function SettingsPage() {
     }
   };
 
+  const saveHealthNoteRecall = async () => {
+    setHealthNoteRecallSaving(true);
+    try {
+      const response = await healthConsentApi.setConsent(healthNoteRecallEnabled);
+      setHealthNoteRecallEnabled(response?.data?.granted !== false);
+      toast.success(
+        healthNoteRecallEnabled
+          ? 'El Mentor de Salud volverá a recordar tus notas'
+          : 'El Mentor de Salud ha dejado de recordar tus notas (siguen guardadas)'
+      );
+    } catch (error) {
+      toast.error('Error al guardar la memoria del Mentor de Salud');
+    } finally {
+      setHealthNoteRecallSaving(false);
+    }
+  };
+
   const saveMentorNotificationSettings = async () => {
     setMentorNotificationsSaving(true);
     try {
@@ -248,6 +287,14 @@ export default function SettingsPage() {
           saving={mentorNotificationsSaving}
           onToggle={setMentorNotificationsEnabled}
           onSave={saveMentorNotificationSettings}
+        />
+
+        <HealthNoteRecallSettings
+          enabled={healthNoteRecallEnabled}
+          loading={healthNoteRecallLoading}
+          saving={healthNoteRecallSaving}
+          onToggle={setHealthNoteRecallEnabled}
+          onSave={saveHealthNoteRecall}
         />
 
         <NotificationSettings

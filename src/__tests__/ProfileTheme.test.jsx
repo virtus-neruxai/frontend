@@ -5,7 +5,7 @@ import { ProfileThemeProvider } from '../presentation/components/profile-theme/P
 import { useProfileTheme } from '../theme/useProfileTheme';
 import { normalizeProfileId } from '../theme/profileThemeUtils';
 import { VirtusBrand } from '../components/VirtusBrand';
-import { notificationsApi, userSettingsApi } from '../lib/api';
+import { notificationsApi, userSettingsApi, healthConsentApi } from '../lib/api';
 
 vi.mock('sonner', () => ({
   toast: {
@@ -22,6 +22,10 @@ vi.mock('../lib/api', () => ({
   userSettingsApi: {
     getSettings: vi.fn(),
     saveSettings: vi.fn(),
+  },
+  healthConsentApi: {
+    getConsent: vi.fn(() => Promise.resolve({ data: { granted: true, revision: 1 } })),
+    setConsent: vi.fn(),
   },
 }));
 
@@ -44,6 +48,18 @@ vi.mock('../components/MentorNotificationSettings', () => ({
         <span data-testid="mentor-notifications-value">{String(enabled)}</span>
         <button type="button" onClick={() => onToggle(!enabled)}>toggle mentor notifications</button>
         <button type="button" onClick={onSave}>save mentor notifications</button>
+      </div>
+    );
+  },
+}));
+
+vi.mock('../components/HealthNoteRecallSettings', () => ({
+  default: function MockHealthNoteRecallSettings({ enabled, onToggle, onSave }) {
+    return (
+      <div data-testid="health-note-recall-settings">
+        <span data-testid="health-note-recall-value">{String(enabled)}</span>
+        <button type="button" onClick={() => onToggle(!enabled)}>toggle health note recall</button>
+        <button type="button" onClick={onSave}>save health note recall</button>
       </div>
     );
   },

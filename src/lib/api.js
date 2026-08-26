@@ -439,4 +439,14 @@ export const userSettingsApi = {
   saveSettings: (data) => api.patch('/user/settings', data),
 };
 
+// Separate from userSettingsApi.saveSettings on purpose: the backend PATCH for
+// /user/settings deliberately ignores these two fields (a second write path
+// would produce grants no revocation could match against). Revoking here also
+// purges the health note index server-side, which a plain settings save never
+// does — so this has to be its own endpoint, not a field in the same PATCH.
+export const healthConsentApi = {
+  getConsent: (config = {}) => api.get('/health-consent', config),
+  setConsent: (granted) => api.post('/health-consent', { granted }),
+};
+
 export default api;
