@@ -354,6 +354,8 @@ export const healthReportApi = {
   getReportJob: (jobId) => reasoningApiInstance.get(`/reasoning/health-report-jobs/${jobId}`),
   getReports: () => reasoningApiInstance.get('/reasoning/health-reports'),
   getReport: (reportId) => reasoningApiInstance.get(`/reasoning/health-reports/${reportId}`),
+  askQuestion: (reportId, data) =>
+    reasoningApiInstance.post(`/reasoning/health-reports/${reportId}/chat`, data),
 };
 
 // Fase 2 — plan y desbloqueos por actividad (backend, no reasoning-service).

@@ -4,7 +4,7 @@
  * failed to answer has to read differently from a source that was simply
  * empty (data_quality.degraded_sources).
  */
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { useHealthReport } from '../presentation/viewmodels/useHealthReport';
 import HealthReportView from '../components/health/HealthReportView';
 import { healthReportApi } from '../lib/api';
@@ -19,6 +19,7 @@ vi.mock('../lib/api', () => ({
     getReportJob: vi.fn(),
     getReports: vi.fn(),
     getReport: vi.fn(),
+    askQuestion: vi.fn(),
   },
 }));
 
@@ -154,6 +155,31 @@ function v2(overrides = {}) {
 }
 
 describe('HealthReportView schema 2', () => {
+  test('the final next-action card answers about this report in place', async () => {
+    healthReportApi.askQuestion.mockResolvedValue({
+      data: { response: 'El informe no permite concluir más allá de esos dos registros.' },
+    });
+    render(<HealthReportView reportId="health-report-1" report={v2({
+      next_best_action: 'Registrar el descanso cuando lo conozcas.',
+    })} />);
+
+    const actionCard = screen.getByTestId('health-report-next-action');
+    const qualityCard = screen.getByText('Calidad del dato').closest('[class*="border"]');
+    expect(qualityCard.compareDocumentPosition(actionCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Preguntar al Mentor/i })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('health-report-question-input'), {
+      target: { value: '¿Qué significa esta lectura?' },
+    });
+    fireEvent.click(screen.getByTestId('health-report-question-send'));
+
+    await waitFor(() => expect(healthReportApi.askQuestion).toHaveBeenCalledWith(
+      'health-report-1',
+      { message: '¿Qué significa esta lectura?', history: [] },
+    ));
+    expect(await screen.findByText(/El informe no permite concluir/i)).toBeInTheDocument();
+  });
+
   test('a dimension with no data says so instead of showing a zero', () => {
     render(<HealthReportView report={v2()} />);
 

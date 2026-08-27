@@ -153,7 +153,9 @@ describe('Health Mentor recovers a pending draft on load, isolated from the gene
     });
 
     render(<MentorPage />);
-    fireEvent.click(screen.getByRole('tab', { name: /Mentor Salud/i }));
+    // Radix Tabs activates on the primary-pointer down event, not on the
+    // synthetic `click` event alone.
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Mentor Salud/i }), { button: 0 });
 
     await waitFor(() => {
       expect(screen.getByText(/Tu mentor te propone una/i)).toBeInTheDocument();
@@ -168,7 +170,7 @@ describe('Health Mentor recovers a pending draft on load, isolated from the gene
     agentApi.getPendingDrafts.mockResolvedValue({ data: { drafts: [liveDraft()] } });
 
     render(<MentorPage />);
-    fireEvent.click(screen.getByRole('tab', { name: /Mentor Salud/i }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Mentor Salud/i }), { button: 0 });
 
     await waitFor(() => {
       expect(healthAgentApi.getPendingDrafts).toHaveBeenCalled();

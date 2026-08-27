@@ -5,6 +5,7 @@ import {
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import HealthReportQuestions from './HealthReportQuestions';
 import HealthReportViewV1 from './HealthReportViewV1';
 
 // EvidenceTier → label + style, mirroring shared.models.health_guidance.EVIDENCE_LANGUAGE.
@@ -182,7 +183,7 @@ function ClaimList({ items, testId }) {
  * carries. No completion percentage is rendered because none exists in the
  * model — a denominator here would turn "no registrado" into a shortfall.
  */
-export default function HealthReportView({ report }) {
+export default function HealthReportView({ report, reportId = null }) {
   if (!report) return null;
   if (String(report.schema_version || '1') !== '2') {
     return <HealthReportViewV1 report={report} />;
@@ -505,16 +506,6 @@ export default function HealthReportView({ report }) {
         </Section>
       )}
 
-      {nextAction && (
-        <div className="rounded-lg border border-primary/40 bg-primary/5 p-4" data-testid="health-report-next-action">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">Siguiente mejor acción</p>
-          <p className="text-sm text-foreground mb-3">{nextAction}</p>
-          <Button variant="outline" size="sm" asChild>
-            <a href="/health-data?tab=chat">Preguntar al Mentor</a>
-          </Button>
-        </div>
-      )}
-
       <Card>
         <CardHeader><CardTitle className="text-base">Calidad del dato</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -545,6 +536,14 @@ export default function HealthReportView({ report }) {
           )}
         </CardContent>
       </Card>
+
+      {nextAction && (
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-4" data-testid="health-report-next-action">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">Siguiente mejor acción</p>
+          <p className="text-sm text-foreground">{nextAction}</p>
+          <HealthReportQuestions reportId={reportId} />
+        </div>
+      )}
     </div>
   );
 }

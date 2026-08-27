@@ -98,7 +98,7 @@ export default function HealthReportTab() {
       )}
 
       {report?.report_json ? (
-        <HealthReportView report={report.report_json} />
+        <HealthReportView report={report.report_json} reportId={report.id || report.report_id || null} />
       ) : !generating && (
         <Card><CardContent className="pt-6 text-center text-muted-foreground">
           Pulsa <strong>Generar informe</strong> para tu lectura razonada: {rangeLabel(daysBack).toLowerCase()}.
