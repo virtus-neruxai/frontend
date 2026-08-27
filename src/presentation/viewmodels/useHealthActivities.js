@@ -106,11 +106,17 @@ export const useHealthActivities = ({
 
   // Linking writes onto the task, not the activity — `linked_task_count` on
   // the activity is computed server-side from this, never denormalized here.
-  const linkTask = useCallback(async (activity, taskId) => {
+  // `taskKind` is chosen by the person in the link dialog and passed through
+  // untouched — deliberately not derived from `activity.activity_type`. A
+  // composition record can be linked to "pesarme el lunes", which is a
+  // follow-up, and inferring it from the record would file that as an activity
+  // whose adherence the report then reads across the period.
+  const linkTask = useCallback(async (activity, taskId, taskKind = null) => {
     try {
       const { data } = await tasksApi.patch(taskId, {
         health_activity_id: activity.id,
         health_activity_type: activity.activity_type,
+        ...(taskKind ? { health_task_kind: taskKind } : {}),
       });
       setTasks((prev) => prev.map((t) => (t.id === taskId ? data : t)));
       setActivities((prev) => prev.map((a) => (

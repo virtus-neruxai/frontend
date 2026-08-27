@@ -7,7 +7,7 @@
  * docstring), and a sparse history renders only what exists, with nothing
  * standing in for the days that have no row.
  */
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { useHealthActivities } from '../presentation/viewmodels/useHealthActivities';
 import HealthActivityList from '../components/health/HealthActivityList';
 import { healthActivitiesApi, tasksApi } from '../lib/api';
@@ -177,15 +177,54 @@ describe('HealthActivityList', () => {
 
     // The dialog is ActiveItemsPanel, not a bare dropdown: its type filter is there.
     expect(await screen.findByText('Activos')).toBeInTheDocument();
-    expect(screen.getByText('Rutina de piernas')).toBeInTheDocument();
-    // Already-linked tasks aren't offered again.
-    expect(screen.queryByText('Ya enlazada')).not.toBeInTheDocument();
+    const dialog = screen.getByTestId('health-link-task-dialog');
+    expect(within(dialog).getByText('Rutina de piernas')).toBeInTheDocument();
+    // Already-linked tasks aren't offered again — scoped to the dialog, because
+    // the row itself does show them, with an unlink button beside each.
+    expect(within(dialog).queryByText('Ya enlazada')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Rutina de piernas'));
+    fireEvent.click(within(dialog).getByText('Rutina de piernas'));
+
+    // The third argument is the task kind, chosen in the dialog and left null
+    // when nobody picked one. Never inferred from the record: a composition
+    // record can be linked to "pesarme el lunes", which is a follow-up.
+    expect(onLinkTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'act-1' }),
+      'task-1',
+      null
+    );
+  });
+
+  test('the task kind travels only when the person picks one', async () => {
+    const onLinkTask = vi.fn();
+    const tasks = [
+      { id: 'task-1', title: 'Analítica de sangre', status: 'todo', date_start: '2026-08-21T09:00:00+00:00' },
+    ];
+
+    render(
+      <HealthActivityList
+        activities={[activity()]}
+        tasks={tasks}
+        loading={false}
+        saving={false}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onLinkTask={onLinkTask}
+        onUnlinkTask={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('health-activity-link-open-act-1'));
+    const dialog = await screen.findByTestId('health-link-task-dialog');
+
+    fireEvent.click(within(dialog).getByTestId('health-task-kind-followup'));
+    fireEvent.click(within(dialog).getByText('Analítica de sangre'));
 
     expect(onLinkTask).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'act-1' }),
-      'task-1'
+      'task-1',
+      'followup'
     );
   });
 });

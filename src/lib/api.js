@@ -336,6 +336,15 @@ export const reasoningApi = {
     }),
 };
 
+// Health goal — one live goal per person, on the backend and not in
+// reasoning-service. `get` answers `null` when nothing is declared: the product
+// records a direction, it never proposes one.
+export const healthGoalApi = {
+  get: () => api.get('/health-goal'),
+  set: (payload) => api.put('/health-goal', payload),
+  clear: () => api.delete('/health-goal'),
+};
+
 // Health Report API (Informe Razonado de Salud) — own endpoints, own job
 // store, own history. Never a section of reasoningApi's general report: the
 // two never share a row, a query or a response (see health_report_store.py).
