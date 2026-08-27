@@ -44,7 +44,7 @@ function emptyForm(activity) {
  * separate forms. Used both to create a record and, passed an `activity`, to
  * edit one in place.
  */
-export default function HealthActivityForm({ activity = null, saving, onSubmit, onCancel }) {
+export default function HealthActivityForm({ activity = null, saving, onSubmit, onCancel, lockActivityType = false }) {
   const [form, setForm] = useState(() => emptyForm(activity));
   const isEdit = Boolean(activity);
 
@@ -69,22 +69,24 @@ export default function HealthActivityForm({ activity = null, saving, onSubmit, 
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="health-activity-type">Tipo</Label>
-            <Select
-              value={form.activity_type}
-              onValueChange={(value) => setForm((f) => ({ ...f, activity_type: value }))}
-            >
-              <SelectTrigger id="health-activity-type" data-testid="health-activity-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!lockActivityType && (
+            <div className="space-y-2">
+              <Label htmlFor="health-activity-type">Tipo</Label>
+              <Select
+                value={form.activity_type}
+                onValueChange={(value) => setForm((f) => ({ ...f, activity_type: value }))}
+              >
+                <SelectTrigger id="health-activity-type" data-testid="health-activity-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="health-activity-title">Título</Label>

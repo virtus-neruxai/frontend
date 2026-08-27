@@ -216,10 +216,31 @@ export const healthAgentApi = {
 // nothing here publishes to the outbox (see backend/routes/health_activities.py).
 export const healthActivitiesApi = {
   getAll: (params = {}) => api.get('/health-activities', { params }),
+  getSummary: (params = {}) => api.get('/health-activities/summary', { params }),
   get: (activityId) => api.get(`/health-activities/${activityId}`),
   create: (data) => api.post('/health-activities', data),
   update: (activityId, data) => api.patch(`/health-activities/${activityId}`, data),
   remove: (activityId) => api.delete(`/health-activities/${activityId}`),
+};
+
+// Personal health library. Foods and exercises are individual autocomplete
+// entries; templates are explicit snapshots of a complete meal or workout.
+// Applying a template creates a new canonical HealthActivity server-side so
+// derived totals/volume/pace are never calculated by the browser.
+const healthLibraryCrud = (resource) => ({
+  getAll: (params = {}) => api.get(`/health-library/${resource}`, { params }),
+  create: (data) => api.post(`/health-library/${resource}`, data),
+  update: (id, data) => api.patch(`/health-library/${resource}/${id}`, data),
+  remove: (id) => api.delete(`/health-library/${resource}/${id}`),
+});
+
+export const healthLibraryApi = {
+  foods: healthLibraryCrud('foods'),
+  exercises: healthLibraryCrud('exercises'),
+  templates: {
+    ...healthLibraryCrud('templates'),
+    apply: (id, data) => api.post(`/health-library/templates/${id}/apply`, data),
+  },
 };
 
 // Health notes API — what the Mentor de Salud has retained from conversation,

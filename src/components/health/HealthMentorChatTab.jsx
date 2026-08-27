@@ -34,7 +34,8 @@ const RISK_NOTICES = {
  * "Mentor Salud" tab in `MentorPage.js`, right of "Mentor <perfil>" — the
  * same shape as that tab (a chat card, nothing nested under it), pointed at
  * the health surface's own endpoint/session/history. Registro corporal,
- * Actividad y Notas viven aparte, en `HealthDataTab.jsx` ("Salud" en la
+ * Registro corporal, Alimentación, Entrenamiento y Notas viven aparte, en
+ * `HealthDataTab.jsx` ("Salud" en la
  * navegación, `/health-data`) — esta pestaña es solo la conversación.
  */
 export default function HealthMentorChatTab() {

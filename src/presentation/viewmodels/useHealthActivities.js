@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { healthActivitiesApi, tasksApi } from '../../lib/api';
 import { apiErrorMessage } from '../../lib/quotaError';
+import { localDateKey } from '../../lib/healthRecords';
 
 const WINDOW_DAYS = 30;
 
@@ -12,7 +13,19 @@ const WINDOW_DAYS = 30;
  * the plan's "Fase C"): it is always this hook writing `health_activity_id`
  * onto a specific, user-chosen task via `tasksApi.patch`.
  */
-export const useHealthActivities = () => {
+function defaultDateRange() {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(from.getDate() - (WINDOW_DAYS - 1));
+  return { fromDate: localDateKey(from), toDate: localDateKey(to) };
+}
+
+export const useHealthActivities = ({
+  fromDate = null,
+  toDate = null,
+  activityType = null,
+  includeTasks = true,
+} = {}) => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,11 +34,15 @@ export const useHealthActivities = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const defaults = defaultDateRange();
       const [activitiesRes, tasksRes] = await Promise.all([
         healthActivitiesApi.getAll({
-          from_date: new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString().slice(0, 10),
+          from_date: fromDate || defaults.fromDate,
+          to_date: toDate || defaults.toDate,
+          ...(activityType ? { activity_type: activityType } : {}),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
-        tasksApi.getAll({ days_back: WINDOW_DAYS }),
+        includeTasks ? tasksApi.getAll({ days_back: WINDOW_DAYS }) : Promise.resolve({ data: [] }),
       ]);
       setActivities(activitiesRes.data || []);
       setTasks(tasksRes.data || []);
@@ -34,7 +51,7 @@ export const useHealthActivities = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activityType, fromDate, includeTasks, toDate]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -56,17 +73,26 @@ export const useHealthActivities = () => {
   const update = useCallback(async (activityId, payload) => {
     setSaving(true);
     try {
-      const { data } = await healthActivitiesApi.update(activityId, payload);
+      const current = activities.find((activity) => activity.id === activityId);
+      const updatePayload = payload.expected_revision === undefined && current?.revision != null
+        ? { ...payload, expected_revision: current.revision }
+        : payload;
+      const { data } = await healthActivitiesApi.update(activityId, updatePayload);
       setActivities((prev) => prev.map((a) => (a.id === activityId ? data : a)));
       toast.success('Registro actualizado');
       return data;
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'No se pudo actualizar el registro.'));
+      if (e.response?.status === 409) {
+        toast.error('El registro cambió en otra sesión. Hemos recargado la versión más reciente.');
+        await load();
+      } else {
+        toast.error(apiErrorMessage(e, 'No se pudo actualizar el registro.'));
+      }
       return null;
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [activities, load]);
 
   const remove = useCallback(async (activityId) => {
     try {

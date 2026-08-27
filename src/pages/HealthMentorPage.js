@@ -4,7 +4,7 @@ import { ProfileHeroCard } from '../presentation/components/profile-theme/Profil
 
 /**
  * Own top-level nav entry ("Salud", right of "Mentor" in Layout.js) and
- * route (`/health-data`). Registro corporal, Actividad y Notas
+ * route (`/health-data`). Registro corporal, Alimentación, Entrenamiento y Notas
  * (`HealthDataTab.jsx`) — no chat here, that's the "Mentor Salud" tab of
  * `MentorPage.js` (`HealthMentorChatTab.jsx`), alongside "Mentor <perfil>".
  */
@@ -15,7 +15,7 @@ export default function HealthMentorPage() {
         <ProfileHeroCard
           title="Salud"
           titleAs="h1"
-          description="Registro corporal, actividad y notas del Mentor de Salud."
+          description="Registro corporal, alimentación, entrenamiento y notas del Mentor de Salud."
         />
 
         <HealthDataTab />

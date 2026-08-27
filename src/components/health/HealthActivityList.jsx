@@ -21,7 +21,7 @@ function LinkTaskControl({ activity, tasks, onLinkTask }) {
   const [open, setOpen] = useState(false);
   const linkable = tasks.filter((t) => !t.health_activity_id);
 
-  if (linkable.length === 0) return null;
+  if (!onLinkTask || linkable.length === 0) return null;
 
   return (
     <>
@@ -45,19 +45,31 @@ function LinkTaskControl({ activity, tasks, onLinkTask }) {
   );
 }
 
-function ActivityRow({ activity, linkedTasks, tasks, onUpdate, onDelete, onLinkTask, onUnlinkTask, saving }) {
+function ActivityRow({
+  activity, linkedTasks, tasks, onUpdate, onDelete, onLinkTask, onUnlinkTask,
+  saving, renderDetails, renderEditor,
+}) {
   const [editing, setEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   if (editing) {
+    if (renderEditor) {
+      return renderEditor({
+        activity,
+        saving,
+        onCancel: () => setEditing(false),
+        onSaved: () => setEditing(false),
+      });
+    }
     return (
       <HealthActivityForm
         activity={activity}
         saving={saving}
+        lockActivityType
         onCancel={() => setEditing(false)}
         onSubmit={async (payload) => {
-          await onUpdate(activity.id, payload);
-          setEditing(false);
+          const updated = await onUpdate(activity.id, payload);
+          if (updated) setEditing(false);
         }}
       />
     );
@@ -76,25 +88,30 @@ function ActivityRow({ activity, linkedTasks, tasks, onUpdate, onDelete, onLinkT
             {activity.note && (
               <p className="text-xs text-muted-foreground whitespace-pre-wrap">{activity.note}</p>
             )}
+            {renderDetails?.(activity)}
           </div>
           <div className="flex gap-1 shrink-0">
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(true)}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className={`h-8 w-8 ${deleteConfirm ? 'text-destructive' : ''}`}
-              onClick={() => {
-                if (!deleteConfirm) { setDeleteConfirm(true); return; }
-                onDelete(activity.id);
-              }}
-              onBlur={() => setDeleteConfirm(false)}
-              title={deleteConfirm ? '¿Confirmar eliminación?' : 'Eliminar'}
-              data-testid={`health-activity-delete-${activity.id}`}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
+            {(onUpdate || renderEditor) && (
+              <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar" onClick={() => setEditing(true)}>
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className={`h-8 w-8 ${deleteConfirm ? 'text-destructive' : ''}`}
+                onClick={() => {
+                  if (!deleteConfirm) { setDeleteConfirm(true); return; }
+                  onDelete(activity.id);
+                }}
+                onBlur={() => setDeleteConfirm(false)}
+                title={deleteConfirm ? '¿Confirmar eliminación?' : 'Eliminar'}
+                data-testid={`health-activity-delete-${activity.id}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -103,7 +120,7 @@ function ActivityRow({ activity, linkedTasks, tasks, onUpdate, onDelete, onLinkT
             {linkedTasks.map((t) => (
               <div key={t.id} className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-2 py-1 text-xs">
                 <span className="truncate">{t.title}</span>
-                <Button size="sm" variant="ghost" className="h-6 shrink-0" onClick={() => onUnlinkTask(t)}>
+                <Button size="sm" variant="ghost" className="h-6 shrink-0" onClick={() => onUnlinkTask?.(t)}>
                   <Unlink className="w-3 h-3 mr-1" /> Desenlazar
                 </Button>
               </div>
@@ -124,6 +141,8 @@ function ActivityRow({ activity, linkedTasks, tasks, onUpdate, onDelete, onLinkT
  */
 export default function HealthActivityList({
   activities, tasks, loading, saving, onCreate, onUpdate, onDelete, onLinkTask, onUnlinkTask,
+  allowCreate = true, renderDetails = null, renderEditor = null,
+  emptyMessage = 'Todavía no has registrado ninguna actividad.',
 }) {
   const [showCreate, setShowCreate] = useState(false);
 
@@ -140,7 +159,7 @@ export default function HealthActivityList({
 
   return (
     <div className="space-y-4" data-testid="health-activity-list">
-      {showCreate ? (
+      {allowCreate && (showCreate ? (
         <HealthActivityForm
           saving={saving}
           onSubmit={async (payload) => {
@@ -152,13 +171,13 @@ export default function HealthActivityList({
         <Button onClick={() => setShowCreate(true)} data-testid="health-activity-new">
           Registrar actividad
         </Button>
-      )}
+      ))}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Cargando tu actividad...</p>
       ) : activities.length === 0 ? (
         <Card><CardContent className="pt-6 text-center text-sm text-muted-foreground">
-          Todavía no has registrado ninguna actividad.
+          {emptyMessage}
         </CardContent></Card>
       ) : (
         <div className="space-y-3">
@@ -173,6 +192,8 @@ export default function HealthActivityList({
               onLinkTask={onLinkTask}
               onUnlinkTask={onUnlinkTask}
               saving={saving}
+              renderDetails={renderDetails}
+              renderEditor={renderEditor}
             />
           ))}
         </div>
