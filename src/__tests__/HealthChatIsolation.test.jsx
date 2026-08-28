@@ -2,8 +2,12 @@
  * The health surface is a separate layer that happens to share services.
  *
  * These fix the four structural promises the web side owes: its own endpoint,
- * its own session key with no profile suffix, two toggles instead of three, and
+ * its own session key with no profile suffix, no "Datos de la app" toggle, and
  * a conversation that never surfaces in the general Mentor's history.
+ *
+ * The personal-data toggle added in Slice 3 is tested here too, because the
+ * thing worth fixing about it is precisely that it is *not* the toggle the
+ * third promise excludes.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useHealthChat } from '../presentation/viewmodels/useHealthChat';
@@ -130,21 +134,32 @@ describe('health endpoint', () => {
       await result.current.sendMessage('cuántas sesiones llevo');
     });
 
+    // Asserted on the payload rather than the argument count: the hook grew a
+    // sixth argument (`use_personal_data`) and arity would have failed on a
+    // change that is not the one this test is about. What must stay true is
+    // that no user_data_qa can be produced at all.
     const args = healthAgentApi.chat.mock.calls[0];
-    expect(args).toHaveLength(4); // message, sessionId, deepReasoning, projectPlan
+    expect(args.some((arg) => arg === 'user_data_qa')).toBe(false);
     expect(result.current).not.toHaveProperty('userDataQa');
     expect(result.current).not.toHaveProperty('setUserDataQa');
+
+    // The personal-data toggle is not that toggle renamed. It opens no Data
+    // branch and selects no tools; the surface still picks its sources from the
+    // domain of the question. It is off unless the person turns it on.
+    expect(result.current.usePersonalData).toBe(false);
+    expect(args[5]).toBe(false);
   });
 });
 
 // ── toggles ─────────────────────────────────────────────────────────────────
 
 describe('toggles', () => {
-  it('exposes exactly Razonar and Modo plan', () => {
+  it('exposes Razonar, Modo plan and personal data — never "Datos de la app"', () => {
     const { result } = renderHook(() => useHealthChat());
 
     expect(result.current.deepReasoning).toBe(false);
     expect(result.current.projectPlan).toBe(false);
+    expect(result.current.usePersonalData).toBe(false);
     expect(result.current.setUserDataQa).toBeUndefined();
   });
 
@@ -300,5 +315,77 @@ describe('conversation selection', () => {
 
     expect(result.current.sessionId).not.toBe('previous-session');
     expect(localStorage.getItem(HEALTH_KEY)).toBe(result.current.sessionId);
+  });
+});
+
+// ── "Utiliza mis datos personales" ──────────────────────────────────────────
+
+describe('personal data toggle', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    healthAgentApi.chat.mockResolvedValue({ data: { response: 'ok', metadata: {} } });
+  });
+
+  it('is off until the person turns it on', async () => {
+    // Defaulting it on would silently change every conversation already open.
+    const { result } = renderHook(() => useHealthChat());
+    await waitFor(() => expect(result.current.sessionId).toBeTruthy());
+
+    expect(result.current.usePersonalData).toBe(false);
+  });
+
+  it('travels with the turn once enabled', async () => {
+    const { result } = renderHook(() => useHealthChat());
+    await waitFor(() => expect(result.current.sessionId).toBeTruthy());
+
+    act(() => result.current.setUsePersonalData(true));
+    await act(async () => { await result.current.sendMessage('¿cuánta proteína necesito?'); });
+
+    expect(healthAgentApi.chat.mock.calls[0][5]).toBe(true);
+  });
+
+  it('is remembered per browser rather than per conversation', async () => {
+    // It is a preference about how someone wants to be answered, not an
+    // attribute of one thread. Re-enabling it in every new conversation would
+    // turn a decision into a chore.
+    const first = renderHook(() => useHealthChat());
+    await waitFor(() => expect(first.result.current.sessionId).toBeTruthy());
+    act(() => first.result.current.setUsePersonalData(true));
+
+    const second = renderHook(() => useHealthChat());
+    await waitFor(() => expect(second.result.current.usePersonalData).toBe(true));
+  });
+
+  it('composes with Razonar and with Modo plan instead of excluding them', async () => {
+    // Reading your own records is a property of the answer, not a way of
+    // producing one, so it is orthogonal to the two modes — which stay mutually
+    // exclusive with each other.
+    const { result } = renderHook(() => useHealthChat());
+    await waitFor(() => expect(result.current.sessionId).toBeTruthy());
+
+    act(() => result.current.setUsePersonalData(true));
+    act(() => result.current.setDeepReasoning(true));
+    expect(result.current.usePersonalData).toBe(true);
+    expect(result.current.deepReasoning).toBe(true);
+
+    act(() => result.current.setProjectPlan(true));
+    expect(result.current.usePersonalData).toBe(true);
+    expect(result.current.projectPlan).toBe(true);
+    expect(result.current.deepReasoning).toBe(false);
+  });
+
+  it('a reset never carries the toggle', async () => {
+    // A reset is a state-clearing action, not a conversational turn: it
+    // short-circuits before the graph, so sending personal data with it would
+    // buy tool calls for a turn that never runs.
+    const { result } = renderHook(() => useHealthChat());
+    await waitFor(() => expect(result.current.sessionId).toBeTruthy());
+
+    act(() => result.current.setUsePersonalData(true));
+    await act(async () => { await result.current.resetSession(); });
+
+    const args = healthAgentApi.chat.mock.calls.at(-1);
+    expect(args[4]).toBe(true);      // reset_session
+    expect(args[5]).toBeUndefined(); // no personal data behind it
   });
 });

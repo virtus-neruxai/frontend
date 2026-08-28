@@ -14,7 +14,7 @@ import { Textarea } from '../ui/textarea';
 import { draftTypeFromAction, healthAgentApi, healthConversationsApi } from '../../lib/api';
 import { useHealthChat } from '../../presentation/viewmodels/useHealthChat';
 import { useDrafts } from '../../presentation/viewmodels/useDrafts';
-import { Clock, HeartPulse, Info, PlusCircle, Rocket, RotateCcw, Send } from 'lucide-react';
+import { Clock, Database, HeartPulse, Info, PlusCircle, Rocket, RotateCcw, Send } from 'lucide-react';
 
 const formatConvDate = (dateString) => {
   if (!dateString) return '';
@@ -23,6 +23,31 @@ const formatConvDate = (dateString) => {
   } catch {
     return '';
   }
+};
+
+// Los nombres que devuelve el envelope son de fuente, no de producto. Se
+// traducen aqui y no en el backend a proposito: el backend nombra de donde
+// salio el dato, la interfaz nombra lo que la persona reconoce como suyo.
+const SOURCE_LABELS = {
+  health_goal: 'Tu objetivo',
+  health_activities: 'Tus registros',
+  body_checkins: 'Tu check-in corporal',
+  wellbeing_signals: 'Señales de tu diario',
+};
+
+const degradedLabel = (source) => {
+  if (source.startsWith('consent:')) {
+    const scope = source.slice('consent:'.length);
+    return scope === 'health_wellbeing_context'
+      ? 'Señales del diario: no lo has permitido en Ajustes'
+      : 'Tus registros: no lo has permitido en Ajustes';
+  }
+  if (source.endsWith(':truncated')) {
+    return 'Alguna fuente venía truncada por tamaño, no vacía';
+  }
+  // Una fuente caida no es una fuente vacia, y decirlo asi es la diferencia
+  // entre "no tienes datos" y "no he podido leerlos".
+  return `${SOURCE_LABELS[source] || source}: no se ha podido leer ahora mismo`;
 };
 
 const RISK_NOTICES = {
@@ -51,6 +76,8 @@ export default function HealthMentorChatTab() {
     setDeepReasoning,
     projectPlan,
     setProjectPlan,
+    usePersonalData,
+    setUsePersonalData,
     sendMessage,
     setChatMessage,
     startNewConversation,
@@ -182,6 +209,15 @@ export default function HealthMentorChatTab() {
   const riskNotice = RISK_NOTICES[chatMetadata?.risk_level] || null;
   const surfaceDisabled = chatMetadata?.enabled === false;
 
+  // Lo que se pidio y lo que respondio. Cuando no coinciden — el toggle
+  // encendido y ninguna fuente detras — hay que poder verlo: si no, el
+  // interruptor parece no haber hecho nada y la persona no sabe si el problema
+  // es un permiso, una caida o simplemente que no tiene registros.
+  const usedSources = chatMetadata?.health_sources || [];
+  const degradedSources = chatMetadata?.degraded_sources || [];
+  const askedForData = chatMetadata?.use_personal_data === true;
+  const showSourceNotice = Boolean(chatResponse) && askedForData;
+
   return (
     <div className="space-y-4">
       {/* The mentor now remembers what you've told it across conversations
@@ -248,6 +284,42 @@ export default function HealthMentorChatTab() {
             </div>
           )}
 
+          {showSourceNotice && (
+            <div
+              className="p-3 rounded-lg border border-dashed border-border bg-muted/50 space-y-1.5"
+              data-testid="health-sources-notice"
+            >
+              <div className="flex items-center gap-2">
+                <Database className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                <p className="text-xs font-medium text-foreground">
+                  {usedSources.length > 0
+                    ? 'He usado tus datos para esta respuesta'
+                    : 'No he podido usar ningún dato tuyo en esta respuesta'}
+                </p>
+              </div>
+              {usedSources.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {usedSources.map((source) => (
+                    <Badge key={source} variant="outline" className="text-[11px] font-normal">
+                      {SOURCE_LABELS[source] || source}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {degradedSources.length > 0 && (
+                <p className="text-xs text-muted-foreground leading-snug">
+                  {degradedSources.map((source) => degradedLabel(source)).join(' · ')}
+                </p>
+              )}
+              {usedSources.length === 0 && degradedSources.length === 0 && (
+                <p className="text-xs text-muted-foreground leading-snug">
+                  No hay registros en la ventana consultada, así que he respondido
+                  con criterio general.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* ── Active conversation indicator ─────────────────────────── */}
           <div className={[
             'flex items-start gap-3 px-3 py-2.5 rounded-lg border text-xs transition-colors',
@@ -307,8 +379,31 @@ export default function HealthMentorChatTab() {
             />
           </div>
 
-          {/* Two toggles only. "Datos de la app" belongs to Mentor <perfil>;
-              the health endpoint returns 422 if it ever arrives here. */}
+          {/* "Datos de la app" is still absent: it belongs to Mentor <perfil>,
+              and the health endpoint returns 422 if it ever arrives here. The
+              third toggle below is a different thing — it says the person wants
+              their own records used, it opens no branch, and it works alongside
+              the other two rather than excluding them. */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="health-personal-data-toggle" className="flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-primary" />
+                Utiliza mis datos personales para responder
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Lee tus registros, tu objetivo y tu check-in de los últimos 14 días
+                para ajustar la respuesta a ti. Puedes elegir qué comparte en Ajustes.
+              </p>
+            </div>
+            <Switch
+              id="health-personal-data-toggle"
+              checked={usePersonalData}
+              onCheckedChange={setUsePersonalData}
+              disabled={chatLoading}
+              data-testid="health-personal-data-toggle"
+            />
+          </div>
+
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="health-deep-reasoning-toggle">Razonar</Label>

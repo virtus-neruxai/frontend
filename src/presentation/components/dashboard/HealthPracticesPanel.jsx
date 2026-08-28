@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Check, Pause, Play, Plus, Sprout, Trash2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../../components/ui/collapsible';
 import { HealthPracticeApplicationDialog } from './HealthPracticeApplicationDialog';
 
 const STATUS = {
@@ -15,6 +16,33 @@ const RESUMABLE = new Set(['paused', 'integrated', 'retired']);
 
 function Skeleton() {
   return <div className="h-24 animate-pulse rounded bg-muted" />;
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+function Timeline({ applications }) {
+  if (applications.length === 0) return null;
+  return (
+    <Collapsible>
+      <CollapsibleTrigger className="mt-2 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+        Ver cuándo
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <ul className="mt-2 space-y-1.5 border-l border-border pl-3">
+          {applications.map((application) => (
+            <li key={application.id || application.application_date} className="text-xs text-muted-foreground">
+              {formatDate(application.application_date)}
+            </li>
+          ))}
+        </ul>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 export function HealthPracticesPanel({ data, loading, onRecordApplication, onSetStatus }) {
@@ -54,7 +82,7 @@ export function HealthPracticesPanel({ data, loading, onRecordApplication, onSet
         {practices.map((practice) => {
           const dates = applications
             .filter((row) => row.practice_key === practice.practice_key)
-            .map((row) => row.application_date);
+            .filter((row) => row.application_date);
           const canResume = RESUMABLE.has(practice.status);
           return (
             <div key={practice.practice_key} className="py-3 first:pt-0 last:pb-0">
@@ -69,8 +97,8 @@ export function HealthPracticesPanel({ data, loading, onRecordApplication, onSet
                 {practice.application_count > 0
                   ? `${practice.application_count} ${practice.application_count === 1 ? 'vez' : 'veces'} registrada${practice.application_count === 1 ? '' : 's'}`
                   : 'Todavía no has registrado ninguna vez.'}
-                {dates.length > 0 && <> · fechas: {dates.join(', ')}</>}
               </p>
+              <Timeline applications={dates} />
               <div className="mt-2.5 flex flex-wrap gap-2">
                 <button
                   type="button"

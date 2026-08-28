@@ -1,6 +1,6 @@
 import {
-  AlertTriangle, Check, HelpCircle, Link2Off, ListChecks, Minus, Search,
-  ShieldAlert, Sparkles, Target, TrendingDown, TrendingUp,
+  AlertTriangle, Check, HelpCircle, Link2Off, ListChecks, Minus, NotebookPen,
+  Search, ShieldAlert, Sparkles, Target, TrendingDown, TrendingUp, Waves,
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import HealthReportQuestions from './HealthReportQuestions';
 import HealthCompanionCard from './HealthCompanionCard';
 import HealthPracticeCandidates from './HealthPracticeCandidates';
+import HealthRelations from './HealthRelations';
 import HealthReportViewV1 from './HealthReportViewV1';
 
 // EvidenceTier → label + style, mirroring shared.models.health_guidance.EVIDENCE_LANGUAGE.
@@ -27,6 +28,7 @@ const DIMENSION_LABELS = {
   nutrition: 'Nutrición',
   composition: 'Composición',
   followup: 'Seguimiento',
+  mental_wellbeing: 'Bienestar mental',
 };
 
 const SIGNAL_LABELS = {
@@ -37,6 +39,10 @@ const SIGNAL_LABELS = {
   sleep: 'Sueño',
   energy: 'Energía',
   stress: 'Estrés',
+  // Marca un día en que una reflexión registró emoción. Dice si la persona
+  // escribió, nunca cómo estaba: un hueco es un día que este informe no puede
+  // leer, que es justo para lo que existe la matriz.
+  wellbeing: 'Diario',
 };
 
 // The six-rung ladder from services/sample_quality.py, rendered as filled dots.
@@ -225,6 +231,12 @@ export default function HealthReportView({ report, reportId = null }) {
     information_gaps: gaps = [],
     next_best_action: nextAction = '',
     data_quality: dataQuality = {},
+    // Añadidos aditivamente sobre el mismo schema_version "2": un informe
+    // anterior a ellos llega sin estos campos, cae en los defaults de abajo y
+    // se renderiza igual que siempre. Por eso no hay rama de versión nueva.
+    mental_wellbeing: mentalWellbeing = null,
+    relations = [],
+    synchrony_reading: synchronyReading = '',
   } = report;
 
   const readingFor = (dimension) =>
@@ -436,6 +448,82 @@ export default function HealthReportView({ report, reportId = null }) {
               </tbody>
             </table>
           </div>
+        </Section>
+      )}
+
+      {mentalWellbeing && (
+        <Section title="Bienestar mental" icon={NotebookPen} testId="health-report-wellbeing">
+          <p className="text-xs text-muted-foreground mb-3">
+            Sale solo de las reflexiones de tu diario que registraron una emoción. Un día
+            sin reflexión es un día que este informe no puede leer, nunca un día neutro.
+          </p>
+          {readingFor('mental_wellbeing') && (
+            <p className="text-sm text-foreground mb-3">{readingFor('mental_wellbeing')}</p>
+          )}
+          <p className="text-sm text-foreground mb-3" data-testid="health-wellbeing-coverage">
+            {mentalWellbeing.reflections_total === null
+              || mentalWellbeing.reflections_total === undefined
+              ? `${mentalWellbeing.reflections_with_emotion} reflexiones con emoción registrada`
+              : `${mentalWellbeing.reflections_with_emotion} de ${mentalWellbeing.reflections_total} reflexiones registraron cómo te sentías`}
+            {mentalWellbeing.active_days > 0 && `, en ${mentalWellbeing.active_days} días`}
+          </p>
+          {(mentalWellbeing.dominant_emotions || []).length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground mb-1.5">Emociones más frecuentes</p>
+              <div className="flex flex-wrap gap-1.5">
+                {mentalWellbeing.dominant_emotions.map((item) => (
+                  <Badge key={item.emotion} variant="outline" className="font-normal">
+                    {item.emotion} ×{item.count}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Media, y dicho que es una media. Sin flecha: el invariante 22 del
+              HLD prohíbe convertir polaridad e intensidad en una puntuación, y
+              una dirección sobre quince días de emociones es esa puntuación sin
+              el número. */}
+          {mentalWellbeing.average_intensity !== null
+            && mentalWellbeing.average_intensity !== undefined && (
+            <p className="text-xs text-muted-foreground mb-3">
+              Intensidad media {mentalWellbeing.average_intensity}/5 — es una media del
+              periodo, no una trayectoria.
+            </p>
+          )}
+          {(mentalWellbeing.active_patterns || []).length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">
+                Patrones que ya tienes activos en tu diario
+              </p>
+              <ul className="space-y-1">
+                {mentalWellbeing.active_patterns.map((pattern) => (
+                  <li key={pattern.pattern_key} className="text-sm text-foreground">
+                    {pattern.label || pattern.pattern_key}
+                    <span className="text-xs text-muted-foreground"> · {pattern.count} veces</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <SampleDots status={mentalWellbeing.sample_status} />
+        </Section>
+      )}
+
+      {relations.length > 0 && (
+        <Section title="Relaciones observadas" icon={Waves} testId="health-report-relations-section">
+          <HealthRelations reportId={reportId} relations={relations} />
+        </Section>
+      )}
+
+      {synchronyReading && (
+        <Section title="Sincronía" testId="health-report-synchrony">
+          <p className="text-xs text-muted-foreground mb-2">
+            Si lo que registras y lo que sientes al hacerlo van en la misma dirección.
+            Una fricción aquí dice algo sobre el diseño del plan, no sobre ti.
+          </p>
+          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+            {synchronyReading}
+          </p>
         </Section>
       )}
 

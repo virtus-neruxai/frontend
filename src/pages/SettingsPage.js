@@ -5,7 +5,9 @@ import NotificationSettings from '../components/NotificationSettings';
 import PromptProfileSettings from '../components/PromptProfileSettings';
 import MentorNotificationSettings from '../components/MentorNotificationSettings';
 import HealthNoteRecallSettings from '../components/HealthNoteRecallSettings';
-import { notificationsApi, userSettingsApi, healthConsentApi } from '../lib/api';
+import {
+  notificationsApi, userSettingsApi, healthConsentApi, healthAgentApi, healthActivitiesApi,
+} from '../lib/api';
 import { cacheNotificationSettings } from '../hooks/useWebSocket';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { getProfileTheme } from '../theme/profileThemeUtils';
@@ -44,10 +46,15 @@ export default function SettingsPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [mentorNotificationsEnabled, setMentorNotificationsEnabled] = useState(true);
   const [mentorNotificationsSaving, setMentorNotificationsSaving] = useState(false);
-  // Defaults to true to match the backend default (health_consent_service.
-  // DEFAULT_GRANTED): until the real value loads, showing "on" is the
-  // account's actual starting state, not an assumption ahead of it.
-  const [healthNoteRecallEnabled, setHealthNoteRecallEnabled] = useState(true);
+  // Un scope ausente del mapa se pinta concedido, que es el default real del
+  // backend (health_consent_service.DEFAULT_GRANTED): mientras carga, "on" es
+  // el estado de partida de la cuenta, no una suposicion por delante de el.
+  // Los tres scopes en un mapa, no tres booleanos. Se leen de una sola vez
+  // (`/health-consent/all`) porque viven en el mismo documento: leerlo tres
+  // veces dejaria a dos de ellos contestando desde un estado que el tercero ya
+  // habia movido.
+  const [healthConsentScopes, setHealthConsentScopes] = useState({});
+  const [healthConsentSaved, setHealthConsentSaved] = useState({});
   const [healthNoteRecallLoading, setHealthNoteRecallLoading] = useState(true);
   const [healthNoteRecallSaving, setHealthNoteRecallSaving] = useState(false);
   const persistedPromptProfileRef = useRef(profileId);
@@ -107,13 +114,24 @@ export default function SettingsPage() {
 
     const loadHealthNoteRecall = async () => {
       try {
-        const response = await healthConsentApi.getConsent();
-        setHealthNoteRecallEnabled(response?.data?.granted !== false);
+        const response = await healthConsentApi.getAllConsent();
+        const next = {};
+        (response?.data?.scopes || []).forEach((entry) => {
+          if (entry?.scope) next[entry.scope] = entry.granted !== false;
+        });
+        setHealthConsentScopes(next);
+        setHealthConsentSaved(next);
       } catch (error) {
-        // Fail open in the UI too, mirroring the backend default: an
-        // unreadable setting must not present as "off" when the account's
-        // real state (absent any override) is "on".
-        setHealthNoteRecallEnabled(true);
+        // Fail open in the UI, mirroring the backend default: an unreadable
+        // setting must not present as "off" when the account's real state
+        // (absent any override) is "on".
+        //
+        // Note this is the opposite direction from agent-service, and both are
+        // right. Here a wrong "off" would tell the person they had revoked
+        // something they had not; there a wrong "on" would put their records in
+        // a prompt nobody authorised. The costs are asymmetric in opposite ways.
+        setHealthConsentScopes({});
+        setHealthConsentSaved({});
       } finally {
         setHealthNoteRecallLoading(false);
       }
@@ -228,17 +246,53 @@ export default function SettingsPage() {
   };
 
   const saveHealthNoteRecall = async () => {
+    // Solo los que la persona ha tocado. Reenviar los tres subiria la revision
+    // de scopes que no han cambiado, y la revision es lo que distingue un
+    // documento escrito bajo una concesion vieja de uno escrito bajo la actual:
+    // moverla sin motivo invalidaria material que seguia siendo valido.
+    const changed = Object.entries(healthConsentScopes).filter(
+      ([scope, granted]) => (healthConsentSaved[scope] !== false) !== (granted !== false)
+    );
+    if (changed.length === 0) return;
+
     setHealthNoteRecallSaving(true);
     try {
-      const response = await healthConsentApi.setConsent(healthNoteRecallEnabled);
-      setHealthNoteRecallEnabled(response?.data?.granted !== false);
-      toast.success(
-        healthNoteRecallEnabled
-          ? 'El Mentor de Salud volverá a recordar tus notas'
-          : 'El Mentor de Salud ha dejado de recordar tus notas (siguen guardadas)'
+      const results = await Promise.all(
+        changed.map(([scope, granted]) =>
+          healthConsentApi.setConsent(granted, scope).then((response) => [scope, response])
+        )
       );
+      const next = { ...healthConsentScopes };
+      results.forEach(([scope, response]) => {
+        next[scope] = response?.data?.granted !== false;
+      });
+      setHealthConsentScopes(next);
+      setHealthConsentSaved(next);
+
+      // Reconceder el recuerdo no reindexa por si solo. El backend purga al
+      // revocar pero no puede restaurar: las notas del Mentor viven en
+      // agent-service y las de los registros en backend, cada una detras de su
+      // propio endpoint. Sin esta llamada la concesion parecia no hacer nada —
+      // el ajuste decia "sí" y el Mentor seguia sin recordar hasta que la
+      // persona escribiera una nota nueva.
+      //
+      // Best-effort a proposito: el permiso ya esta guardado, que es lo que se
+      // pidio. Si la reindexacion falla, la siguiente escritura de nota lo
+      // repara igualmente, y un toast de error aqui sugeriria que el permiso no
+      // se habia guardado cuando si lo estaba.
+      const regrantedRecall = changed.some(
+        ([scope, granted]) => scope === 'health_note_recall' && granted !== false
+      );
+      if (regrantedRecall) {
+        await Promise.allSettled([
+          healthAgentApi.reindexNotes(),
+          healthActivitiesApi.reindexNotes(),
+        ]);
+      }
+
+      toast.success('Permisos del Mentor de Salud guardados');
     } catch (error) {
-      toast.error('Error al guardar la memoria del Mentor de Salud');
+      toast.error('Error al guardar los permisos del Mentor de Salud');
     } finally {
       setHealthNoteRecallSaving(false);
     }
@@ -290,10 +344,11 @@ export default function SettingsPage() {
         />
 
         <HealthNoteRecallSettings
-          enabled={healthNoteRecallEnabled}
+          scopes={healthConsentScopes}
           loading={healthNoteRecallLoading}
           saving={healthNoteRecallSaving}
-          onToggle={setHealthNoteRecallEnabled}
+          onToggle={(scope, granted) =>
+            setHealthConsentScopes((prev) => ({ ...prev, [scope]: Boolean(granted) }))}
           onSave={saveHealthNoteRecall}
         />
 

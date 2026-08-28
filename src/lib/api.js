@@ -191,13 +191,20 @@ export const agentApi = {
 // toggles. "Datos de la app" no existe aquí — el backend devuelve 422 si
 // llega `user_data_qa`, así que enviarlo sería un error, no una opción.
 export const healthAgentApi = {
-  chat: (message, sessionId, deepReasoning = false, projectPlan = false, resetSession = false) =>
+  // `usePersonalData` es ortogonal a los dos modos y va el ultimo a proposito:
+  // los cinco primeros parametros son los que ya existian, asi que ninguna
+  // llamada previa cambia de significado al anadirlo.
+  chat: (
+    message, sessionId, deepReasoning = false, projectPlan = false,
+    resetSession = false, usePersonalData = false,
+  ) =>
     agentApiInstance.post('/agent/health-chat', {
       message,
       session_id: sessionId,
       deep_reasoning: deepReasoning,
       project_plan: projectPlan,
       reset_session: resetSession,
+      use_personal_data: usePersonalData,
     }),
   // Un único hilo por usuario, sin filtro de perfil: una lesión contada bajo una
   // voz sigue siendo la misma lesión bajo otra.
@@ -209,6 +216,11 @@ export const healthAgentApi = {
   // health surface's own drafts.
   getPendingDrafts: (sessionId) =>
     agentApiInstance.get('/agent/health-chat/drafts', { params: { session_id: sessionId } }),
+  // Al reconceder el recuerdo hay que volver a indexar: el backend purga al
+  // revocar pero no puede restaurar, porque las notas viven en agent-service.
+  // Devuelve 409 si el consentimiento no esta concedido, en vez de indexar cero
+  // notas y reportar exito — que se leeria como que la concesion habia fallado.
+  reindexNotes: () => agentApiInstance.post('/agent/health-chat/notes/reindex'),
 };
 
 // Health activities API — the person's own record of what they did (meals,
@@ -216,6 +228,10 @@ export const healthAgentApi = {
 // nothing here publishes to the outbox (see backend/routes/health_activities.py).
 export const healthActivitiesApi = {
   getAll: (params = {}) => api.get('/health-activities', { params }),
+  // La otra mitad del mismo gesto: las notas libres de los registros comparten
+  // el scope `health_note_recall` y la misma purga, asi que reconceder tiene
+  // que republicar las dos cosas o la memoria vuelve a medias.
+  reindexNotes: () => api.post('/health-activities/reindex'),
   getSummary: (params = {}) => api.get('/health-activities/summary', { params }),
   get: (activityId) => api.get(`/health-activities/${activityId}`),
   create: (data) => api.post('/health-activities', data),
@@ -363,6 +379,14 @@ export const healthReportApi = {
   adoptAction: (reportId, actionId) =>
     reasoningApiInstance.post(
       `/reasoning/health-reports/${reportId}/actions/${encodeURIComponent(actionId)}/adopt`
+    ),
+  // Se envian el informe y la relacion, y ninguna redaccion. El texto de la
+  // nota lo compone el servidor desde la relacion inmutable que guardo: dejar
+  // que el navegador mandase prosa convertiria el boton en una via de escritura
+  // libre a la memoria del Mentor.
+  adoptRelation: (reportId, relationId) =>
+    reasoningApiInstance.post(
+      `/reasoning/health-reports/${reportId}/relations/${encodeURIComponent(relationId)}/adopt`
     ),
 };
 
@@ -528,8 +552,13 @@ export const userSettingsApi = {
 // purges the health note index server-side, which a plain settings save never
 // does — so this has to be its own endpoint, not a field in the same PATCH.
 export const healthConsentApi = {
+  // Sin `scope` responde por `health_note_recall`, que es lo que pedian todos
+  // los clientes antes de que existieran los otros dos. Cambiar ese default
+  // volveria a apuntar a otro sitio cada llamada sin versionar.
   getConsent: (config = {}) => api.get('/health-consent', config),
-  setConsent: (granted) => api.post('/health-consent', { granted }),
+  getAllConsent: (config = {}) => api.get('/health-consent/all', config),
+  setConsent: (granted, scope) =>
+    api.post('/health-consent', scope ? { granted, scope } : { granted }),
 };
 
 export default api;

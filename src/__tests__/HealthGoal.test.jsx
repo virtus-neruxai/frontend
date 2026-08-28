@@ -99,7 +99,12 @@ describe('HealthGoalSettings', () => {
     render(<HealthGoalSettings />);
 
     await waitFor(() => expect(screen.getByText(GOAL.statement)).toBeInTheDocument());
-    expect(screen.getByText(/Composición · Actividad/)).toBeInTheDocument();
+    // Awaited too, not asserted directly: the statement and the tracked list
+    // arrive from the same fetch but paint on separate commits under load, so
+    // a bare assertion here fails intermittently in a full run and passes
+    // alone — which reads as a broken component rather than a racy test.
+    await waitFor(() =>
+      expect(screen.getByText(/Composición · Actividad/)).toBeInTheDocument());
   });
 
   test('the form carries no field for a number, a date or a progress bar', async () => {

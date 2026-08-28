@@ -5,6 +5,13 @@ import { toast } from 'sonner';
 
 const STORAGE_KEY = 'agent_session_id_health';
 
+// Recordado por navegador, no por conversacion. Es una preferencia sobre como
+// quiere que se le responda, no un atributo de un hilo concreto: tener que
+// volver a activarlo en cada conversacion nueva convertiria una decision en una
+// tarea repetida. Apagado por defecto — encenderlo por defecto cambiaria en
+// silencio toda conversacion ya abierta.
+const PERSONAL_DATA_KEY = 'health_use_personal_data';
+
 const generateSessionId = () =>
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = Math.random() * 16 | 0;
@@ -23,9 +30,17 @@ const generateSessionId = () =>
  *    not to the persona: a knee operated on under "calm" is the same knee under
  *    "performance". Keying by profile would also drop every answered slot on a
  *    voice switch, which is the repetition the product rules forbid.
- * 2. **Two toggles, not three.** "Datos de la app" lives only in Mentor
+ * 2. **"Datos de la app" is still absent.** That toggle lives only in Mentor
  *    `<perfil>`. The backend returns 422 if `user_data_qa` arrives here, so this
  *    hook has no way to send it.
+ *
+ * `usePersonalData` is not that toggle under another name. It opens no Data
+ * branch and picks no tools: the surface still chooses its sources from the
+ * domain of the question. What it expresses is the half of the health policy
+ * that had no way to be said before — that the person *wants* their own records
+ * used — and it composes with Razonar and Modo Plan instead of excluding them,
+ * because reading your own data is a property of the answer rather than a way
+ * of producing it.
  */
 export const useHealthChat = () => {
   const [chatMessage, setChatMessage] = useState('');
@@ -35,6 +50,7 @@ export const useHealthChat = () => {
   const [sessionId, setSessionId] = useState(null);
   const [deepReasoning, setDeepReasoningState] = useState(false);
   const [projectPlan, setProjectPlanState] = useState(false);
+  const [usePersonalData, setUsePersonalDataState] = useState(false);
 
   // Deep and Plan are mutually exclusive — mirrors HealthChatRequest's
   // validate_exclusive_explicit_modes, which returns 422 if both arrive.
@@ -46,6 +62,25 @@ export const useHealthChat = () => {
   const setProjectPlan = useCallback((checked) => {
     setProjectPlanState(Boolean(checked));
     if (checked) setDeepReasoningState(false);
+  }, []);
+
+  const setUsePersonalData = useCallback((checked) => {
+    const next = Boolean(checked);
+    setUsePersonalDataState(next);
+    try {
+      localStorage.setItem(PERSONAL_DATA_KEY, next ? '1' : '0');
+    } catch {
+      // Private browsing or a full quota. The toggle still works for this
+      // session; only remembering it fails, and that is not worth a toast.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      setUsePersonalDataState(localStorage.getItem(PERSONAL_DATA_KEY) === '1');
+    } catch {
+      setUsePersonalDataState(false);
+    }
   }, []);
 
   // Runs once. Unlike useAgentChat this has no profile dependency, so changing
@@ -118,7 +153,7 @@ export const useHealthChat = () => {
     setChatLoading(true);
     try {
       const response = await healthAgentApi.chat(
-        message, sessionId, deepReasoning, projectPlan,
+        message, sessionId, deepReasoning, projectPlan, false, usePersonalData,
       );
       setChatResponse(response.data.response);
       setChatMetadata(response.data.metadata || null);
@@ -141,7 +176,7 @@ export const useHealthChat = () => {
     } finally {
       setChatLoading(false);
     }
-  }, [sessionId, deepReasoning, projectPlan]);
+  }, [sessionId, deepReasoning, projectPlan, usePersonalData]);
 
   const clearResponse = useCallback(() => setChatResponse(''), []);
 
@@ -155,6 +190,8 @@ export const useHealthChat = () => {
     setDeepReasoning,
     projectPlan,
     setProjectPlan,
+    usePersonalData,
+    setUsePersonalData,
     sendMessage,
     setChatMessage,
     setChatResponse,

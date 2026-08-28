@@ -23,6 +23,7 @@ vi.mock('../lib/api', () => ({
     getCompanion: vi.fn(),
     generateCompanion: vi.fn(),
     adoptAction: vi.fn(),
+    adoptRelation: vi.fn(),
   },
   healthPracticesApi: { list: vi.fn() },
 }));
@@ -461,5 +462,193 @@ describe('HealthReportView schema 2', () => {
     expect(screen.queryByTestId('health-report-dimensions')).not.toBeInTheDocument();
     expect(screen.queryByTestId('health-report-activity')).not.toBeInTheDocument();
     expect(screen.getByTestId('health-report-view')).toBeInTheDocument();
+  });
+});
+
+// ── Sixth dimension, relations and synchrony ────────────────────────────────
+//
+// All three arrived additively, still under schema_version "2". The first test
+// below is the one that matters most: a report written before them has to
+// render exactly as it did, because a version branch was deliberately not
+// bought to describe a document nobody would read differently.
+
+const WELLBEING = {
+  reflections_with_emotion: 4,
+  reflections_total: 9,
+  active_days: 4,
+  window_days: 14,
+  sample_status: 'trend_weak',
+  dominant_emotions: [
+    { emotion: 'frustración', count: 3, polarity: 'negative' },
+    { emotion: 'calma', count: 1, polarity: 'positive' },
+  ],
+  average_intensity: 3.5,
+  active_patterns: [
+    { pattern_key: 'evitacion_vespertina', label: 'Evitación por la tarde', count: 3, status: 'active' },
+  ],
+};
+
+const RELATION = {
+  relation_id: 'relation:r1:a1',
+  kind: 'temporal',
+  evidence_tier: 'repeated',
+  dimension: 'activity',
+  reflection_ids: ['r1'],
+  activity_ids: ['a1'],
+  note_ids: [],
+  task_ids: [],
+  pattern_keys: [],
+  pattern_labels: [],
+  recurrent: false,
+  dates: ['2026-08-24'],
+  day_distance: 0,
+  semantic_score: null,
+  emotion: 'frustración',
+  polarity: 'negative',
+  friction: null,
+  intensity: 4,
+  friction_severity: null,
+  related_title: 'Entreno de pierna',
+  related_domain: 'training',
+};
+
+describe('HealthReportView · bienestar mental', () => {
+  test('a report written before these fields still renders', () => {
+    // The whole reason the version stayed at "2". Every new field is optional
+    // or defaults to empty, so an older document falls through to the defaults.
+    render(<HealthReportView report={v2()} />);
+
+    expect(screen.getByTestId('health-report-view')).toBeInTheDocument();
+    expect(screen.queryByTestId('health-report-wellbeing')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('health-report-relations')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('health-report-synchrony')).not.toBeInTheDocument();
+  });
+
+  test('coverage is published as the fraction it is', () => {
+    render(<HealthReportView report={v2({ mental_wellbeing: WELLBEING })} />);
+    expect(screen.getByTestId('health-wellbeing-coverage'))
+      .toHaveTextContent('4 de 9 reflexiones registraron cómo te sentías');
+  });
+
+  test('a withheld denominator publishes the numerator alone', () => {
+    // It is withheld when the two sources were read over different windows.
+    // "4 de 2" would invite arithmetic on something that is not a ratio.
+    render(<HealthReportView report={v2({
+      mental_wellbeing: { ...WELLBEING, reflections_total: null },
+    })} />);
+
+    expect(screen.getByTestId('health-wellbeing-coverage'))
+      .toHaveTextContent('4 reflexiones con emoción registrada');
+    expect(screen.getByTestId('health-wellbeing-coverage')).not.toHaveTextContent('de 9');
+  });
+
+  test('the mean intensity is labelled a mean and shows no direction', () => {
+    // HLD invariant 22: polarity and intensity may never become a score, and an
+    // arrow over a fortnight of feelings is that score with the number removed.
+    render(<HealthReportView report={v2({ mental_wellbeing: WELLBEING })} />);
+
+    expect(screen.getByText(/no una trayectoria/)).toBeInTheDocument();
+  });
+
+  test('a day without a reflection is unreadable, never neutral', () => {
+    render(<HealthReportView report={v2({ mental_wellbeing: WELLBEING })} />);
+    expect(screen.getByText(/nunca un día neutro/)).toBeInTheDocument();
+  });
+
+  test('patterns are quoted from the journal and not recounted here', () => {
+    // HLD invariant 21 forbids a second pattern detector inside health.
+    render(<HealthReportView report={v2({ mental_wellbeing: WELLBEING })} />);
+    expect(screen.getByText('Evitación por la tarde')).toBeInTheDocument();
+    expect(screen.getByText(/ya tienes activos en tu diario/)).toBeInTheDocument();
+  });
+
+  test('the sixth dimension enters the grid and the coverage matrix', () => {
+    render(<HealthReportView report={v2({
+      dimensions: [
+        ...v2().dimensions,
+        { dimension: 'mental_wellbeing', sample_status: 'trend_weak', records: 4, active_days: 4 },
+      ],
+      coverage_matrix: {
+        dates: ['2026-08-24'],
+        rows: [{ signal: 'wellbeing', days: [true] }],
+      },
+    })} />);
+
+    expect(screen.getByTestId('health-dimension-mental_wellbeing')).toHaveTextContent('Bienestar mental');
+    expect(screen.getByTestId('health-coverage-wellbeing')).toHaveTextContent('Diario');
+  });
+});
+
+describe('HealthReportView · relaciones observadas', () => {
+  test('a relation is proposed and the person adopts it', async () => {
+    healthReportApi.adoptRelation.mockResolvedValue({ data: { note_id: 'n1', created: true } });
+    render(<HealthReportView reportId="report-1" report={v2({ relations: [RELATION] })} />);
+
+    const button = screen.getByTestId('health-relation-adopt-relation:r1:a1');
+    fireEvent.click(button);
+
+    await waitFor(() => expect(button).toHaveTextContent('Guardada'));
+    // The browser sends the pair and no prose: the note text is composed
+    // server-side from the immutable relation it stored.
+    expect(healthReportApi.adoptRelation).toHaveBeenCalledWith('report-1', 'relation:r1:a1');
+    expect(button).toBeDisabled();
+  });
+
+  test('a coincidence is worded as a coincidence', () => {
+    render(<HealthReportView reportId="report-1" report={v2({ relations: [RELATION] })} />);
+    expect(screen.getByText(/Coincidir no es causar/)).toBeInTheDocument();
+    expect(screen.getByText('Coincidió en el tiempo')).toBeInTheDocument();
+    expect(screen.getByText(/eso es todo lo que se sabe/)).toBeInTheDocument();
+  });
+
+  test('a linked relation is worded more strongly than a temporal one', () => {
+    render(<HealthReportView reportId="report-1" report={v2({
+      relations: [{ ...RELATION, kind: 'linked' }],
+    })} />);
+    expect(screen.getByText('Lo escribiste sobre eso')).toBeInTheDocument();
+  });
+
+  test('a semantic-only relation cannot be saved as a note', () => {
+    // The backend answers 409, and offering the button anyway would let the
+    // weakest thing in the report become the most durable thing in the system.
+    render(<HealthReportView reportId="report-1" report={v2({
+      relations: [{ ...RELATION, kind: 'semantic' }],
+    })} />);
+
+    expect(screen.getByTestId('health-relation-relation:r1:a1')).toBeInTheDocument();
+    expect(screen.queryByTestId('health-relation-adopt-relation:r1:a1')).not.toBeInTheDocument();
+    expect(screen.getByText(/únicamente propone algo que observar/)).toBeInTheDocument();
+  });
+
+  test('a single event is never presented as a pattern', () => {
+    render(<HealthReportView reportId="report-1" report={v2({ relations: [RELATION] })} />);
+    expect(screen.queryByText('Se ha repetido')).not.toBeInTheDocument();
+
+    render(<HealthReportView reportId="report-1" report={v2({
+      relations: [{ ...RELATION, recurrent: true }],
+    })} />);
+    expect(screen.getByText('Se ha repetido')).toBeInTheDocument();
+  });
+
+  test('a failed adoption says so and leaves the button usable', () => {
+    healthReportApi.adoptRelation.mockRejectedValue({
+      response: { data: { detail: 'relation_not_adoptable' } },
+    });
+    render(<HealthReportView reportId="report-1" report={v2({ relations: [RELATION] })} />);
+
+    fireEvent.click(screen.getByTestId('health-relation-adopt-relation:r1:a1'));
+    return waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('relation_not_adoptable'));
+  });
+});
+
+describe('HealthReportView · sincronía', () => {
+  test('it is framed as being about the plan, not about the person', () => {
+    render(<HealthReportView report={v2({
+      synchrony_reading: 'Los días que entrenaste por la tarde fueron los que peor te sentaron.',
+    })} />);
+
+    expect(screen.getByTestId('health-report-synchrony'))
+      .toHaveTextContent('Los días que entrenaste por la tarde');
+    expect(screen.getByText(/sobre el diseño del plan, no sobre ti/)).toBeInTheDocument();
   });
 });

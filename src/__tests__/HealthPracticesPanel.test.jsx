@@ -22,6 +22,15 @@ test('dashboard shows only adopted health practices and never their private note
   expect(screen.queryByText(/racha|porcentaje/i)).toBeInTheDocument();
 });
 
+test('shows recorded dates behind the timeline control without exposing private notes', () => {
+  render(<HealthPracticesPanel data={data} loading={false} />);
+
+  fireEvent.click(screen.getByText('Ver cuándo'));
+
+  expect(screen.getByText('26 ago')).toBeInTheDocument();
+  expect(screen.queryByText(/Nota sanitaria que no debe/i)).not.toBeInTheDocument();
+});
+
 test('Lo he hecho records date and optional note without any task semantics', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
   render(<HealthPracticesPanel data={data} loading={false} onRecordApplication={onSave} />);
