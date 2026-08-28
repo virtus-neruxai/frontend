@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { statsApi, characterApi, tasksApi, missionsApi, profileApi, behaviorsApi } from '../../lib/api';
+import {
+  statsApi, characterApi, tasksApi, missionsApi, profileApi, behaviorsApi,
+  healthPracticesApi,
+} from '../../lib/api';
 import { buildRelativeDateRange, getPersistedRange, persistRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 import {
@@ -66,6 +69,8 @@ export function useDashboard(initialProfile) {
   // Emotional patterns state
   const [learnedResponses, setLearnedResponses] = useState(null);
   const [learnedResponsesLoading, setLearnedResponsesLoading] = useState(false);
+  const [healthPractices, setHealthPractices] = useState(null);
+  const [healthPracticesLoading, setHealthPracticesLoading] = useState(false);
   const [emotionalPatterns, setEmotionalPatterns] = useState(null);
   const [emotionalPatternsLoading, setEmotionalPatternsLoading] = useState(false);
   const [emotionalPatternsRange, setEmotionalPatternsRange] = useState('7');
@@ -263,6 +268,28 @@ export function useDashboard(initialProfile) {
     await fetchLearnedResponses();
   }, [fetchLearnedResponses]);
 
+  const fetchHealthPractices = useCallback(async () => {
+    setHealthPracticesLoading(true);
+    try {
+      const res = await healthPracticesApi.list(parseInt(range, 10));
+      setHealthPractices(res.data);
+    } catch (error) {
+      setHealthPractices(null);
+    } finally {
+      setHealthPracticesLoading(false);
+    }
+  }, [range]);
+
+  const recordHealthPracticeApplication = useCallback(async (practiceKey, data) => {
+    await healthPracticesApi.recordApplication(practiceKey, data);
+    await fetchHealthPractices();
+  }, [fetchHealthPractices]);
+
+  const setHealthPracticeStatus = useCallback(async (practiceKey, status) => {
+    await healthPracticesApi.setStatus(practiceKey, status);
+    await fetchHealthPractices();
+  }, [fetchHealthPractices]);
+
   const fetchMissionLenses = useCallback(async () => {
     setMissionLensesLoading(true);
     try {
@@ -320,6 +347,10 @@ export function useDashboard(initialProfile) {
     fetchLearnedResponses();
   }, [fetchLearnedResponses]);
 
+  useEffect(() => {
+    fetchHealthPractices();
+  }, [fetchHealthPractices]);
+
   return {
     summary,
     timeseries,
@@ -370,6 +401,10 @@ export function useDashboard(initialProfile) {
     refreshLearnedResponses: fetchLearnedResponses,
     recordBehaviorApplication,
     setBehaviorStatus,
+    healthPractices,
+    healthPracticesLoading,
+    recordHealthPracticeApplication,
+    setHealthPracticeStatus,
     missionLenses,
     missionLensesLoading,
     refreshMissionLenses: fetchMissionLenses,

@@ -7,7 +7,7 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { useHealthReport } from '../presentation/viewmodels/useHealthReport';
 import HealthReportView from '../components/health/HealthReportView';
-import { healthReportApi } from '../lib/api';
+import { healthPracticesApi, healthReportApi } from '../lib/api';
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
@@ -20,7 +20,11 @@ vi.mock('../lib/api', () => ({
     getReports: vi.fn(),
     getReport: vi.fn(),
     askQuestion: vi.fn(),
+    getCompanion: vi.fn(),
+    generateCompanion: vi.fn(),
+    adoptAction: vi.fn(),
   },
+  healthPracticesApi: { list: vi.fn() },
 }));
 
 const STORAGE_KEY = 'virtus.reasoning.active-health-report-job';
@@ -29,6 +33,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   window.sessionStorage.clear();
   healthReportApi.getReportJob.mockResolvedValue({ data: { status: 'queued' } });
+  healthReportApi.getCompanion.mockRejectedValue({ response: { status: 404 } });
+  healthPracticesApi.list.mockResolvedValue({ data: { practices: [], applications: [] } });
 });
 
 describe('useHealthReport job recovery', () => {
@@ -140,6 +146,7 @@ function v2(overrides = {}) {
     adherence: [],
     consistency: [],
     positive_signals: [],
+    practice_candidates: [],
     observations: [],
     hypotheses: [],
     cautions: [],
@@ -178,6 +185,98 @@ describe('HealthReportView schema 2', () => {
       { message: '¿Qué significa esta lectura?', history: [] },
     ));
     expect(await screen.findByText(/El informe no permite concluir/i)).toBeInTheDocument();
+  });
+
+  test('the V2 extension keeps history, actions, companion, quality and next action in order', async () => {
+    render(<HealthReportView reportId="health-report-1" report={v2({
+      positive_signals: [{
+        claim: 'Varias comidas comparten una estructura que ya conoces.',
+        claim_type: 'fact', evidence_tier: 'repeated', activity_ids: ['a1'],
+        task_ids: [], note_ids: [], checkin_ids: [], practice_application_ids: [],
+        dates: ['2026-08-25'], source_types: ['activity'],
+      }],
+      practice_candidates: [{
+        action_id: 'action-1', title: 'Reutilizar una comida',
+        instruction: 'Guárdala con un título para seleccionarla otra vez.',
+        dimension: 'nutrition', origin: 'personalized', evidence_tier: 'repeated',
+        goal_alignment: 'Apoya tu objetivo sin medir progreso.', citation_ids: ['a1'],
+        dates: ['2026-08-25'], source_types: ['activity'],
+      }],
+      health_safety_snapshot: { level: 'GREEN', categories: [], references: [] },
+      next_best_action: 'Registrar el descanso cuando lo conozcas.',
+    })} />);
+
+    const view = screen.getByTestId('health-report-view');
+    const positions = [
+      'health-report-positive', 'health-report-practices', 'health-report-companion',
+      'health-report-next-action',
+    ].map((id) => Array.from(view.children).indexOf(screen.getByTestId(id)));
+    const quality = screen.getByText('Calidad del dato').closest('[class*="border"]');
+    const qualityPosition = Array.from(view.children).indexOf(quality);
+    expect(positions[0]).toBeLessThan(positions[1]);
+    expect(positions[1]).toBeLessThan(positions[2]);
+    expect(positions[2]).toBeLessThan(qualityPosition);
+    expect(qualityPosition).toBeLessThan(positions[3]);
+    expect(screen.getByText('Lo que tu propia historia también demuestra')).toBeInTheDocument();
+    expect(screen.getAllByText(/Origen: actividad/i)).toHaveLength(2);
+    await waitFor(() => expect(healthPracticesApi.list).toHaveBeenCalledWith(3650));
+  });
+
+  test('adopting an action uses its immutable id and updates the card immediately', async () => {
+    healthReportApi.adoptAction.mockResolvedValue({
+      data: { practice_key: 'nutrition:key', status: 'active' },
+    });
+    render(<HealthReportView reportId="health-report-1" report={v2({
+      practice_candidates: [{
+        action_id: 'action-1', title: 'Reutilizar una comida', instruction: 'Guárdala.',
+        dimension: 'nutrition', origin: 'generic', evidence_tier: 'general',
+      }],
+    })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Adoptar práctica' }));
+    await waitFor(() => expect(healthReportApi.adoptAction).toHaveBeenCalledWith(
+      'health-report-1', 'action-1'
+    ));
+    expect(await screen.findByRole('button', { name: /Adoptada/i })).toBeDisabled();
+  });
+
+  test('an idempotent practice adopted from an earlier report stays adopted after reload', async () => {
+    healthPracticesApi.list.mockResolvedValue({ data: { practices: [{
+      practice_key: 'nutrition:key', origin_report_id: 'older-report',
+      origin_action_id: 'older-action', dimension: 'nutrition',
+      instruction: 'Guárdala con un título.', status: 'practicing',
+    }], applications: [] } });
+    render(<HealthReportView reportId="health-report-1" report={v2({
+      practice_candidates: [{
+        action_id: 'action-1', title: 'Reutilizar una comida',
+        instruction: 'Guárdala con un título.', dimension: 'nutrition',
+        origin: 'generic', evidence_tier: 'general',
+      }],
+    })} />);
+    expect(await screen.findByRole('button', { name: /Adoptada/i })).toBeDisabled();
+    expect(healthReportApi.adoptAction).not.toHaveBeenCalled();
+  });
+
+  test('the health companion is generated on demand and rendered in place', async () => {
+    healthReportApi.getCompanion.mockRejectedValue({ response: { status: 404 } });
+    healthReportApi.generateCompanion.mockResolvedValue({ data: { companion: {
+      message: 'Tu historia ya contiene un apoyo concreto.',
+      action_contexts: [{ action_id: 'action-1', context: 'Puedes recuperarla cuando encaje.' }],
+    } } });
+    render(<HealthReportView reportId="health-report-1" report={v2({
+      practice_candidates: [{
+        action_id: 'action-1', title: 'Reutilizar una comida', instruction: 'Guárdala.',
+        dimension: 'nutrition', origin: 'generic', evidence_tier: 'general',
+      }],
+      health_safety_snapshot: { level: 'GREEN', categories: [], references: [] },
+    })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Generar mensaje' }));
+    expect(await screen.findByText('Tu historia ya contiene un apoyo concreto.')).toBeInTheDocument();
+    expect(screen.getByText('Puedes recuperarla cuando encaje.')).toBeInTheDocument();
+  });
+
+  test('historical V2 without a safety snapshot renders no retrospective companion', () => {
+    render(<HealthReportView reportId="old" report={v2()} />);
+    expect(screen.queryByTestId('health-report-companion')).not.toBeInTheDocument();
   });
 
   test('a dimension with no data says so instead of showing a zero', () => {

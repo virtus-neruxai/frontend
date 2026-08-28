@@ -356,6 +356,22 @@ export const healthReportApi = {
   getReport: (reportId) => reasoningApiInstance.get(`/reasoning/health-reports/${reportId}`),
   askQuestion: (reportId, data) =>
     reasoningApiInstance.post(`/reasoning/health-reports/${reportId}/chat`, data),
+  getCompanion: (reportId) =>
+    reasoningApiInstance.get(`/reasoning/health-reports/${reportId}/companion`),
+  generateCompanion: (reportId) =>
+    reasoningApiInstance.post(`/reasoning/health-reports/${reportId}/companion`),
+  adoptAction: (reportId, actionId) =>
+    reasoningApiInstance.post(
+      `/reasoning/health-reports/${reportId}/actions/${encodeURIComponent(actionId)}/adopt`
+    ),
+};
+
+export const healthPracticesApi = {
+  list: (days = 90) => api.get('/health-practices', { params: { days } }),
+  recordApplication: (practiceKey, data = {}) =>
+    api.post(`/health-practices/${encodeURIComponent(practiceKey)}/applications`, data),
+  setStatus: (practiceKey, status) =>
+    api.patch(`/health-practices/${encodeURIComponent(practiceKey)}`, { status }),
 };
 
 // Fase 2 — plan y desbloqueos por actividad (backend, no reasoning-service).

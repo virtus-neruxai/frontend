@@ -6,6 +6,8 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import HealthReportQuestions from './HealthReportQuestions';
+import HealthCompanionCard from './HealthCompanionCard';
+import HealthPracticeCandidates from './HealthPracticeCandidates';
 import HealthReportViewV1 from './HealthReportViewV1';
 
 // EvidenceTier → label + style, mirroring shared.models.health_guidance.EVIDENCE_LANGUAGE.
@@ -63,6 +65,10 @@ const AVAILABILITY = {
 };
 
 const CLAIM_TYPE_LABEL = { fact: 'Hecho', relation: 'Relación observada' };
+const SOURCE_TYPE_LABEL = {
+  activity: 'actividad', task: 'tarea', note: 'nota', checkin: 'check-in corporal',
+  practice_application: 'práctica realizada',
+};
 
 const TASK_KIND_LABEL = {
   activity: 'Actividad',
@@ -159,8 +165,17 @@ function ClaimList({ items, testId }) {
             )}
             <span className="text-xs text-muted-foreground">
               {(item.activity_ids?.length || 0) + (item.task_ids?.length || 0)
-                + (item.note_ids?.length || 0) + (item.checkin_ids?.length || 0)} citas
+                + (item.note_ids?.length || 0) + (item.checkin_ids?.length || 0)
+                + (item.practice_application_ids?.length || 0)} citas
             </span>
+            {(item.source_types || []).length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                Origen: {item.source_types.map((source) => SOURCE_TYPE_LABEL[source] || source).join(', ')}
+              </span>
+            )}
+            {(item.dates || []).length > 0 && (
+              <span className="text-xs text-muted-foreground">Fechas: {item.dates.join(', ')}</span>
+            )}
           </div>
         </div>
       ))}
@@ -203,6 +218,7 @@ export default function HealthReportView({ report, reportId = null }) {
     adherence = [],
     consistency = [],
     positive_signals: positiveSignals = [],
+    practice_candidates: practiceCandidates = [],
     observations = [],
     hypotheses = [],
     cautions = [],
@@ -423,12 +439,6 @@ export default function HealthReportView({ report, reportId = null }) {
         </Section>
       )}
 
-      {positiveSignals.length > 0 && (
-        <Section title="Señales favorables" icon={Sparkles} testId="health-report-positive">
-          <ClaimList items={positiveSignals} testId="health-report-positive-list" />
-        </Section>
-      )}
-
       {observations.length > 0 && (
         <Section title="Observaciones" icon={ListChecks} testId="health-report-observations">
           <ClaimList items={observations} testId="health-report-observations-list" />
@@ -506,6 +516,20 @@ export default function HealthReportView({ report, reportId = null }) {
         </Section>
       )}
 
+      {positiveSignals.length > 0 && (
+        <Section
+          title="Lo que tu propia historia también demuestra"
+          icon={Sparkles}
+          testId="health-report-positive"
+        >
+          <ClaimList items={positiveSignals} testId="health-report-positive-list" />
+        </Section>
+      )}
+
+      <HealthPracticeCandidates reportId={reportId} candidates={practiceCandidates} />
+
+      <HealthCompanionCard reportId={reportId} report={report} />
+
       <Card>
         <CardHeader><CardTitle className="text-base">Calidad del dato</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -516,6 +540,7 @@ export default function HealthReportView({ report, reportId = null }) {
             <StatBlock label="Check-ins corporales" value={dataQuality.body_checkins ?? 0} />
             <StatBlock label="Notas" value={dataQuality.notes ?? 0} />
             <StatBlock label="Tareas de salud" value={dataQuality.health_tasks ?? 0} />
+            <StatBlock label="Prácticas realizadas" value={dataQuality.practice_applications ?? 0} />
             <StatBlock label="Tareas con ejecución" value={execution.tasks_observed ?? 0} />
             <StatBlock label="Registros enlazados" value={execution.linked_activities ?? 0} />
           </div>
