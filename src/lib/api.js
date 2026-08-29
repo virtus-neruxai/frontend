@@ -369,6 +369,8 @@ export const healthReportApi = {
     reasoningApiInstance.post('/reasoning/health-report', { days_back: daysBack }),
   getReportJob: (jobId) => reasoningApiInstance.get(`/reasoning/health-report-jobs/${jobId}`),
   getReports: () => reasoningApiInstance.get('/reasoning/health-reports'),
+  getPositiveSignals: (days = 30) =>
+    reasoningApiInstance.get('/reasoning/health-positive-signals', { params: { days } }),
   getReport: (reportId) => reasoningApiInstance.get(`/reasoning/health-reports/${reportId}`),
   askQuestion: (reportId, data) =>
     reasoningApiInstance.post(`/reasoning/health-reports/${reportId}/chat`, data),

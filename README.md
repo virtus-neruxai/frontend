@@ -274,6 +274,13 @@ muestra prácticas adoptadas; «Lo he hecho» envía una fecha y una nota opcion
 y después recarga los agregados derivados por backend. El companion y las
 notas de las aplicaciones no se replican en el panel.
 
+Debajo de esas dos tarjetas, `PositiveHealthSignalsPanel` consume
+`GET /reasoning-api/v1/reasoning/health-positive-signals?days=7|30|90` con el
+rango global del Dashboard. Es un histórico combinado de `positive_signals`
+ya persistidos en informes V2, no una lectura en vivo de actividades o notas.
+El endpoint devuelve solo texto, evidencia derivada y procedencia del informe:
+los ids de las citas y el JSON completo permanecen en reasoning-service.
+
 ### useMissions
 Manages missions state and operations:
 ```javascript

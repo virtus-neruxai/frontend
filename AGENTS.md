@@ -145,6 +145,10 @@ reasoning-service recupera la redacción inmutable. `HealthCompanionCard` genera
 el mensaje sanitario bajo demanda y no aparece en Dashboard. Allí,
 `HealthPracticesPanel` muestra únicamente prácticas ya adoptadas y «Lo he
 hecho» registra fecha y nota opcional sin crear actividades, tareas o stats.
+`PositiveHealthSignalsPanel` vive debajo de Conductas y Prácticas, combina las
+señales de informes V2 dentro del rango global 7/30/90 y consume un read-model
+mínimo de reasoning-service: nunca carga informes completos, ids de citas,
+companion ni contenido de notas.
 El orden final del informe es historia positiva → acciones → companion →
 calidad del dato → siguiente mejor acción con preguntas.
 

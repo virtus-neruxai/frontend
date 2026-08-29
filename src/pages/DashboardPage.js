@@ -17,6 +17,7 @@ import { DetectedPatternsPanel } from '../presentation/components/dashboard/Dete
 import { EmotionalPatternsPanel } from '../presentation/components/dashboard/EmotionalPatternsPanel';
 import { LearnedResponsesPanel } from '../presentation/components/dashboard/LearnedResponsesPanel';
 import { HealthPracticesPanel } from '../presentation/components/dashboard/HealthPracticesPanel';
+import { PositiveHealthSignalsPanel } from '../presentation/components/dashboard/PositiveHealthSignalsPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -86,6 +87,10 @@ export default function DashboardPageRefactored() {
     healthPracticesLoading,
     recordHealthPracticeApplication,
     setHealthPracticeStatus,
+    positiveHealthSignals,
+    positiveHealthSignalsLoading,
+    positiveHealthSignalsError,
+    refreshPositiveHealthSignals,
     missionLenses,
     missionLensesLoading,
   } = useDashboard(persistedProfileId);
@@ -129,7 +134,7 @@ export default function DashboardPageRefactored() {
   const handleTaskModalSaved = async () => {
     setTaskModalOpen(false);
     setEditingTask(null);
-    await Promise.all([refreshStats(), refreshPositiveReflections()]);
+    await refreshStats();
     setListOpen(true);
   };
 
@@ -186,6 +191,13 @@ export default function DashboardPageRefactored() {
             onSetStatus={setHealthPracticeStatus}
           />
         </div>
+
+        <PositiveHealthSignalsPanel
+          data={positiveHealthSignals}
+          loading={positiveHealthSignalsLoading}
+          error={positiveHealthSignalsError}
+          onRetry={refreshPositiveHealthSignals}
+        />
 
         {loading ? (
           <div className="h-96 flex items-center justify-center">
