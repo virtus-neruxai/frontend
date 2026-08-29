@@ -18,6 +18,13 @@ const dashboardData = vi.hoisted(() => ({
   positiveHealthSignals: { days: 30, total: 1, signals: [] },
   positiveHealthSignalsLoading: false,
   positiveHealthSignalsError: '',
+  positiveHealthSignalsRange: '7',
+  setPositiveHealthSignalsRange: vi.fn(),
+  positiveHealthSignalsRangeOptions: [
+    { value: '7', label: 'Últimos 7 días' },
+    { value: '30', label: 'Últimos 30 días' },
+    { value: '90', label: 'Últimos 90 días' },
+  ],
   refreshPositiveHealthSignals: vi.fn(),
   missionLenses: null,
   missionLensesLoading: false,
@@ -47,14 +54,15 @@ vi.mock('../presentation/components/dashboard/TaskListDialog', () => ({ TaskList
 
 import DashboardPage from '../pages/DashboardPage';
 
-test('places positive health signals below the conductas and health-practices row', () => {
+test('places positive health signals as the final Dashboard panel', () => {
   render(<DashboardPage />);
 
   const learned = screen.getByTestId('learned-responses-stub');
   const practices = screen.getByTestId('health-practices-stub');
   const signals = screen.getByTestId('positive-health-signals-stub');
+  const dashboard = screen.getByTestId('dashboard-page');
   const pairedRow = learned.parentElement;
 
   expect(pairedRow).toContainElement(practices);
-  expect(signals.previousElementSibling).toBe(pairedRow);
+  expect(dashboard.lastElementChild).toBe(signals);
 });

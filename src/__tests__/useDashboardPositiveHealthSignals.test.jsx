@@ -40,7 +40,7 @@ beforeEach(() => {
   }));
 });
 
-test('loads the positive signal snapshot with the global Dashboard range', async () => {
+test('uses an independent 7/30/90 range for the positive signal snapshot', async () => {
   const { result } = renderHook(() => useDashboard('stoic'));
 
   await waitFor(() => expect(apiMocks.healthReportApi.getPositiveSignals).toHaveBeenCalledWith(7));
@@ -50,10 +50,18 @@ test('loads the positive signal snapshot with the global Dashboard range', async
 
   act(() => result.current.setRange('90'));
 
+  await waitFor(() => expect(apiMocks.healthReportApi.getPositiveSignals).toHaveBeenCalledTimes(1));
+  expect(result.current.positiveHealthSignalsRange).toBe('7');
+
+  act(() => result.current.setPositiveHealthSignalsRange('90'));
+
   await waitFor(() => expect(apiMocks.healthReportApi.getPositiveSignals).toHaveBeenCalledWith(90));
   await waitFor(() => expect(result.current.positiveHealthSignals).toEqual({
     days: 90, total: 0, signals: [],
   }));
+  expect(result.current.positiveHealthSignalsRangeOptions.map((option) => option.value)).toEqual([
+    '7', '30', '90',
+  ]);
 });
 
 test('keeps a signal failure local and exposes retry without breaking Dashboard data', async () => {

@@ -24,6 +24,12 @@ const EMOTIONAL_PATTERNS_RANGE_OPTIONS = [
   { value: '90', label: 'Últimos 90 días' },
 ];
 
+const POSITIVE_HEALTH_SIGNALS_RANGE_OPTIONS = [
+  { value: '7',  label: 'Últimos 7 días' },
+  { value: '30', label: 'Últimos 30 días' },
+  { value: '90', label: 'Últimos 90 días' },
+];
+
 const RANGE_OPTIONS = [
   { value: '7', label: 'Últimos 7 días' },
   { value: '30', label: 'Últimos 30 días' },
@@ -74,6 +80,7 @@ export function useDashboard(initialProfile) {
   const [positiveHealthSignals, setPositiveHealthSignals] = useState(null);
   const [positiveHealthSignalsLoading, setPositiveHealthSignalsLoading] = useState(false);
   const [positiveHealthSignalsError, setPositiveHealthSignalsError] = useState('');
+  const [positiveHealthSignalsRange, setPositiveHealthSignalsRange] = useState('7');
   const [emotionalPatterns, setEmotionalPatterns] = useState(null);
   const [emotionalPatternsLoading, setEmotionalPatternsLoading] = useState(false);
   const [emotionalPatternsRange, setEmotionalPatternsRange] = useState('7');
@@ -300,7 +307,9 @@ export function useDashboard(initialProfile) {
     setPositiveHealthSignalsLoading(true);
     setPositiveHealthSignalsError('');
     try {
-      const res = await healthReportApi.getPositiveSignals(parseInt(range, 10));
+      const res = await healthReportApi.getPositiveSignals(
+        parseInt(positiveHealthSignalsRange, 10)
+      );
       setPositiveHealthSignals(res.data);
     } catch (error) {
       console.error('Error fetching positive health signals:', error);
@@ -312,7 +321,7 @@ export function useDashboard(initialProfile) {
     } finally {
       setPositiveHealthSignalsLoading(false);
     }
-  }, [range]);
+  }, [positiveHealthSignalsRange]);
 
   const fetchMissionLenses = useCallback(async () => {
     setMissionLensesLoading(true);
@@ -436,6 +445,9 @@ export function useDashboard(initialProfile) {
     positiveHealthSignals,
     positiveHealthSignalsLoading,
     positiveHealthSignalsError,
+    positiveHealthSignalsRange,
+    setPositiveHealthSignalsRange,
+    positiveHealthSignalsRangeOptions: POSITIVE_HEALTH_SIGNALS_RANGE_OPTIONS,
     refreshPositiveHealthSignals: fetchPositiveHealthSignals,
     missionLenses,
     missionLensesLoading,

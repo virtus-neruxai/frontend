@@ -90,6 +90,9 @@ export default function DashboardPageRefactored() {
     positiveHealthSignals,
     positiveHealthSignalsLoading,
     positiveHealthSignalsError,
+    positiveHealthSignalsRange,
+    setPositiveHealthSignalsRange,
+    positiveHealthSignalsRangeOptions,
     refreshPositiveHealthSignals,
     missionLenses,
     missionLensesLoading,
@@ -191,13 +194,6 @@ export default function DashboardPageRefactored() {
             onSetStatus={setHealthPracticeStatus}
           />
         </div>
-
-        <PositiveHealthSignalsPanel
-          data={positiveHealthSignals}
-          loading={positiveHealthSignalsLoading}
-          error={positiveHealthSignalsError}
-          onRetry={refreshPositiveHealthSignals}
-        />
 
         {loading ? (
           <div className="h-96 flex items-center justify-center">
@@ -344,6 +340,16 @@ export default function DashboardPageRefactored() {
             />
           </div>
         )}
+
+        <PositiveHealthSignalsPanel
+          data={positiveHealthSignals}
+          loading={positiveHealthSignalsLoading}
+          error={positiveHealthSignalsError}
+          range={positiveHealthSignalsRange}
+          rangeOptions={positiveHealthSignalsRangeOptions}
+          onRangeChange={setPositiveHealthSignalsRange}
+          onRetry={refreshPositiveHealthSignals}
+        />
       </div>
 
       <TaskListDialog

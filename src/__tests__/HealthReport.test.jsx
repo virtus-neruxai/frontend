@@ -4,7 +4,7 @@
  * failed to answer has to read differently from a source that was simply
  * empty (data_quality.degraded_sources).
  */
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { useHealthReport } from '../presentation/viewmodels/useHealthReport';
 import HealthReportView from '../components/health/HealthReportView';
 import { healthPracticesApi, healthReportApi } from '../lib/api';
@@ -527,7 +527,25 @@ describe('HealthReportView · bienestar mental', () => {
   test('coverage is published as the fraction it is', () => {
     render(<HealthReportView report={v2({ mental_wellbeing: WELLBEING })} />);
     expect(screen.getByTestId('health-wellbeing-coverage'))
-      .toHaveTextContent('4 de 9 reflexiones registraron cómo te sentías');
+      .toHaveTextContent('4 de 9 reflexiones registraron cómo te sentías · 4 días de 14 en la ventana');
+  });
+
+  test('the coverage that decides readability is days, not reflections', () => {
+    // «3 de 3» se lee como cobertura completa cuando lo observado fue un solo
+    // día de ocho. Las dos fracciones se publican y la de días va después,
+    // porque es la que decide si el bloque se puede leer.
+    render(<HealthReportView report={v2({
+      mental_wellbeing: {
+        ...WELLBEING,
+        reflections_with_emotion: 3,
+        reflections_total: 3,
+        active_days: 1,
+        window_days: 8,
+      },
+    })} />);
+
+    expect(screen.getByTestId('health-wellbeing-coverage'))
+      .toHaveTextContent('3 de 3 reflexiones registraron cómo te sentías · 1 día de 8 en la ventana');
   });
 
   test('a withheld denominator publishes the numerator alone', () => {
@@ -545,9 +563,72 @@ describe('HealthReportView · bienestar mental', () => {
   test('the mean intensity is labelled a mean and shows no direction', () => {
     // HLD invariant 22: polarity and intensity may never become a score, and an
     // arrow over a fortnight of feelings is that score with the number removed.
+    // One polarity, because a mean across several is not published at all — the
+    // test below owns that rule.
+    render(<HealthReportView report={v2({
+      mental_wellbeing: {
+        ...WELLBEING,
+        dominant_emotions: [
+          { emotion: 'frustración', count: 3, polarity: 'negative' },
+          { emotion: 'desánimo', count: 1, polarity: 'negative' },
+        ],
+      },
+    })} />);
+
+    expect(screen.getByText(/Intensidad media 3\.5\/5/)).toBeInTheDocument();
+    expect(screen.getByText(/no una trayectoria/)).toBeInTheDocument();
+  });
+
+  test('a mean across polarities is not published at all', () => {
+    // Esperanza a 5 y frustración a 3 promedian a un número que no corresponde
+    // a ninguna experiencia que la persona haya tenido. La intensidad solo es
+    // comparable dentro de una misma polaridad. Distinto del invariante 22:
+    // aquello prohíbe la dirección, esto niega que la magnitud exista.
     render(<HealthReportView report={v2({ mental_wellbeing: WELLBEING })} />);
 
-    expect(screen.getByText(/no una trayectoria/)).toBeInTheDocument();
+    expect(screen.queryByText(/Intensidad media/)).not.toBeInTheDocument();
+  });
+
+  test('a mean of one record is not a mean', () => {
+    render(<HealthReportView report={v2({
+      mental_wellbeing: {
+        ...WELLBEING,
+        sample_status: 'isolated',
+        dominant_emotions: [{ emotion: 'frustración', count: 1, polarity: 'negative' }],
+      },
+    })} />);
+
+    expect(screen.queryByText(/Intensidad media/)).not.toBeInTheDocument();
+  });
+
+  test('a tally where everything is 1 is listed, not ranked', () => {
+    // El desempate de `compute_mental_wellbeing` es alfabético, así que sin
+    // variación real «más frecuentes» publicaría el abecedario como si fuera un
+    // patrón. El propio modelo lo dice: «a count, never a rank».
+    render(<HealthReportView report={v2({
+      mental_wellbeing: {
+        ...WELLBEING,
+        dominant_emotions: [
+          { emotion: 'dispersión', count: 1, polarity: 'neutral' },
+          { emotion: 'esperanza', count: 1, polarity: 'positive' },
+          { emotion: 'frustración', count: 1, polarity: 'negative' },
+        ],
+      },
+    })} />);
+
+    expect(screen.getByText('Emociones registradas')).toBeInTheDocument();
+    expect(screen.queryByText('Emociones más frecuentes')).not.toBeInTheDocument();
+    expect(screen.getByText('esperanza')).toBeInTheDocument();
+    // Un «×1» junto a cada una insinúa un recuento que distingue algo.
+    const section = screen.getByTestId('health-report-wellbeing');
+    expect(within(section).queryByText(/×1/)).not.toBeInTheDocument();
+  });
+
+  test('a real frequency is still ranked and counted', () => {
+    render(<HealthReportView report={v2({ mental_wellbeing: WELLBEING })} />);
+
+    expect(screen.getByText('Emociones más frecuentes')).toBeInTheDocument();
+    expect(screen.getByText(/frustración ×3/)).toBeInTheDocument();
   });
 
   test('a day without a reflection is unreadable, never neutral', () => {

@@ -105,6 +105,42 @@ function formatMinutes(seconds) {
   return `${Math.round(Number(seconds) / 60)} min`;
 }
 
+// Una «media» de un solo valor no es una media: `isolated` es exactamente un
+// registro y `no_data` ninguno.
+const SPARSE_FOR_MEAN = new Set(['no_data', 'isolated']);
+
+// Cuántos días de la ventana llevan una reflexión con emoción. Es el
+// denominador que decide si este bloque se puede leer, y por eso se publica al
+// lado del otro: tres reflexiones escritas de una sentada son «3 de 3», que se
+// lee como cobertura completa cuando lo observado fue un solo día.
+function wellbeingDayCoverage({ active_days: activeDays, window_days: windowDays }) {
+  if (!activeDays || activeDays <= 0) return '';
+  const days = activeDays === 1 ? '1 día' : `${activeDays} días`;
+  return windowDays > 0 ? `${days} de ${windowDays} en la ventana` : days;
+}
+
+// Un recuento en el que todo vale 1 no es una frecuencia. El desempate de
+// `compute_mental_wellbeing` es alfabético, así que rotular esa lista como «más
+// frecuentes» publica el abecedario como si fuera un patrón. Con variación real
+// se rankea; sin ella se enumera, que es lo que el propio modelo dice que son
+// estos números: «a count, never a rank».
+function hasFrequencyVariation(emotions) {
+  return (emotions || []).some((item) => Number(item.count) > 1);
+}
+
+// La intensidad media solo mide algo dentro de una misma polaridad: esperanza a
+// 5 y frustración a 3 no promedian a ninguna experiencia que la persona haya
+// tenido. Con polaridades mezcladas —o con un solo registro— el número no se
+// publica. No es el invariante 22, que prohíbe la *dirección*; esto es sobre si
+// la magnitud existe siquiera.
+function intensityIsComparable(wellbeing) {
+  if (SPARSE_FOR_MEAN.has(wellbeing.sample_status)) return false;
+  const polarities = new Set(
+    (wellbeing.dominant_emotions || []).map((item) => item.polarity).filter(Boolean),
+  );
+  return polarities.size <= 1;
+}
+
 function EvidenceBadge({ tier }) {
   const style = EVIDENCE_TIER_STYLE[tier] || EVIDENCE_TIER_STYLE.general;
   return <Badge variant="outline" className={style.className}>{style.label}</Badge>;
@@ -246,6 +282,16 @@ export default function HealthReportView({ report, reportId = null }) {
   const sortedCautions = [...cautions].sort(
     (a, b) => (CAUTION_PRIORITY[a.priority]?.order ?? 1) - (CAUTION_PRIORITY[b.priority]?.order ?? 1),
   );
+  // Tres puertas sobre lo que el bloque de bienestar publica. Las dos cifras
+  // dejan de significar algo mucho antes de que el bloque deje de renderizarse,
+  // y hasta ahora nada las paraba: el `sample_status` que el código ya calcula
+  // solo pintaba los puntitos del pie.
+  const wellbeingDays = mentalWellbeing ? wellbeingDayCoverage(mentalWellbeing) : '';
+  const emotionsAreRanked = hasFrequencyVariation(mentalWellbeing?.dominant_emotions);
+  const showMeanIntensity = mentalWellbeing != null
+    && mentalWellbeing.average_intensity !== null
+    && mentalWellbeing.average_intensity !== undefined
+    && intensityIsComparable(mentalWellbeing);
 
   return (
     <div className="space-y-4" data-testid="health-report-view">
@@ -465,15 +511,18 @@ export default function HealthReportView({ report, reportId = null }) {
               || mentalWellbeing.reflections_total === undefined
               ? `${mentalWellbeing.reflections_with_emotion} reflexiones con emoción registrada`
               : `${mentalWellbeing.reflections_with_emotion} de ${mentalWellbeing.reflections_total} reflexiones registraron cómo te sentías`}
-            {mentalWellbeing.active_days > 0 && `, en ${mentalWellbeing.active_days} días`}
+            {wellbeingDays && ` · ${wellbeingDays}`}
           </p>
           {(mentalWellbeing.dominant_emotions || []).length > 0 && (
             <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1.5">Emociones más frecuentes</p>
+              <p className="text-xs text-muted-foreground mb-1.5">
+                {emotionsAreRanked ? 'Emociones más frecuentes' : 'Emociones registradas'}
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {mentalWellbeing.dominant_emotions.map((item) => (
                   <Badge key={item.emotion} variant="outline" className="font-normal">
-                    {item.emotion} ×{item.count}
+                    {item.emotion}
+                    {emotionsAreRanked && ` ×${item.count}`}
                   </Badge>
                 ))}
               </div>
@@ -482,9 +531,9 @@ export default function HealthReportView({ report, reportId = null }) {
           {/* Media, y dicho que es una media. Sin flecha: el invariante 22 del
               HLD prohíbe convertir polaridad e intensidad en una puntuación, y
               una dirección sobre quince días de emociones es esa puntuación sin
-              el número. */}
-          {mentalWellbeing.average_intensity !== null
-            && mentalWellbeing.average_intensity !== undefined && (
+              el número. Y no se publica cuando la ventana mezcla polaridades:
+              ver `intensityIsComparable`. */}
+          {showMeanIntensity && (
             <p className="text-xs text-muted-foreground mb-3">
               Intensidad media {mentalWellbeing.average_intensity}/5 — es una media del
               periodo, no una trayectoria.
