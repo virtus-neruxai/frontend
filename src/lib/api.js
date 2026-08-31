@@ -237,6 +237,10 @@ export const healthActivitiesApi = {
   create: (data) => api.post('/health-activities', data),
   update: (activityId, data) => api.patch(`/health-activities/${activityId}`, data),
   remove: (activityId) => api.delete(`/health-activities/${activityId}`),
+  // Relleno asistido del formulario. Devuelve una propuesta y no escribe nada:
+  // guardar sigue pasando por `create`, que recalcula todo lo que es del
+  // servidor sin importar como nacio el borrador. 404 con el flag apagado.
+  aiDraft: (data) => api.post('/health-activities/ai-draft', data),
 };
 
 // Personal health library. Foods and exercises are individual autocomplete

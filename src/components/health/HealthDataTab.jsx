@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { BodyCheckinSection } from '../../presentation/components/character/bodycheckin/BodyCheckinSection';
 import HealthNotesPanel from './HealthNotesPanel';
+import HealthOtherRecordsPanel from './HealthOtherRecordsPanel';
 import NutritionTab from './NutritionTab';
 import TrainingTab from './TrainingTab';
 import { useCharacter } from '../../presentation/viewmodels/useCharacter';
@@ -11,7 +12,8 @@ import { Dumbbell, NotebookPen, Stethoscope, Utensils } from 'lucide-react';
  * Content of `HealthMentorPage.js` ("Salud" in the nav, its own top-level
  * route `/health-data`) — no chat here, that lives with "Mentor <perfil>" as
  * the "Mentor Salud" tab of `MentorPage.js` (`HealthMentorChatTab.jsx`).
- * Registro corporal (1) | Alimentación (2) | Entrenamiento (3) | Notas (4).
+ * Registro corporal (1) | Alimentación (2) | Entrenamiento (3) | Notas (4,
+ * con dos sub-pestañas: notas del mentor y otros registros sin estructura).
  */
 export default function HealthDataTab() {
   // Only for Registro corporal: stat labels and the refresh a check-in
@@ -55,7 +57,22 @@ export default function HealthDataTab() {
       </TabsContent>
 
       <TabsContent value="notas">
-        <HealthNotesPanel />
+        {/* Notas del mentor (prosa de la conversación) y Otros registros
+            (health_activities sin `details`, de cualquier tipo) son las dos
+            formas de texto sin estructura de Salud — comparten pestaña por
+            eso, no porque compartan dato. */}
+        <Tabs defaultValue="mentor-notes" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="mentor-notes">Notas del mentor</TabsTrigger>
+            <TabsTrigger value="other-records">Otros registros</TabsTrigger>
+          </TabsList>
+          <TabsContent value="mentor-notes">
+            <HealthNotesPanel />
+          </TabsContent>
+          <TabsContent value="other-records">
+            <HealthOtherRecordsPanel />
+          </TabsContent>
+        </Tabs>
       </TabsContent>
     </Tabs>
   );

@@ -68,16 +68,11 @@ export function useWorkoutRecords() {
     () => records.activities.filter((entry) => entry.details?.kind === 'measurement'),
     [records.activities],
   );
-  const otherRecords = useMemo(
-    () => records.activities.filter((entry) => entry.details == null),
-    [records.activities],
-  );
 
   return {
     ...records,
     sessions,
     measurements,
-    otherRecords,
     save,
     update,
   };

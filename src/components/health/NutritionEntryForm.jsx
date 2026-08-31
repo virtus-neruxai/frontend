@@ -7,6 +7,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import AiCaptureBox from './AiCaptureBox';
 import FoodNameInput from './FoodNameInput';
 import NutrientFields from './NutrientFields';
 import PortionInput from './PortionInput';
@@ -15,6 +16,7 @@ import {
   MEAL_TYPE_LABELS,
   cloneHealthValue,
   formatDateTimeLocal,
+  optionalNumber,
   toObservedAt,
 } from '../../lib/healthRecords';
 
@@ -45,6 +47,10 @@ function initialFood(food, libraryFoods) {
   };
 }
 
+// `quantity_origin` travels as it stands rather than as a fixed 'explicit':
+// it is what tells the server whether this meal was typed or proposed, and the
+// server derives `capture_method` from it. Everything the person typed by hand
+// still starts and stays 'explicit'.
 export function nutritionFoodPayload(food) {
   const nutrients = food.nutrients_per_100;
   return {
@@ -53,10 +59,37 @@ export function nutritionFoodPayload(food) {
     quantity: food.quantity,
     unit: food.unit,
     grams: food.grams || null,
-    quantity_origin: 'explicit',
+    quantity_origin: food.quantity_origin || 'explicit',
     nutrients_per_100: nutrients || null,
     nutrient_basis_unit: food.nutrient_basis_unit || 'g',
     nutrient_source: nutrients ? (food.nutrient_source || { source: 'manual' }) : null,
+    assumptions: food.assumptions || [],
+  };
+}
+
+// A number the person corrects is still a number the model put there first, so
+// the record says 'user_adjusted' rather than pretending it was typed cold.
+function editedFood(food, changes) {
+  const merged = { ...food, ...changes };
+  return food.quantity_origin === 'llm_estimated'
+    ? { ...merged, quantity_origin: 'user_adjusted' }
+    : merged;
+}
+
+function draftFood(food) {
+  const nutrients = food.nutrients_per_100 || null;
+  return {
+    ...emptyFood(),
+    label: food.label || '',
+    food_key: food.food_key || null,
+    quantity: optionalNumber(food.quantity),
+    unit: food.unit || 'g',
+    quantity_origin: food.quantity_origin || 'llm_estimated',
+    nutrients_per_100: nutrients,
+    nutrient_basis_unit: food.nutrient_basis_unit || 'g',
+    // The model is the weakest of the four nutrient sources and says so. A
+    // figure it guessed must not read like one the person looked up.
+    nutrient_source: nutrients ? { source: 'llm_estimated' } : null,
     assumptions: food.assumptions || [],
   };
 }
@@ -106,9 +139,30 @@ export default function NutritionEntryForm({
   const updateFood = (index, changes) => setForm((current) => ({
     ...current,
     foods: current.foods.map((food, foodIndex) => (
-      foodIndex === index ? { ...food, ...changes } : food
+      foodIndex === index ? editedFood(food, changes) : food
     )),
   }));
+
+  // The draft replaces meal type, title and foods together, because those are
+  // the three things one sentence decides. Date and hour are only touched when
+  // the text actually said one.
+  const applyDraft = (draft) => {
+    setForm((current) => ({
+      ...current,
+      meal_type: draft.meal_type || current.meal_type,
+      title: draft.title || current.title,
+      note: draft.note || current.note,
+      observed_at: /^\d{2}:\d{2}$/.test(draft.observed_time || '')
+        ? `${current.observed_at.slice(0, 10)}T${draft.observed_time}`
+        : current.observed_at,
+      // Through `initialFood` so a food the model matched in the library
+      // arrives with the person's own household measures: without them the
+      // portion field cannot convert «1 taza» to grams and the meal loses
+      // its totals.
+      foods: (draft.foods || []).map((food) => initialFood(draftFood(food), libraryFoods)),
+    }));
+    if ((draft.foods || []).length > 0) setStep(2);
+  };
 
   const submit = async () => {
     const iso = toObservedAt(form.observed_at);
@@ -155,6 +209,13 @@ export default function NutritionEntryForm({
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Above the steps, not inside step 1: applying a draft jumps straight to
+            the food list, and the panel explaining which fields were left blank
+            has to still be on screen when the person arrives to fill them. */}
+        {!activity && !template && step < 3 && (
+          <AiCaptureBox surface="nutrition" onApply={applyDraft} disabled={saving || submitting} />
+        )}
+
         {step === 1 && (
           <>
             <div className="grid gap-4 sm:grid-cols-2">

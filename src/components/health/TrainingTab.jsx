@@ -193,25 +193,6 @@ export default function TrainingTab() {
       >
         <MeasurementList records={records} />
       </CollapsibleSection>
-
-      <CollapsibleSection
-        title="Otros registros"
-        description="Registros anteriores sin datos estructurados; se conservan editables y enlazables."
-        testId="training-other-records"
-      >
-        <HealthActivityList
-          activities={records.otherRecords}
-          tasks={records.tasks}
-          loading={records.loading}
-          saving={records.saving}
-          allowCreate={false}
-          emptyMessage="No hay registros anteriores sin detalle estructurado."
-          onUpdate={records.update}
-          onDelete={records.remove}
-          onLinkTask={records.linkTask}
-          onUnlinkTask={records.unlinkTask}
-        />
-      </CollapsibleSection>
     </div>
   );
 }

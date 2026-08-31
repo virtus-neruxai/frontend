@@ -9,6 +9,7 @@ import {
 } from '../../lib/healthRecords';
 
 export default function PortionInput({ id, portion, householdUnits = [], onChange }) {
+  const basis = portion.nutrient_basis_unit || 'g';
   const formatted = portion.quantity != null
     ? `${portion.quantity} ${portion.unit || ''}`.trim()
     : '';
@@ -77,12 +78,24 @@ export default function PortionInput({ id, portion, householdUnits = [], onChang
         <>
           <p className="text-xs text-muted-foreground">
             {baseAmount == null
-              ? `Sin conversión automática a base ${portion.nutrient_basis_unit || 'g'}`
-              : `Cantidad base: ${baseAmount} ${portion.nutrient_basis_unit || 'g'}`}
+              // Naming only the missing conversion hid what it costs: a portion
+              // without a base amount leaves the *whole* meal without totals,
+              // because a total is published only when every food resolves.
+              ? `«${portion.unit}» no se convierte a ${basis} por sí sola, y sin eso la comida se queda sin totales`
+              : `Cantidad base: ${baseAmount} ${basis}`}
           </p>
-          {baseAmount == null && portion.nutrient_basis_unit === 'g' && (
+          {baseAmount == null && basis === 'ml' && (
+            // The gram field below is mass, and mass cannot resolve a per-100 ml
+            // snapshot without a density nobody here is going to invent. The way
+            // out is the other field, so point at it instead of a dead end.
+            <p className="text-xs text-muted-foreground">
+              Los nutrientes de este alimento están por 100 ml: pon la cantidad en
+              ml, o cambia la base a gramos en el bloque de nutrientes.
+            </p>
+          )}
+          {baseAmount == null && basis === 'g' && (
             <div className="space-y-1.5 pt-1">
-              <Label htmlFor={`${id}-grams`}>Equivale a (g), opcional</Label>
+              <Label htmlFor={`${id}-grams`}>Equivale a (g)</Label>
               <Input
                 id={`${id}-grams`}
                 type="number"

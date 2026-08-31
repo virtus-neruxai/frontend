@@ -17,20 +17,28 @@ import {
   localDateKey,
 } from '../../lib/healthRecords';
 
-function NutritionTotals({ totals, compact = false }) {
+// `partialFields` only ever arrives for a day: a meal's total covers the meal
+// or it is not published at all. A day is a list of meals, so a figure there
+// can be a real sum that still leaves a record out, and the tile has to say so
+// rather than passing for the whole day.
+function NutritionTotals({ totals, partialFields = [], compact = false }) {
   const fields = compact
     ? NUTRIENT_FIELDS.filter(([field]) => ['energy_kcal', 'protein_g', 'carbs_g', 'fat_g'].includes(field))
     : NUTRIENT_FIELDS;
   return (
     <div className={`grid gap-2 ${compact ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>
-      {fields.map(([field, label, unit]) => (
-        <div key={field} className="rounded-md bg-muted/50 px-2 py-1.5">
-          <p className="text-[11px] text-muted-foreground">{label}</p>
-          <p className="text-sm font-medium" data-testid={`nutrition-total-${field}`}>
-            {formatHealthValue(totals?.[field], unit)}
-          </p>
-        </div>
-      ))}
+      {fields.map(([field, label, unit]) => {
+        const partial = partialFields.includes(field);
+        return (
+          <div key={field} className="rounded-md bg-muted/50 px-2 py-1.5">
+            <p className="text-[11px] text-muted-foreground">{label}</p>
+            <p className="text-sm font-medium" data-testid={`nutrition-total-${field}`}>
+              {partial && totals?.[field] != null ? '≥ ' : ''}
+              {formatHealthValue(totals?.[field], unit)}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -147,7 +155,18 @@ export default function NutritionTab() {
           {records.summaryLoading ? (
             <p className="text-sm text-muted-foreground">Cargando totales...</p>
           ) : records.daySummary?.has_nutrition ? (
-            <NutritionTotals totals={records.daySummary.nutrition_totals} />
+            <>
+              <NutritionTotals
+                totals={records.daySummary.nutrition_totals}
+                partialFields={records.daySummary.nutrition_totals_partial_fields || []}
+              />
+              {(records.daySummary.nutrition_totals_partial_fields || []).length > 0 && (
+                <p className="pt-2 text-xs text-muted-foreground">
+                  Los valores con ≥ suman solo las comidas que tienen ese dato. Alguna
+                  comida del día no lo trae, así que el total real es mayor.
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">Sin datos para este día.</p>
           )}

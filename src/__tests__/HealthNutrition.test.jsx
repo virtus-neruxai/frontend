@@ -98,6 +98,27 @@ test('registra una comida manual con varios alimentos como un único payload est
   expect(submission.saveAsTemplate).toBeNull();
 });
 
+test('un total del día al que le falta una comida se suma y se marca', () => {
+  // Vaciar el día porque una comida esté incompleta escondía las que sí lo
+  // estaban. Se suma lo que hay, y el ≥ es lo que impide leerlo como el día
+  // entero.
+  useNutritionRecords.mockReturnValue(nutritionState({
+    daySummary: {
+      date: '2026-08-27',
+      has_nutrition: true,
+      nutrition_totals: { energy_kcal: 1120, protein_g: 58 },
+      nutrition_totals_partial_fields: ['energy_kcal'],
+    },
+  }));
+
+  render(<NutritionTab />);
+
+  expect(screen.getByTestId('nutrition-total-energy_kcal')).toHaveTextContent('≥ 1120 kcal');
+  expect(screen.getByTestId('nutrition-total-protein_g')).toHaveTextContent('58 g');
+  expect(screen.getByTestId('nutrition-total-protein_g')).not.toHaveTextContent('≥');
+  expect(screen.getByText(/el total real es mayor/)).toBeInTheDocument();
+});
+
 test('un nutriente ausente se muestra como ausencia y nunca como cero', () => {
   useNutritionRecords.mockReturnValue(nutritionState({
     daySummary: {

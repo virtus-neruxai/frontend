@@ -98,8 +98,10 @@ export function stripDerivedDetails(details) {
     delete clean.capture_method;
   } else if (clean.kind === 'strength') {
     delete clean.volume;
+    delete clean.capture_method;
   } else if (clean.kind === 'endurance') {
     delete clean.pace;
+    delete clean.capture_method;
   }
   return clean;
 }

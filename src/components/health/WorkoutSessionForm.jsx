@@ -6,6 +6,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import AiCaptureBox from './AiCaptureBox';
 import ExerciseNameInput from './ExerciseNameInput';
 import ExerciseSetLogger, { isRecordedSet } from './ExerciseSetLogger';
 import SaveHealthTemplateFields, { EMPTY_TEMPLATE_CHOICE } from './SaveHealthTemplateFields';
@@ -47,6 +48,11 @@ function painPayload(value) {
   if (value === 'yes') return true;
   if (value === 'no') return false;
   return null;
+}
+
+// A value the person corrects stays assisted: the model still wrote it first.
+function adjusted(origin) {
+  return origin === 'llm_estimated' ? 'user_adjusted' : origin;
 }
 
 function positiveNumber(value) {
@@ -97,6 +103,9 @@ export default function WorkoutSessionForm({
     distance_km: initialDetails.distance_m != null ? initialDetails.distance_m / 1000 : null,
     elevation_gain_m: initialDetails.elevation_gain_m ?? null,
     avg_heart_rate: initialDetails.avg_heart_rate ?? null,
+    // Who produced the numbers below. A session is reviewed as a whole, so one
+    // marker per record — the server derives `capture_method` from it.
+    values_origin: initialDetails.values_origin || 'explicit',
   }));
   const [templateChoice, setTemplateChoice] = useState(EMPTY_TEMPLATE_CHOICE);
 
@@ -110,7 +119,33 @@ export default function WorkoutSessionForm({
     exercises: current.exercises.map((exercise, exerciseIndex) => (
       exerciseIndex === index ? { ...exercise, ...changes } : exercise
     )),
+    values_origin: adjusted(current.values_origin),
   }));
+
+  // The draft decides `kind` too: "20 minutos de bici" and "4 series de press"
+  // are different shapes, and making the person pick first defeats the point.
+  const applyDraft = (draft) => {
+    const kind = draft.kind === 'endurance' ? 'endurance' : 'strength';
+    setForm((current) => ({
+      ...current,
+      kind,
+      title: draft.title || current.title,
+      note: draft.note || current.note,
+      observed_at: /^\d{2}:\d{2}$/.test(draft.observed_time || '')
+        ? `${current.observed_at.slice(0, 10)}T${draft.observed_time}`
+        : current.observed_at,
+      duration_minutes: draft.duration_seconds != null ? draft.duration_seconds / 60 : null,
+      energy_expenditure_kcal: draft.energy_expenditure_kcal ?? null,
+      perceived_exertion: draft.perceived_exertion ?? null,
+      pain_or_discomfort: painValue(draft.pain_or_discomfort ?? null),
+      exercises: (draft.exercises || []).map(initialExercise),
+      modality: draft.modality || current.modality,
+      distance_km: draft.distance_m != null ? draft.distance_m / 1000 : null,
+      elevation_gain_m: draft.elevation_gain_m ?? null,
+      avg_heart_rate: draft.avg_heart_rate ?? null,
+      values_origin: 'llm_estimated',
+    }));
+  };
 
   const buildDetails = () => {
     const durationMinutes = positiveNumber(form.duration_minutes);
@@ -121,6 +156,7 @@ export default function WorkoutSessionForm({
       energy_expenditure_kcal: nonNegativeNumber(form.energy_expenditure_kcal),
       perceived_exertion: boundedInteger(form.perceived_exertion, 1, 10),
       pain_or_discomfort: painPayload(form.pain_or_discomfort),
+      values_origin: form.values_origin || 'explicit',
     };
     if (form.kind === 'endurance') {
       return {
@@ -181,13 +217,18 @@ export default function WorkoutSessionForm({
 
   return (
     <Card data-testid="workout-session-form">
-      <CardHeader>
-        <CardTitle className="text-base">
-          {activity ? 'Editar entrenamiento' : template ? `Usar plantilla: ${template.title}` : 'Registrar entrenamiento'}
-        </CardTitle>
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="text-base">
+            {activity ? 'Editar entrenamiento' : template ? `Usar plantilla: ${template.title}` : 'Registrar entrenamiento'}
+          </CardTitle>
+        </div>
         {template && <p className="text-xs text-muted-foreground">Revisa la fecha, la hora y lo que cambió en esta sesión.</p>}
       </CardHeader>
       <CardContent className="space-y-5">
+        {!activity && !template && (
+          <AiCaptureBox surface="training" onApply={applyDraft} disabled={saving || submitting} />
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="workout-kind">Tipo</Label>
@@ -296,7 +337,7 @@ export default function WorkoutSessionForm({
           <div className="space-y-1.5">
             <Label htmlFor="workout-energy">Calorías quemadas</Label>
             <Input id="workout-energy" type="number" min="0" step="any" value={inputNumber(form.energy_expenditure_kcal)} onChange={(event) => setForm((value) => ({ ...value, energy_expenditure_kcal: optionalNumber(event.target.value) }))} />
-            <p className="text-[11px] text-muted-foreground">Solo si tú conoces el dato.</p>
+            <p className="text-[11px] text-muted-foreground">Tu dato medido si lo tienes; si lo rellenó la IA, es una estimación.</p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="workout-exertion">Esfuerzo percibido (1–10)</Label>
