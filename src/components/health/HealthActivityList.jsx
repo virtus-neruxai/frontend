@@ -26,13 +26,14 @@ function LinkTaskControl({ activity, tasks, onLinkTask }) {
   return (
     <>
       <Button
-        size="sm"
-        variant="outline"
-        className="h-8"
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8"
+        title="Enlazar tarea"
         onClick={() => setOpen(true)}
         data-testid={`health-activity-link-open-${activity.id}`}
       >
-        <Link2 className="w-3 h-3 mr-1" /> Enlazar tarea
+        <Link2 className="w-3.5 h-3.5" />
       </Button>
       <HealthLinkTaskDialog
         open={open}
@@ -47,12 +48,12 @@ function LinkTaskControl({ activity, tasks, onLinkTask }) {
 
 function ActivityRow({
   activity, linkedTasks, tasks, onUpdate, onDelete, onLinkTask, onUnlinkTask,
-  saving, renderDetails, renderEditor,
+  saving, renderDetails, renderEditor, onEditRequest, compact,
 }) {
   const [editing, setEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
-  if (editing) {
+  if (editing && !onEditRequest) {
     if (renderEditor) {
       return renderEditor({
         activity,
@@ -77,25 +78,37 @@ function ActivityRow({
 
   return (
     <Card data-testid={`health-activity-row-${activity.id}`}>
-      <CardContent className="pt-4 space-y-3">
+      <CardContent className={compact ? 'py-3 px-4 space-y-2' : 'pt-4 space-y-3'}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary">{ACTIVITY_TYPE_LABELS[activity.activity_type] || activity.activity_type}</Badge>
-              <span className="text-xs text-muted-foreground">{formatWhen(activity.observed_at)}</span>
+            {!compact && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="secondary">{ACTIVITY_TYPE_LABELS[activity.activity_type] || activity.activity_type}</Badge>
+                <span className="text-xs text-muted-foreground">{formatWhen(activity.observed_at)}</span>
+              </div>
+            )}
+            <div className={compact ? 'flex items-center gap-2 flex-wrap' : undefined}>
+              <p className="font-medium text-sm text-foreground truncate">{activity.title}</p>
+              {compact && <span className="text-xs text-muted-foreground shrink-0">{formatWhen(activity.observed_at)}</span>}
             </div>
-            <p className="font-medium text-sm text-foreground">{activity.title}</p>
             {activity.note && (
-              <p className="text-xs text-muted-foreground whitespace-pre-wrap">{activity.note}</p>
+              <p className={`text-xs text-muted-foreground ${compact ? 'truncate' : 'whitespace-pre-wrap'}`}>{activity.note}</p>
             )}
             {renderDetails?.(activity)}
           </div>
           <div className="flex gap-1 shrink-0">
-            {(onUpdate || renderEditor) && (
-              <Button size="icon" variant="ghost" className="h-8 w-8" title="Editar" onClick={() => setEditing(true)}>
+            {(onUpdate || renderEditor || onEditRequest) && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                title="Editar"
+                onClick={() => (onEditRequest ? onEditRequest(activity) : setEditing(true))}
+              >
                 <Pencil className="w-3.5 h-3.5" />
               </Button>
             )}
+            <LinkTaskControl activity={activity} tasks={tasks} onLinkTask={onLinkTask} />
             {onDelete && (
               <Button
                 size="icon"
@@ -127,8 +140,6 @@ function ActivityRow({
             ))}
           </div>
         )}
-
-        <LinkTaskControl activity={activity} tasks={tasks} onLinkTask={onLinkTask} />
       </CardContent>
     </Card>
   );
@@ -141,7 +152,7 @@ function ActivityRow({
  */
 export default function HealthActivityList({
   activities, tasks, loading, saving, onCreate, onUpdate, onDelete, onLinkTask, onUnlinkTask,
-  allowCreate = true, renderDetails = null, renderEditor = null,
+  allowCreate = true, renderDetails = null, renderEditor = null, onEditRequest = null, compact = false,
   emptyMessage = 'Todavía no has registrado ninguna actividad.',
 }) {
   const [showCreate, setShowCreate] = useState(false);
@@ -180,7 +191,7 @@ export default function HealthActivityList({
           {emptyMessage}
         </CardContent></Card>
       ) : (
-        <div className="space-y-3">
+        <div className={compact ? 'space-y-2' : 'space-y-3'}>
           {activities.map((activity) => (
             <ActivityRow
               key={activity.id}
@@ -194,6 +205,8 @@ export default function HealthActivityList({
               saving={saving}
               renderDetails={renderDetails}
               renderEditor={renderEditor}
+              onEditRequest={onEditRequest}
+              compact={compact}
             />
           ))}
         </div>

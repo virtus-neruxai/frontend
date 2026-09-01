@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -136,6 +137,13 @@ export default function NutritionEntryForm({
     food.label.trim() && food.quantity != null && food.quantity > 0 && food.unit
   )), [form.foods]);
 
+  // Named, because `validFoods` silently drops them. The warning below used to
+  // appear only when *nothing* was valid, so a meal with one complete food and
+  // three without a portion saved as one food and said nothing about the rest.
+  const droppedFoods = useMemo(() => form.foods.filter((food) => (
+    food.label.trim() && !(food.quantity != null && food.quantity > 0 && food.unit)
+  )).map((food) => food.label.trim()), [form.foods]);
+
   const updateFood = (index, changes) => setForm((current) => ({
     ...current,
     foods: current.foods.map((food, foodIndex) => (
@@ -194,21 +202,25 @@ export default function NutritionEntryForm({
   };
 
   return (
-    <Card data-testid="nutrition-entry-form">
-      <CardHeader className="space-y-3">
+    <Dialog open onOpenChange={(next) => { if (!next) onCancel(); }}>
+      <DialogContent
+        className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto"
+        data-testid="nutrition-entry-form"
+      >
+      <DialogHeader className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-base">
+          <DialogTitle className="text-base">
             {activity ? 'Editar comida' : template ? `Usar plantilla: ${template.title}` : 'Registrar comida'}
-          </CardTitle>
+          </DialogTitle>
           <StepIndicator step={step} />
         </div>
         {template && (
-          <p className="text-xs text-muted-foreground">
+          <DialogDescription>
             Revisa la fecha, la hora y las cantidades antes de guardar el nuevo registro.
-          </p>
+          </DialogDescription>
         )}
-      </CardHeader>
-      <CardContent className="space-y-4">
+      </DialogHeader>
+      <div className="space-y-4">
         {/* Above the steps, not inside step 1: applying a draft jumps straight to
             the food list, and the panel explaining which fields were left blank
             has to still be on screen when the person arrives to fill them. */}
@@ -320,6 +332,13 @@ export default function NutritionEntryForm({
             {form.foods.length > 0 && validFoods.length === 0 && (
               <p className="text-xs text-destructive">Indica el nombre, la cantidad y la unidad de al menos un alimento.</p>
             )}
+            {validFoods.length > 0 && droppedFoods.length > 0 && (
+              <p className="text-xs text-destructive" data-testid="nutrition-dropped-foods">
+                {droppedFoods.length === 1
+                  ? `«${droppedFoods[0]}» no se guardará: le falta la cantidad o la unidad.`
+                  : `No se guardarán ${droppedFoods.map((label) => `«${label}»`).join(', ')}: les falta la cantidad o la unidad.`}
+              </p>
+            )}
           </div>
         )}
 
@@ -330,7 +349,10 @@ export default function NutritionEntryForm({
                 <Badge variant="secondary">{MEAL_TYPE_LABELS[form.meal_type]}</Badge>
                 <span className="text-sm font-medium">{form.title}</span>
               </div>
-              <p className="text-sm text-muted-foreground">{validFoods.length} alimentos</p>
+              <p className="text-sm text-muted-foreground">
+                {validFoods.length} alimentos
+                {droppedFoods.length > 0 && ` · ${droppedFoods.length} sin cantidad, que no se guardarán`}
+              </p>
               <ul className="space-y-1 text-sm">
                 {validFoods.map((food, index) => (
                   <li key={`${food.label}-${index}`}>{food.label} · {food.quantity} {food.unit}</li>
@@ -350,8 +372,8 @@ export default function NutritionEntryForm({
             )}
           </div>
         )}
-      </CardContent>
-      <CardFooter className="flex justify-between gap-2">
+      </div>
+      <div className="flex justify-between gap-2 pt-2">
         <div>
           {step > 1 && (
             <Button type="button" variant="outline" onClick={() => setStep((value) => value - 1)}>
@@ -380,7 +402,8 @@ export default function NutritionEntryForm({
             </Button>
           )}
         </div>
-      </CardFooter>
-    </Card>
+      </div>
+      </DialogContent>
+    </Dialog>
   );
 }

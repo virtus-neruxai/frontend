@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import HealthActivityList from './HealthActivityList';
+import HealthHistoryDateFilter from './HealthHistoryDateFilter';
 import HealthTemplateBrowser from './HealthTemplateBrowser';
 import NutritionEntryForm from './NutritionEntryForm';
 import { useNutritionRecords } from '../../presentation/viewmodels/useNutritionRecords';
 import { useHealthLibrary } from '../../presentation/viewmodels/useHealthLibrary';
 import {
-  MEAL_TYPE_LABELS,
   NUTRIENT_FIELDS,
   dateTimeForSelectedDay,
   formatHealthValue,
@@ -43,14 +43,21 @@ function NutritionTotals({ totals, partialFields = [], compact = false }) {
   );
 }
 
+// The card is already titled with the meal (see `title`, which defaults to
+// the meal type), so this only adds what the title does not say: the meal's
+// own totals — strictly all-or-nothing, unlike the day's.
 function NutritionDetails({ activity }) {
   const details = activity.details;
   if (details?.kind !== 'nutrition') return null;
-  return (
-    <div className="space-y-2 pt-1">
-      <p className="text-xs text-muted-foreground">
-        {MEAL_TYPE_LABELS[details.meal_type] || details.meal_type} · {details.foods?.length || 0} alimentos
+  if (!details.totals) {
+    return (
+      <p className="pt-1 text-xs text-muted-foreground">
+        Sin total (algún alimento sin nutrientes)
       </p>
+    );
+  }
+  return (
+    <div className="pt-1">
       <NutritionTotals totals={details.totals} compact />
     </div>
   );
@@ -59,17 +66,29 @@ function NutritionDetails({ activity }) {
 export default function NutritionTab() {
   const [selectedDate, setSelectedDate] = useState(() => localDateKey());
   const [composer, setComposer] = useState(null);
+  const [historyDate, setHistoryDate] = useState('');
   const records = useNutritionRecords(selectedDate);
   const foods = useHealthLibrary('foods');
   const templates = useHealthLibrary('templates', 'nutrition');
-  const history = records.history.filter((entry) => localDateKey(entry.observed_at) !== selectedDate);
+  const history = records.history
+    .filter((entry) => localDateKey(entry.observed_at) !== selectedDate)
+    .filter((entry) => !historyDate || localDateKey(entry.observed_at) === historyDate);
 
   const closeComposer = () => setComposer(null);
-  const openNew = () => setComposer({ key: `new-${Date.now()}`, template: null });
-  const openTemplate = (template) => setComposer({ key: `template-${template.id}-${Date.now()}`, template });
+  const openNew = () => setComposer({ key: `new-${Date.now()}`, template: null, activity: null });
+  const openTemplate = (template) => setComposer({ key: `template-${template.id}-${Date.now()}`, template, activity: null });
+  const openEdit = (activity) => setComposer({ key: `edit-${activity.id}`, template: null, activity });
 
-  const submitNew = async (submission) => {
-    const result = await records.save(submission);
+  const submitComposer = async ({ payload, templateId, saveAsTemplate }) => {
+    if (composer.activity) {
+      const updated = await records.update(composer.activity.id, payload);
+      if (updated) {
+        closeComposer();
+        await foods.reload();
+      }
+      return updated;
+    }
+    const result = await records.save({ payload, templateId, saveAsTemplate });
     if (result.record) {
       closeComposer();
       await Promise.all([foods.reload(), templates.reload()]);
@@ -77,73 +96,24 @@ export default function NutritionTab() {
     return result.record;
   };
 
-  const renderEditor = ({ activity, onCancel, onSaved }) => (
-    <NutritionEntryForm
-      key={`${activity.id}-${activity.revision}`}
-      activity={activity}
-      foods={foods.entries}
-      suggestedGroups={templates.groups}
-      allowSaveAsTemplate={false}
-      saving={records.saving}
-      onCancel={onCancel}
-      onSubmit={async ({ payload }) => {
-        const updated = await records.update(activity.id, payload);
-        if (updated) {
-          onSaved();
-          await foods.reload();
-        }
-        return updated;
-      }}
-    />
-  );
-
   return (
     <div className="space-y-6" data-testid="nutrition-tab">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1.5">
-          <Label htmlFor="nutrition-selected-date">Día</Label>
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-muted-foreground" />
-            <Input
-              id="nutrition-selected-date"
-              type="date"
-              className="w-auto"
-              value={selectedDate}
-              onChange={(event) => {
-                setSelectedDate(event.target.value);
-                closeComposer();
-              }}
-            />
-          </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="nutrition-selected-date">Día</Label>
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-muted-foreground" />
+          <Input
+            id="nutrition-selected-date"
+            type="date"
+            className="w-auto"
+            value={selectedDate}
+            onChange={(event) => {
+              setSelectedDate(event.target.value);
+              closeComposer();
+            }}
+          />
         </div>
-        {!composer && (
-          <Button onClick={openNew} data-testid="nutrition-new">
-            <Plus className="w-4 h-4 mr-1" /> Registrar comida
-          </Button>
-        )}
       </div>
-
-      <HealthTemplateBrowser
-        templates={templates.entries}
-        groups={templates.groups}
-        loading={templates.loading}
-        onUse={openTemplate}
-        onUpdate={templates.update}
-        onRemove={templates.remove}
-      />
-
-      {composer && (
-        <NutritionEntryForm
-          key={`${composer.key}-${selectedDate}`}
-          template={composer.template}
-          observedAt={dateTimeForSelectedDay(selectedDate)}
-          foods={foods.entries}
-          suggestedGroups={templates.groups}
-          saving={records.saving}
-          onSubmit={submitNew}
-          onCancel={closeComposer}
-        />
-      )}
 
       <Card>
         <CardHeader>
@@ -173,6 +143,34 @@ export default function NutritionTab() {
         </CardContent>
       </Card>
 
+      <HealthTemplateBrowser
+        templates={templates.entries}
+        groups={templates.groups}
+        loading={templates.loading}
+        onUse={openTemplate}
+        onUpdate={templates.update}
+        onRemove={templates.remove}
+      />
+
+      <Button onClick={openNew} data-testid="nutrition-new">
+        <Plus className="w-4 h-4 mr-1" /> Registrar comida
+      </Button>
+
+      {composer && (
+        <NutritionEntryForm
+          key={composer.activity ? `${composer.activity.id}-${composer.activity.revision}` : `${composer.key}-${selectedDate}`}
+          activity={composer.activity}
+          template={composer.template}
+          observedAt={dateTimeForSelectedDay(selectedDate)}
+          foods={foods.entries}
+          suggestedGroups={templates.groups}
+          allowSaveAsTemplate={!composer.activity}
+          saving={records.saving}
+          onSubmit={submitComposer}
+          onCancel={closeComposer}
+        />
+      )}
+
       <section className="space-y-3">
         <h3 className="font-semibold">Comidas del día</h3>
         <HealthActivityList
@@ -181,31 +179,36 @@ export default function NutritionTab() {
           loading={records.loading}
           saving={records.saving}
           allowCreate={false}
+          compact
           emptyMessage="No hay comidas registradas para este día."
           onUpdate={records.update}
           onDelete={records.remove}
           onLinkTask={records.linkTask}
           onUnlinkTask={records.unlinkTask}
           renderDetails={(activity) => <NutritionDetails activity={activity} />}
-          renderEditor={renderEditor}
+          onEditRequest={openEdit}
         />
       </section>
 
       <section className="space-y-3">
-        <h3 className="font-semibold">Historial reciente</h3>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="font-semibold">Historial reciente</h3>
+          <HealthHistoryDateFilter value={historyDate} onChange={setHistoryDate} id="nutrition-history-date" />
+        </div>
         <HealthActivityList
           activities={history}
           tasks={records.tasks}
           loading={records.loading}
           saving={records.saving}
           allowCreate={false}
+          compact
           emptyMessage="No hay más comidas en el historial reciente."
           onUpdate={records.update}
           onDelete={records.remove}
           onLinkTask={records.linkTask}
           onUnlinkTask={records.unlinkTask}
           renderDetails={(activity) => <NutritionDetails activity={activity} />}
-          renderEditor={renderEditor}
+          onEditRequest={openEdit}
         />
       </section>
     </div>

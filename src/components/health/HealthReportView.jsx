@@ -146,10 +146,11 @@ function EvidenceBadge({ tier }) {
   return <Badge variant="outline" className={style.className}>{style.label}</Badge>;
 }
 
-function StatBlock({ label, value }) {
+function StatBlock({ label, value, partial = false }) {
+  const rendered = partial && value !== '—' ? `≥ ${value}` : value;
   return (
     <div className="space-y-0.5">
-      <p className="text-xl font-semibold text-foreground" style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
+      <p className="text-xl font-semibold text-foreground" style={{ fontFamily: 'var(--font-heading)' }}>{rendered}</p>
       <p className="text-xs text-muted-foreground leading-snug">{label}</p>
     </div>
   );
@@ -354,19 +355,37 @@ export default function HealthReportView({ report, reportId = null }) {
           {training && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
               <StatBlock label="Sesiones" value={training.sessions} />
-              <StatBlock label="Duración total" value={formatMinutes(training.duration_seconds)} />
-              <StatBlock label="Series" value={formatNumber(training.total_sets)} />
-              <StatBlock label="Volumen de carga" value={formatNumber(training.load_volume_kg, 'kg')} />
-              <StatBlock label="Distancia" value={formatNumber(training.distance_m, 'm')} />
+              <StatBlock
+                label="Duración total"
+                value={formatMinutes(training.duration_seconds)}
+                partial={training.partial_fields?.includes('duration_seconds')}
+              />
+              <StatBlock
+                label="Series"
+                value={formatNumber(training.total_sets)}
+                partial={training.partial_fields?.includes('total_sets')}
+              />
+              <StatBlock
+                label="Volumen de carga"
+                value={formatNumber(training.load_volume_kg, 'kg')}
+                partial={training.partial_fields?.includes('load_volume_kg')}
+              />
+              <StatBlock
+                label="Distancia"
+                value={formatNumber(training.distance_m, 'm')}
+                partial={training.partial_fields?.includes('distance_m')}
+              />
               <StatBlock label="RPE medio" value={formatNumber(training.avg_perceived_exertion, '', 1)} />
               <StatBlock label="Sesiones con molestia" value={training.sessions_with_pain} />
               <StatBlock label="Sin detalle" value={training.untyped_sessions} />
             </div>
           )}
-          {training?.untyped_sessions > 0 && (
+          {training?.partial_fields?.length > 0 && (
             <p className="text-xs text-muted-foreground mb-3">
-              {training.untyped_sessions} sesión(es) sin detalle estructurado: por eso
-              algunos totales aparecen como «—» en lugar de una suma parcial.
+              Los totales con «≥» suman solo las sesiones que traen ese dato: son un
+              suelo del periodo, no el periodo completo.
+              {training.untyped_sessions > 0
+                && ` ${training.untyped_sessions} sesión(es) están sin detalle estructurado, por eso faltan de esos totales.`}
             </p>
           )}
           <TrendList trends={trendsFor('activity')} />
@@ -388,17 +407,26 @@ export default function HealthReportView({ report, reportId = null }) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <StatBlock label="Comidas" value={nutrition.meals} />
               <StatBlock label="Días con comida" value={nutrition.days_with_meals} />
-              <StatBlock label="Energía" value={formatNumber(nutrition.energy_kcal, 'kcal')} />
-              <StatBlock label="Proteína" value={formatNumber(nutrition.protein_g, 'g')} />
-              <StatBlock label="Carbohidratos" value={formatNumber(nutrition.carbs_g, 'g')} />
-              <StatBlock label="Grasas" value={formatNumber(nutrition.fat_g, 'g')} />
-              <StatBlock label="Fibra" value={formatNumber(nutrition.fiber_g, 'g')} />
+              {[
+                ['energy_kcal', 'Energía', 'kcal'],
+                ['protein_g', 'Proteína', 'g'],
+                ['carbs_g', 'Carbohidratos', 'g'],
+                ['fat_g', 'Grasas', 'g'],
+                ['fiber_g', 'Fibra', 'g'],
+              ].map(([field, label, unit]) => (
+                <StatBlock
+                  key={field}
+                  label={label}
+                  value={formatNumber(nutrition[field], unit)}
+                  partial={nutrition.partial_fields?.includes(field)}
+                />
+              ))}
             </div>
           )}
           {nutrition?.incomplete_meals > 0 && (
             <p className="text-xs text-muted-foreground mt-3">
-              {nutrition.incomplete_meals} comida(s) sin total. Los macros del periodo
-              aparecen como «—» en lugar de una suma parcial que mentiría por defecto.
+              {nutrition.incomplete_meals} comida(s) sin total, así que los macros con
+              «≥» son un suelo: se comió al menos eso, no exactamente eso.
             </p>
           )}
         </Section>

@@ -5,8 +5,10 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import CollapsibleSection from './CollapsibleSection';
 import { splitGroups } from '../../lib/healthRecords';
+
+const UNGROUPED = 'Sin grupo';
 
 function templateSummary(template) {
   const details = template.details || {};
@@ -99,52 +101,62 @@ function TemplateCard({ template, onUse, onUpdate, onRemove }) {
 }
 
 export default function HealthTemplateBrowser({ templates, groups, loading, onUse, onUpdate, onRemove }) {
-  const [group, setGroup] = useState('__all');
-  const visible = useMemo(
-    () => templates.filter((template) => (
-      group === '__all' || splitGroups(template.groups).some((value) => value === group)
-    )),
-    [group, templates],
-  );
+  // A template can carry several groups, so it is listed once per group it
+  // belongs to — that is what "browse by group" means. One without any group
+  // still needs somewhere to live, hence the trailing bucket.
+  const sections = useMemo(() => {
+    const byGroup = new Map(groups.map((group) => [group, []]));
+    const ungrouped = [];
+    templates.forEach((template) => {
+      const templateGroups = splitGroups(template.groups);
+      if (templateGroups.length === 0) {
+        ungrouped.push(template);
+        return;
+      }
+      templateGroups.forEach((group) => {
+        if (!byGroup.has(group)) byGroup.set(group, []);
+        byGroup.get(group).push(template);
+      });
+    });
+    const result = [...byGroup.entries()].filter(([, items]) => items.length > 0);
+    if (ungrouped.length > 0) result.push([UNGROUPED, ungrouped]);
+    return result;
+  }, [groups, templates]);
 
   return (
-    <section className="space-y-3" aria-labelledby="health-template-library-title">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 id="health-template-library-title" className="font-semibold">Plantillas guardadas</h3>
-          <p className="text-xs text-muted-foreground">Elige una para revisarla y registrarla en otra fecha.</p>
-        </div>
-        <Select value={group} onValueChange={setGroup}>
-          <SelectTrigger className="sm:w-48" aria-label="Filtrar plantillas por grupo" data-testid="health-template-group-filter">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all">Todos los grupos</SelectItem>
-            {groups.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Cargando plantillas...</p>
-      ) : visible.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-          {templates.length === 0 ? 'Aún no has guardado plantillas.' : 'No hay plantillas en este grupo.'}
-        </p>
+    <CollapsibleSection
+      title="Plantillas guardadas"
+      description={
+        loading
+          ? 'Cargando plantillas...'
+          : templates.length === 0
+            ? 'Aún no has guardado plantillas.'
+            : `${templates.length} guardada${templates.length === 1 ? '' : 's'} · elige una para registrarla en otra fecha`
+      }
+      testId="health-template-browser"
+    >
+      {loading ? null : sections.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Aún no has guardado plantillas.</p>
       ) : (
-        <div className="grid gap-2 md:grid-cols-2">
-          {visible.map((template) => (
-            <TemplateCard
-              key={template.id}
-              template={template}
-              onUse={onUse}
-              onUpdate={onUpdate}
-              onRemove={onRemove}
-            />
+        <div className="space-y-4">
+          {sections.map(([group, items]) => (
+            <div key={group} className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group}</h4>
+              <div className="grid gap-2 md:grid-cols-2">
+                {items.map((template) => (
+                  <TemplateCard
+                    key={`${group}-${template.id}`}
+                    template={template}
+                    onUse={onUse}
+                    onUpdate={onUpdate}
+                    onRemove={onRemove}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }
-

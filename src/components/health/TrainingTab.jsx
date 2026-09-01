@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ChevronDown, Dumbbell, Plus } from 'lucide-react';
+import { Dumbbell, Plus } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import CollapsibleSection from './CollapsibleSection';
 import HealthActivityList from './HealthActivityList';
+import HealthHistoryDateFilter from './HealthHistoryDateFilter';
 import HealthTemplateBrowser from './HealthTemplateBrowser';
 import MeasurementList from './MeasurementList';
 import WorkoutSessionForm from './WorkoutSessionForm';
@@ -12,6 +13,7 @@ import { useWorkoutRecords } from '../../presentation/viewmodels/useWorkoutRecor
 import {
   ENDURANCE_MODALITY_LABELS,
   formatHealthValue,
+  localDateKey,
 } from '../../lib/healthRecords';
 
 function durationLabel(seconds) {
@@ -66,42 +68,35 @@ function TrainingDetails({ activity }) {
   return null;
 }
 
-function CollapsibleSection({ title, description, children, testId }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border" data-testid={testId}>
-      <CollapsibleTrigger asChild>
-        <Button type="button" variant="ghost" className="h-auto w-full justify-between gap-3 p-4 text-left">
-          <span>
-            <span className="block font-semibold text-foreground">{title}</span>
-            <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{description}</span>
-          </span>
-          <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="px-4 pb-4">
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
 export default function TrainingTab() {
   const [composer, setComposer] = useState(null);
+  const [historyDate, setHistoryDate] = useState('');
   const records = useWorkoutRecords();
   const exercises = useHealthLibrary('exercises');
   const templates = useHealthLibrary('templates', 'training');
+  const sessions = records.sessions.filter((entry) => (
+    !historyDate || localDateKey(entry.observed_at) === historyDate
+  ));
 
   const closeComposer = () => setComposer(null);
-  const openNew = () => setComposer({ key: `new-${Date.now()}`, template: null });
+  const openNew = () => setComposer({ key: `new-${Date.now()}`, template: null, activity: null });
   const openTemplate = (template) => setComposer({
     key: `template-${template.id}-${Date.now()}`,
     template,
+    activity: null,
   });
+  const openEdit = (activity) => setComposer({ key: `edit-${activity.id}`, template: null, activity });
 
-  const submitNew = async (submission) => {
-    const result = await records.save(submission);
+  const submitComposer = async ({ payload, templateId, saveAsTemplate }) => {
+    if (composer.activity) {
+      const updated = await records.update(composer.activity.id, payload);
+      if (updated) {
+        closeComposer();
+        await exercises.reload();
+      }
+      return updated;
+    }
+    const result = await records.save({ payload, templateId, saveAsTemplate });
     if (result.record) {
       closeComposer();
       await Promise.all([exercises.reload(), templates.reload()]);
@@ -109,40 +104,13 @@ export default function TrainingTab() {
     return result.record;
   };
 
-  const renderEditor = ({ activity, onCancel, onSaved }) => (
-    <WorkoutSessionForm
-      key={`${activity.id}-${activity.revision}`}
-      activity={activity}
-      exercises={exercises.entries}
-      suggestedGroups={templates.groups}
-      allowSaveAsTemplate={false}
-      saving={records.saving}
-      onCancel={onCancel}
-      onSubmit={async ({ payload }) => {
-        const updated = await records.update(activity.id, payload);
-        if (updated) {
-          onSaved();
-          await exercises.reload();
-        }
-        return updated;
-      }}
-    />
-  );
-
   return (
     <div className="space-y-6" data-testid="training-tab">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="font-semibold">Sesiones de entrenamiento</h2>
-          <p className="text-sm text-muted-foreground">
-            Registra fuerza o resistencia con los datos que conozcas; las cifras opcionales no se estiman.
-          </p>
-        </div>
-        {!composer && (
-          <Button type="button" onClick={openNew} data-testid="training-new">
-            <Plus className="mr-1 h-4 w-4" /> Registrar entrenamiento
-          </Button>
-        )}
+      <div>
+        <h2 className="font-semibold">Sesiones de entrenamiento</h2>
+        <p className="text-sm text-muted-foreground">
+          Registra fuerza o resistencia con los datos que conozcas; las cifras opcionales no se estiman.
+        </p>
       </div>
 
       <HealthTemplateBrowser
@@ -154,35 +122,45 @@ export default function TrainingTab() {
         onRemove={templates.remove}
       />
 
+      <Button type="button" onClick={openNew} data-testid="training-new">
+        <Plus className="mr-1 h-4 w-4" /> Registrar entrenamiento
+      </Button>
+
       {composer && (
         <WorkoutSessionForm
-          key={composer.key}
+          key={composer.activity ? `${composer.activity.id}-${composer.activity.revision}` : composer.key}
+          activity={composer.activity}
           template={composer.template}
           exercises={exercises.entries}
           suggestedGroups={templates.groups}
+          allowSaveAsTemplate={!composer.activity}
           saving={records.saving}
-          onSubmit={submitNew}
+          onSubmit={submitComposer}
           onCancel={closeComposer}
         />
       )}
 
       <section className="space-y-3" aria-labelledby="training-history-title">
-        <h3 id="training-history-title" className="font-semibold flex items-center gap-2">
-          <Dumbbell className="h-4 w-4" /> Historial reciente
-        </h3>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h3 id="training-history-title" className="font-semibold flex items-center gap-2">
+            <Dumbbell className="h-4 w-4" /> Historial reciente
+          </h3>
+          <HealthHistoryDateFilter value={historyDate} onChange={setHistoryDate} id="training-history-date" />
+        </div>
         <HealthActivityList
-          activities={records.sessions}
+          activities={sessions}
           tasks={records.tasks}
           loading={records.loading}
           saving={records.saving}
           allowCreate={false}
+          compact
           emptyMessage="Todavía no has registrado sesiones de entrenamiento."
           onUpdate={records.update}
           onDelete={records.remove}
           onLinkTask={records.linkTask}
           onUnlinkTask={records.unlinkTask}
           renderDetails={(activity) => <TrainingDetails activity={activity} />}
-          renderEditor={renderEditor}
+          onEditRequest={openEdit}
         />
       </section>
 

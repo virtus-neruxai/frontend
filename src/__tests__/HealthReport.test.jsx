@@ -304,10 +304,34 @@ describe('HealthReportView schema 2', () => {
     expect(section).not.toHaveTextContent(/\b0 g\b/);
   });
 
-  test('a training total left incomplete is a dash, with the reason beside it', () => {
+  test('a partial macro is marked ≥ and never confused with a complete total', () => {
+    // The window sums the meals that carried the field; one that did not
+    // makes the figure a floor, not the period's real intake.
+    render(<HealthReportView report={v2({
+      nutrition_load: {
+        meals: 3, days_with_meals: 2, incomplete_meals: 1,
+        partial_fields: ['energy_kcal', 'protein_g'],
+        energy_kcal: 1450, protein_g: 80, carbs_g: 200, fat_g: 60, fiber_g: 20,
+      },
+    })} />);
+
+    const section = screen.getByTestId('health-report-nutrition');
+    expect(section).toHaveTextContent('≥ 1450 kcal');
+    expect(section).toHaveTextContent('≥ 80 g');
+    expect(section).toHaveTextContent('200 g');
+    expect(section).not.toHaveTextContent('≥ 200 g');
+    expect(section).toHaveTextContent(/un suelo/i);
+  });
+
+  test('a partial training total is marked and explained, not shown as a dash', () => {
+    // `duration_seconds` is a real floor here — 90 min is the sum of the two
+    // sessions that had it, and the third (untyped) session is why it is not
+    // the whole period. Blanking it to "—" would hide the two that were
+    // recorded; showing it bare would claim it covers all three.
     render(<HealthReportView report={v2({
       training_load: {
         sessions: 3, strength_sessions: 2, endurance_sessions: 0, untyped_sessions: 1,
+        partial_fields: ['duration_seconds'],
         duration_seconds: 5400, energy_expenditure_kcal: null, total_sets: null,
         total_repetitions: null, load_volume_kg: null, distance_m: null,
         avg_perceived_exertion: 7, sessions_with_pain: 0,
@@ -315,8 +339,26 @@ describe('HealthReportView schema 2', () => {
     })} />);
 
     const section = screen.getByTestId('health-report-activity');
-    expect(section).toHaveTextContent('90 min');
+    expect(section).toHaveTextContent('≥ 90 min');
     expect(section).toHaveTextContent(/sin detalle estructurado/i);
+    expect(section).toHaveTextContent(/un suelo del periodo/i);
+  });
+
+  test('a training total nobody recorded at all is a bare dash, not a floor', () => {
+    render(<HealthReportView report={v2({
+      training_load: {
+        sessions: 1, strength_sessions: 1, endurance_sessions: 0, untyped_sessions: 0,
+        partial_fields: [],
+        duration_seconds: null, energy_expenditure_kcal: null, total_sets: null,
+        total_repetitions: null, load_volume_kg: null, distance_m: null,
+        avg_perceived_exertion: null, sessions_with_pain: 0,
+      },
+    })} />);
+
+    const section = screen.getByTestId('health-report-activity');
+    expect(section).toHaveTextContent('—');
+    expect(section).not.toHaveTextContent('≥');
+    expect(section).not.toHaveTextContent(/sin detalle estructurado/i);
   });
 
   test('an incomparable previous period shows both figures and no percentage', () => {

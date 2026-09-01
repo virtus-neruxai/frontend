@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -114,6 +115,14 @@ export default function WorkoutSessionForm({
     sets: exercise.sets.filter(isRecordedSet),
   })).filter((exercise) => exercise.label.trim() && exercise.sets.length > 0), [form.exercises]);
 
+  // Named, because `validExercises` silently drops them. Somebody who wrote
+  // three exercises, filled the numbers of one and pressed save got one
+  // exercise back and no explanation — the two that vanished looked exactly
+  // like two they had never typed.
+  const droppedExercises = useMemo(() => form.exercises.filter((exercise) => (
+    exercise.label.trim() && !exercise.sets.some(isRecordedSet)
+  )).map((exercise) => exercise.label.trim()), [form.exercises]);
+
   const updateExercise = (index, changes) => setForm((current) => ({
     ...current,
     exercises: current.exercises.map((exercise, exerciseIndex) => (
@@ -216,16 +225,20 @@ export default function WorkoutSessionForm({
   };
 
   return (
-    <Card data-testid="workout-session-form">
-      <CardHeader className="space-y-3">
+    <Dialog open onOpenChange={(next) => { if (!next) onCancel(); }}>
+      <DialogContent
+        className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto"
+        data-testid="workout-session-form"
+      >
+      <DialogHeader className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-base">
+          <DialogTitle className="text-base">
             {activity ? 'Editar entrenamiento' : template ? `Usar plantilla: ${template.title}` : 'Registrar entrenamiento'}
-          </CardTitle>
+          </DialogTitle>
         </div>
-        {template && <p className="text-xs text-muted-foreground">Revisa la fecha, la hora y lo que cambió en esta sesión.</p>}
-      </CardHeader>
-      <CardContent className="space-y-5">
+        {template && <DialogDescription>Revisa la fecha, la hora y lo que cambió en esta sesión.</DialogDescription>}
+      </DialogHeader>
+      <div className="space-y-5">
         {!activity && !template && (
           <AiCaptureBox surface="training" onApply={applyDraft} disabled={saving || submitting} />
         )}
@@ -302,6 +315,13 @@ export default function WorkoutSessionForm({
             {form.exercises.length > 0 && validExercises.length === 0 && (
               <p className="text-xs text-destructive">Añade al menos un ejercicio con una serie que tenga repeticiones o carga.</p>
             )}
+            {validExercises.length > 0 && droppedExercises.length > 0 && (
+              <p className="text-xs text-destructive" data-testid="workout-dropped-exercises">
+                {droppedExercises.length === 1
+                  ? `«${droppedExercises[0]}» no se guardará: ninguna de sus series tiene repeticiones ni peso.`
+                  : `No se guardarán ${droppedExercises.map((label) => `«${label}»`).join(', ')}: ninguna de sus series tiene repeticiones ni peso.`}
+              </p>
+            )}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -371,8 +391,8 @@ export default function WorkoutSessionForm({
             })}
           />
         )}
-      </CardContent>
-      <CardFooter className="justify-end gap-2">
+      </div>
+      <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
         <Button
           type="button"
@@ -382,7 +402,8 @@ export default function WorkoutSessionForm({
         >
           {saving || submitting ? 'Guardando...' : activity ? 'Guardar cambios' : 'Guardar entrenamiento'}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+      </DialogContent>
+    </Dialog>
   );
 }
