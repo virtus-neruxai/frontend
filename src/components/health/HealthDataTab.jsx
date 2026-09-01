@@ -1,19 +1,22 @@
 import { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { BodyCheckinSection } from '../../presentation/components/character/bodycheckin/BodyCheckinSection';
+import HealthGoalsTab from './HealthGoalsTab';
 import HealthNotesPanel from './HealthNotesPanel';
 import HealthOtherRecordsPanel from './HealthOtherRecordsPanel';
 import NutritionTab from './NutritionTab';
 import TrainingTab from './TrainingTab';
 import { useCharacter } from '../../presentation/viewmodels/useCharacter';
-import { Dumbbell, NotebookPen, Stethoscope, Utensils } from 'lucide-react';
+import { Dumbbell, NotebookPen, Stethoscope, Target, Utensils } from 'lucide-react';
 
 /**
  * Content of `HealthMentorPage.js` ("Salud" in the nav, its own top-level
  * route `/health-data`) — no chat here, that lives with "Mentor <perfil>" as
  * the "Mentor Salud" tab of `MentorPage.js` (`HealthMentorChatTab.jsx`).
  * Registro corporal (1) | Alimentación (2) | Entrenamiento (3) | Notas (4,
- * con dos sub-pestañas: notas del mentor y otros registros sin estructura).
+ * con dos sub-pestañas: notas del mentor y otros registros sin estructura) |
+ * Objetivos (5: el objetivo declarado, la composición que lo mide y el
+ * seguimiento del mentor sobre ambos).
  */
 export default function HealthDataTab() {
   // Only for Registro corporal: stat labels and the refresh a check-in
@@ -27,7 +30,7 @@ export default function HealthDataTab() {
 
   return (
     <Tabs defaultValue="body-checkin" className="space-y-4">
-      <TabsList className="grid h-auto w-full grid-cols-2 gap-1 lg:grid-cols-4">
+      <TabsList className="grid h-auto w-full grid-cols-2 gap-1 lg:grid-cols-5">
         <TabsTrigger value="body-checkin" className="gap-1.5">
           <Stethoscope className="w-3.5 h-3.5" /> Registro corporal
         </TabsTrigger>
@@ -39,6 +42,9 @@ export default function HealthDataTab() {
         </TabsTrigger>
         <TabsTrigger value="notas" className="gap-1.5">
           <NotebookPen className="w-3.5 h-3.5" /> Notas
+        </TabsTrigger>
+        <TabsTrigger value="objetivos" className="gap-1.5">
+          <Target className="w-3.5 h-3.5" /> Objetivos
         </TabsTrigger>
       </TabsList>
 
@@ -73,6 +79,10 @@ export default function HealthDataTab() {
             <HealthOtherRecordsPanel />
           </TabsContent>
         </Tabs>
+      </TabsContent>
+
+      <TabsContent value="objetivos">
+        <HealthGoalsTab />
       </TabsContent>
     </Tabs>
   );

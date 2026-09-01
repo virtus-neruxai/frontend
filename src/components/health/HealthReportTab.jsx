@@ -4,7 +4,6 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import HealthGoalSettings from './HealthGoalSettings';
 import HealthReportView from './HealthReportView';
 import { useHealthReport } from '../../presentation/viewmodels/useHealthReport';
 
@@ -61,9 +60,10 @@ export default function HealthReportTab() {
         </div>
       </div>
 
-      {/* Above the report rather than in Ajustes: the goal only means anything
-          next to the reading that measures coverage against it. */}
-      <HealthGoalSettings />
+      {/* El objetivo se declara y se edita en Salud → Objetivos, junto a la
+          composición corporal y al seguimiento que lo supervisa. Aquí solo
+          aparece la copia congelada que el propio informe generado lleva
+          dentro (HealthReportView, sección «Objetivo»). */}
 
       {showHistory && (
         <Card>

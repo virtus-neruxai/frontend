@@ -2,11 +2,9 @@ import { useState } from 'react';
 import { Dumbbell, Plus } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import CollapsibleSection from './CollapsibleSection';
 import HealthActivityList from './HealthActivityList';
 import HealthHistoryDateFilter from './HealthHistoryDateFilter';
 import HealthTemplateBrowser from './HealthTemplateBrowser';
-import MeasurementList from './MeasurementList';
 import WorkoutSessionForm from './WorkoutSessionForm';
 import { useHealthLibrary } from '../../presentation/viewmodels/useHealthLibrary';
 import { useWorkoutRecords } from '../../presentation/viewmodels/useWorkoutRecords';
@@ -163,14 +161,6 @@ export default function TrainingTab() {
           onEditRequest={openEdit}
         />
       </section>
-
-      <CollapsibleSection
-        title="Composición corporal"
-        description="Bloque avanzado para medidas como peso, cintura o porcentaje de grasa."
-        testId="training-composition"
-      >
-        <MeasurementList records={records} />
-      </CollapsibleSection>
     </div>
   );
 }

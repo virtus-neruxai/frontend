@@ -64,15 +64,13 @@ export function useWorkoutRecords() {
     () => records.activities.filter((entry) => ['strength', 'endurance'].includes(entry.details?.kind)),
     [records.activities],
   );
-  const measurements = useMemo(
-    () => records.activities.filter((entry) => entry.details?.kind === 'measurement'),
-    [records.activities],
-  );
-
+  // Sin `measurements`: la composición corporal salió de Entrenamiento y ahora
+  // vive en Salud → Objetivos con su propio hook (`useMeasurementRecords`).
+  // Este hook sigue trayendo la tabla sin filtrar por `activity_type` porque
+  // lo hace `useHealthActivities` por defecto, no porque necesite las medidas.
   return {
     ...records,
     sessions,
-    measurements,
     save,
     update,
   };

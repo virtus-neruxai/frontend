@@ -176,11 +176,15 @@ export const agentApi = {
   // plain-JWT handoff the diary reflection already uses — the frontend never
   // sends more than the final reflection's text, its provenance and the
   // action the user explicitly picked.
-  reviewHandoff: (message, actionType) =>
+  // `options` lo usa el seguimiento de objetivos de Salud, que propone por
+  // esta misma vía: cambia la procedencia y marca la superficie sanitaria para
+  // que el borrador y su confirmación no acaben entre las del Mentor general.
+  reviewHandoff: (message, actionType, options = {}) =>
     agentApiInstance.post('/agent/review/handoff', {
       message,
-      source: 'center',
+      source: options.source || 'center',
       action_type: actionType,
+      health_surface: Boolean(options.healthSurface),
     }),
 };
 
@@ -394,6 +398,20 @@ export const healthReportApi = {
     reasoningApiInstance.post(
       `/reasoning/health-reports/${reportId}/relations/${encodeURIComponent(relationId)}/adopt`
     ),
+};
+
+// Seguimiento de objetivos de salud — supervisa el objetivo declarado, no el
+// periodo entero. Colecciones, cuota e historial propios, igual que el informe:
+// generar un seguimiento no gasta ni reutiliza un informe de salud.
+export const healthFollowupApi = {
+  generate: (daysBack = 14) =>
+    reasoningApiInstance.post('/reasoning/health-goal-followup', { days_back: daysBack }),
+  getJob: (jobId) => reasoningApiInstance.get(`/reasoning/health-goal-followup-jobs/${jobId}`),
+  // El vigente y el job en vuelo en una sola llamada: la fuente de verdad de
+  // «se está generando» es el servidor, no el almacenamiento del navegador.
+  getCurrent: () => reasoningApiInstance.get('/reasoning/health-goal-followups/current'),
+  list: () => reasoningApiInstance.get('/reasoning/health-goal-followups'),
+  get: (followupId) => reasoningApiInstance.get(`/reasoning/health-goal-followups/${followupId}`),
 };
 
 export const healthPracticesApi = {

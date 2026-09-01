@@ -21,8 +21,9 @@ const DIMENSIONS = [
 /**
  * The health goal, edited where it is measured against.
  *
- * Not in Ajustes: a goal only means anything next to the report that reads
- * coverage against it, and a setting you have to go and find is a setting
+ * Not in Ajustes: a goal only means anything next to what reads against it —
+ * the composition that measures it and the mentor's follow-up that supervises
+ * it, both in this same tab. A setting you have to go and find is a setting
  * nobody revisits when their goal changes.
  *
  * The dimensions are the load-bearing part, not the prose. Nothing parses the
@@ -30,7 +31,7 @@ const DIMENSIONS = [
  * decide which missing measurement gets asked for first. Checking none is a
  * valid answer and means "no preference stated".
  */
-export default function HealthGoalSettings() {
+export default function HealthGoalSettings({ onChanged = null }) {
   const { goal, loading, saving, save, clear } = useHealthGoal();
   const [editing, setEditing] = useState(false);
   const [statement, setStatement] = useState('');
@@ -51,11 +52,20 @@ export default function HealthGoalSettings() {
     const trimmed = statement.trim();
     if (!trimmed) return;
     const saved = await save(trimmed, tracked);
-    if (saved) setEditing(false);
+    if (saved) {
+      setEditing(false);
+      // El seguimiento vive en la misma pestaña y tiene su propia copia del
+      // objetivo: sin este aviso, declararlo aquí no habilitaría el botón de
+      // generar hasta recargar la página.
+      onChanged?.();
+    }
   };
 
   const remove = async () => {
-    if (await clear()) setEditing(false);
+    if (await clear()) {
+      setEditing(false);
+      onChanged?.();
+    }
   };
 
   if (loading) return null;
@@ -119,7 +129,8 @@ export default function HealthGoalSettings() {
             onChange={(event) => setStatement(event.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Sin cifras ni fechas: nadie va a puntuar tu avance contra esto.
+            Sin cifras ni fechas: no es una meta que se puntúe, es la dirección
+            contra la que el mentor lee lo que registras.
             {' '}{statement.length}/{MAX_STATEMENT_CHARS}
           </p>
         </div>
@@ -140,7 +151,8 @@ export default function HealthGoalSettings() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Lo que marques sube en la lista de «qué aportaría más ahora» del informe.
+            Lo que marques sube en la lista de «qué aportaría más ahora» del informe
+            y orienta el seguimiento del mentor.
           </p>
         </div>
 

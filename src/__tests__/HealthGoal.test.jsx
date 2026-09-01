@@ -116,7 +116,9 @@ describe('HealthGoalSettings', () => {
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     expect(document.querySelector('input[type="number"]')).toBeNull();
     expect(document.querySelector('input[type="date"]')).toBeNull();
-    expect(screen.getByText(/nadie va a puntuar tu avance/i)).toBeInTheDocument();
+    // El seguimiento sí lee el objetivo, así que el copy ya no puede prometer
+    // que nadie lo mira — lo que sigue prohibido es puntuarlo.
+    expect(screen.getByText(/no es una meta que se puntúe/i)).toBeInTheDocument();
   });
 
   test('saving sends the statement and the checked dimensions', async () => {
