@@ -30,21 +30,22 @@ vi.mock('../theme/useProfileTheme', () => ({
   useProfileTheme: () => ({ theme: { name: 'Estoico' } }),
 }));
 
+// El mock pinta las opciones que le pasa cada Select, no una lista fija: el
+// selector de generación y el filtro del historial ya no ofrecen lo mismo
+// (este último añade «Todos»).
 vi.mock('../components/ui/select', () => ({
-  Select: ({ value, onValueChange }) => (
+  Select: ({ value, onValueChange, children }) => (
     <select
       data-testid="range-select"
       value={value}
       onChange={(event) => onValueChange(event.target.value)}
     >
-      <option value="7">Última semana</option>
-      <option value="14">Últimas 2 semanas</option>
-      <option value="30">Último mes</option>
+      {children}
     </select>
   ),
   SelectContent: ({ children }) => <>{children}</>,
-  SelectItem: ({ children }) => <>{children}</>,
-  SelectTrigger: ({ children }) => <>{children}</>,
+  SelectItem: ({ value, children }) => <option value={value}>{children}</option>,
+  SelectTrigger: () => null,
   SelectValue: () => null,
 }));
 
@@ -99,17 +100,33 @@ describe('ReasoningReportTab range selector', () => {
     await waitFor(() => expect(reasoningApi.generateReport).toHaveBeenCalledWith(7));
   });
 
-  test('history is filtered by selected report range', async () => {
+  test('the history opens showing every report, whatever range is selected', async () => {
+    render(<ReasoningReportTab />);
+
+    // El selector de arriba (rango de generación) no recorta el historial.
+    fireEvent.change(screen.getAllByTestId('range-select')[0], { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: /historial/i }));
+
+    expect(await screen.findByText(/informe de dos semanas/i)).toBeInTheDocument();
+    expect(screen.getByText(/informe semanal/i)).toBeInTheDocument();
+  });
+
+  test('the history filter narrows it, and «Todos» brings everything back', async () => {
     render(<ReasoningReportTab />);
 
     fireEvent.click(screen.getByRole('button', { name: /historial/i }));
-    expect(await screen.findByText(/informe de dos semanas/i)).toBeInTheDocument();
-    expect(screen.queryByText(/informe semanal/i)).not.toBeInTheDocument();
+    await screen.findByText(/informe de dos semanas/i);
 
-    fireEvent.change(screen.getAllByTestId('range-select')[0], { target: { value: '7' } });
+    const historyFilter = screen.getAllByTestId('range-select')[1];
+    fireEvent.change(historyFilter, { target: { value: '7' } });
 
     expect(await screen.findByText(/informe semanal/i)).toBeInTheDocument();
     expect(screen.queryByText(/informe de dos semanas/i)).not.toBeInTheDocument();
+
+    fireEvent.change(historyFilter, { target: { value: 'all' } });
+
+    expect(await screen.findByText(/informe de dos semanas/i)).toBeInTheDocument();
+    expect(screen.getByText(/informe semanal/i)).toBeInTheDocument();
   });
 
   test('a failed generation surfaces a retryable error and stores nothing', async () => {

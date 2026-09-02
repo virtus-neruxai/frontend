@@ -98,10 +98,12 @@ test('registra una comida manual con varios alimentos como un único payload est
   expect(submission.saveAsTemplate).toBeNull();
 });
 
-test('un total del día al que le falta una comida se suma y se marca', () => {
+test('un total del día al que le falta una comida se suma y se avisa', () => {
   // Vaciar el día porque una comida esté incompleta escondía las que sí lo
-  // estaban. Se suma lo que hay, y el ≥ es lo que impide leerlo como el día
-  // entero.
+  // estaban. Se suma lo que hay, y el aviso es lo que impide leerlo como el día
+  // entero. Aquí la suma se queda —es el total de UN día, que es para lo que
+  // existe esta tarjeta— mientras que las ventanas del informe pasaron a medias
+  // por registro; lo único que se fue de aquí es el símbolo «≥».
   useNutritionRecords.mockReturnValue(nutritionState({
     daySummary: {
       date: '2026-08-27',
@@ -113,9 +115,10 @@ test('un total del día al que le falta una comida se suma y se marca', () => {
 
   render(<NutritionTab />);
 
-  expect(screen.getByTestId('nutrition-total-energy_kcal')).toHaveTextContent('≥ 1120 kcal');
+  expect(screen.getByTestId('nutrition-total-energy_kcal')).toHaveTextContent('1120 kcal');
   expect(screen.getByTestId('nutrition-total-protein_g')).toHaveTextContent('58 g');
-  expect(screen.getByTestId('nutrition-total-protein_g')).not.toHaveTextContent('≥');
+  expect(screen.queryByText('≥')).not.toBeInTheDocument();
+  expect(screen.getByText(/falta alguna comida/)).toBeInTheDocument();
   expect(screen.getByText(/el total real es mayor/)).toBeInTheDocument();
 });
 

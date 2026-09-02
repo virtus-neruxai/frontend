@@ -21,18 +21,13 @@ import { useHealthGoal } from '../../presentation/viewmodels/useHealthGoal';
 import { useHealthGoalFollowup } from '../../presentation/viewmodels/useHealthGoalFollowup';
 import { agentApi } from '../../lib/api';
 import { apiErrorMessage } from '../../lib/quotaError';
+import { REPORT_RANGE_OPTIONS, reportRangeLabel } from '../../lib/reportRanges';
 import {
   CalendarClock, Compass, History, Loader2, RefreshCw, Repeat, Target,
 } from 'lucide-react';
 
 const DISCLAIMER = 'Este seguimiento es una lectura de tus propios registros frente al objetivo '
   + 'que declaraste. No mide tu avance ni valora tu salud: dice qué hay registrado y qué no.';
-
-const RANGE_OPTIONS = [
-  { value: 7, label: 'Última semana' },
-  { value: 14, label: 'Últimas 2 semanas' },
-  { value: 30, label: 'Último mes' },
-];
 
 // Contrato cerrado: las claves, las etiquetas y el orden pertenecen a la app,
 // nunca al modelo. Un panel que el servidor no devuelva simplemente no se pinta.
@@ -42,10 +37,6 @@ const PANEL_META = [
   { key: 'direction', label: 'Dirección', icon: Compass },
   { key: 'consistency', label: 'Constancia', icon: Repeat },
 ];
-
-function rangeLabel(daysBack) {
-  return RANGE_OPTIONS.find((o) => o.value === Number(daysBack))?.label || `Últimos ${daysBack} días`;
-}
 
 function PanelCard({ label, icon: Icon, panel }) {
   return (
@@ -155,7 +146,7 @@ export default function HealthGoalFollowupView({ goalVersion = 0 }) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>¿Generar un seguimiento nuevo?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Se leerá otra vez lo que has registrado en {rangeLabel(daysBack).toLowerCase()}.
+                    Se leerá otra vez lo que has registrado en {reportRangeLabel(daysBack).toLowerCase()}.
                     El seguimiento actual pasa al historial y sigue accesible ahí.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -185,7 +176,7 @@ export default function HealthGoalFollowupView({ goalVersion = 0 }) {
                   <span className="text-muted-foreground">
                     {(entry.created_at || '').slice(0, 16).replace('T', ' ')}
                   </span>
-                  <Badge variant="secondary" className="ml-2">{rangeLabel(entry.days_back)}</Badge>
+                  <Badge variant="secondary" className="ml-2">{reportRangeLabel(entry.days_back)}</Badge>
                   {entry.summary && <span> — {entry.summary.slice(0, 90)}</span>}
                 </button>
               ))
@@ -219,7 +210,7 @@ export default function HealthGoalFollowupView({ goalVersion = 0 }) {
                   <Select value={String(daysBack)} onValueChange={(v) => setDaysBack(Number(v))}>
                     <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {RANGE_OPTIONS.map((o) => (
+                      {REPORT_RANGE_OPTIONS.map((o) => (
                         <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -241,7 +232,7 @@ export default function HealthGoalFollowupView({ goalVersion = 0 }) {
         <>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <CalendarClock className="h-3.5 w-3.5" />
-            {rangeLabel(followup.days_back)} · última actualización{' '}
+            {reportRangeLabel(followup.days_back)} · última actualización{' '}
             {(followup.created_at || '').slice(0, 16).replace('T', ' ')}
           </p>
 

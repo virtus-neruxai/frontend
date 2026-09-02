@@ -21,6 +21,13 @@ import {
 // or it is not published at all. A day is a list of meals, so a figure there
 // can be a real sum that still leaves a record out, and the tile has to say so
 // rather than passing for the whole day.
+//
+// This is the one place a period sum survived. Everywhere else the window
+// aggregates became means per record, because "≥928 kcal in four days" measured
+// how much got logged rather than how someone ate. A *day* total is different:
+// it is what this card exists to show, and a mean per meal here would answer a
+// question nobody asked. So the sum stays and only the `≥` went — the caveat
+// below says the same thing in words.
 function NutritionTotals({ totals, partialFields = [], compact = false }) {
   const fields = compact
     ? NUTRIENT_FIELDS.filter(([field]) => ['energy_kcal', 'protein_g', 'carbs_g', 'fat_g'].includes(field))
@@ -33,9 +40,11 @@ function NutritionTotals({ totals, partialFields = [], compact = false }) {
           <div key={field} className="rounded-md bg-muted/50 px-2 py-1.5">
             <p className="text-[11px] text-muted-foreground">{label}</p>
             <p className="text-sm font-medium" data-testid={`nutrition-total-${field}`}>
-              {partial && totals?.[field] != null ? '≥ ' : ''}
               {formatHealthValue(totals?.[field], unit)}
             </p>
+            {partial && totals?.[field] != null && (
+              <p className="text-[10px] text-muted-foreground/80">falta alguna comida</p>
+            )}
           </div>
         );
       })}
@@ -132,8 +141,8 @@ export default function NutritionTab() {
               />
               {(records.daySummary.nutrition_totals_partial_fields || []).length > 0 && (
                 <p className="pt-2 text-xs text-muted-foreground">
-                  Los valores con ≥ suman solo las comidas que tienen ese dato. Alguna
-                  comida del día no lo trae, así que el total real es mayor.
+                  Alguna comida del día no trae ese dato, así que suma solo las que sí
+                  lo tienen: el total real es mayor.
                 </p>
               )}
             </>

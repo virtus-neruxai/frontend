@@ -6,16 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import HealthReportView from './HealthReportView';
 import { useHealthReport } from '../../presentation/viewmodels/useHealthReport';
-
-const RANGE_OPTIONS = [
-  { value: 7, label: 'Última semana' },
-  { value: 14, label: 'Últimas 2 semanas' },
-  { value: 30, label: 'Último mes' },
-];
-
-function rangeLabel(daysBack) {
-  return RANGE_OPTIONS.find((o) => o.value === Number(daysBack))?.label || `Últimos ${daysBack} días`;
-}
+import {
+  HISTORY_ALL,
+  HISTORY_RANGE_OPTIONS,
+  REPORT_RANGE_OPTIONS,
+  filterHistoryByRange,
+  historyRangeLabel,
+  reportRangeLabel,
+} from '../../lib/reportRanges';
 
 /**
  * Informe Razonado de Salud. A separate report from the general Mentor's —
@@ -25,6 +23,10 @@ function rangeLabel(daysBack) {
 export default function HealthReportTab() {
   const { report, generating, daysBack, setDaysBack, history, generate, loadHistory, openReport } = useHealthReport();
   const [showHistory, setShowHistory] = useState(false);
+  // Filtro propio del historial: se abre entero y solo se recorta al elegir un
+  // rango. El selector de arriba decide qué periodo se genera, no qué se lista.
+  const [historyRange, setHistoryRange] = useState(HISTORY_ALL);
+  const filteredHistory = filterHistoryByRange(history, historyRange);
 
   const toggleHistory = () => {
     const next = !showHistory;
@@ -39,13 +41,13 @@ export default function HealthReportTab() {
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Brain className="h-5 w-5" /> Informe de salud
           </h2>
-          <p className="text-sm text-muted-foreground">{rangeLabel(daysBack)}</p>
+          <p className="text-sm text-muted-foreground">{reportRangeLabel(daysBack)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Select value={String(daysBack)} onValueChange={(v) => setDaysBack(Number(v))}>
             <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {RANGE_OPTIONS.map((o) => (
+              {REPORT_RANGE_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
               ))}
             </SelectContent>
@@ -67,19 +69,35 @@ export default function HealthReportTab() {
 
       {showHistory && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Historial</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-base">Historial</CardTitle>
+              <Select value={String(historyRange)} onValueChange={setHistoryRange}>
+                <SelectTrigger className="w-44" aria-label="Filtrar historial"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {HISTORY_RANGE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
           <CardContent className="space-y-2">
             {history.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aún no hay informes de salud generados.</p>
+            ) : filteredHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay informes para {historyRangeLabel(historyRange).toLowerCase()}.
+              </p>
             ) : (
-              history.map((r) => (
+              filteredHistory.map((r) => (
                 <button
                   key={r.report_id}
                   onClick={() => { openReport(r.report_id); setShowHistory(false); }}
                   className="block w-full rounded-md border p-2 text-left text-sm hover:bg-muted"
                 >
                   <span className="text-muted-foreground">{(r.created_at || '').slice(0, 16).replace('T', ' ')}</span>
-                  <Badge variant="secondary" className="ml-2">{rangeLabel(r.days_back)}</Badge>
+                  <Badge variant="secondary" className="ml-2">{reportRangeLabel(r.days_back)}</Badge>
                   {r.summary && <span> — {r.summary.slice(0, 90)}</span>}
                 </button>
               ))
@@ -101,7 +119,7 @@ export default function HealthReportTab() {
         <HealthReportView report={report.report_json} reportId={report.id || report.report_id || null} />
       ) : !generating && (
         <Card><CardContent className="pt-6 text-center text-muted-foreground">
-          Pulsa <strong>Generar informe</strong> para tu lectura razonada: {rangeLabel(daysBack).toLowerCase()}.
+          Pulsa <strong>Generar informe</strong> para tu lectura razonada: {reportRangeLabel(daysBack).toLowerCase()}.
         </CardContent></Card>
       )}
     </div>

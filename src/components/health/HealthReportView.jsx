@@ -146,12 +146,26 @@ function EvidenceBadge({ tier }) {
   return <Badge variant="outline" className={style.className}>{style.label}</Badge>;
 }
 
-function StatBlock({ label, value, partial = false }) {
-  const rendered = partial && value !== '—' ? `≥ ${value}` : value;
+// `samples` is how many records back a mean. It replaced the `≥` that used to
+// prefix a partial sum: the sum measured how much the person logged rather than
+// how they trained, and the mark needed a paragraph underneath to explain
+// itself. A denominator says the same thing in the space of a caption, and one
+// record is never called a mean — see MEAN_MIN_SAMPLES in shared/health/records.
+// `feminine` picks the article rather than deriving it from the noun: Spanish
+// gender is not readable off a suffix, and a wrong guess ships as "el única
+// sesión" in front of the person. Same parameter the Python `format_mean` takes.
+function StatBlock({
+  label, value, samples = null,
+  noun = 'registro', nounPlural = 'registros', feminine = false,
+}) {
+  const footnote = samples == null || value === '—' ? null
+    : samples >= 2 ? `media de ${samples} ${nounPlural}`
+      : samples === 1 ? `en ${feminine ? 'la única' : 'el único'} ${noun} con ese dato` : null;
   return (
     <div className="space-y-0.5">
-      <p className="text-xl font-semibold text-foreground" style={{ fontFamily: 'var(--font-heading)' }}>{rendered}</p>
+      <p className="text-xl font-semibold text-foreground" style={{ fontFamily: 'var(--font-heading)' }}>{value}</p>
       <p className="text-xs text-muted-foreground leading-snug">{label}</p>
+      {footnote && <p className="text-[11px] text-muted-foreground/80 leading-snug">{footnote}</p>}
     </div>
   );
 }
@@ -356,36 +370,33 @@ export default function HealthReportView({ report, reportId = null }) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
               <StatBlock label="Sesiones" value={training.sessions} />
               <StatBlock
-                label="Duración total"
-                value={formatMinutes(training.duration_seconds)}
-                partial={training.partial_fields?.includes('duration_seconds')}
+                label="Duración por sesión"
+                value={formatMinutes(training.avg_duration_seconds)}
+                samples={training.samples?.duration_seconds ?? 0}
+                noun="sesión" nounPlural="sesiones" feminine
+              />
+              <StatBlock label="Series en total" value={formatNumber(training.total_sets)} />
+              <StatBlock
+                label="Volumen por sesión"
+                value={formatNumber(training.avg_load_volume_kg, 'kg')}
+                samples={training.samples?.load_volume_kg ?? 0}
+                noun="sesión" nounPlural="sesiones" feminine
               />
               <StatBlock
-                label="Series"
-                value={formatNumber(training.total_sets)}
-                partial={training.partial_fields?.includes('total_sets')}
-              />
-              <StatBlock
-                label="Volumen de carga"
-                value={formatNumber(training.load_volume_kg, 'kg')}
-                partial={training.partial_fields?.includes('load_volume_kg')}
-              />
-              <StatBlock
-                label="Distancia"
-                value={formatNumber(training.distance_m, 'm')}
-                partial={training.partial_fields?.includes('distance_m')}
+                label="Distancia por sesión"
+                value={formatNumber(training.avg_distance_m, 'm')}
+                samples={training.samples?.distance_m ?? 0}
+                noun="sesión" nounPlural="sesiones" feminine
               />
               <StatBlock label="RPE medio" value={formatNumber(training.avg_perceived_exertion, '', 1)} />
               <StatBlock label="Sesiones con molestia" value={training.sessions_with_pain} />
               <StatBlock label="Sin detalle" value={training.untyped_sessions} />
             </div>
           )}
-          {training?.partial_fields?.length > 0 && (
+          {training?.untyped_sessions > 0 && (
             <p className="text-xs text-muted-foreground mb-3">
-              Los totales con «≥» suman solo las sesiones que traen ese dato: son un
-              suelo del periodo, no el periodo completo.
-              {training.untyped_sessions > 0
-                && ` ${training.untyped_sessions} sesión(es) están sin detalle estructurado, por eso faltan de esos totales.`}
+              {training.untyped_sessions} sesión(es) están sin detalle estructurado, por eso
+              alguna media va sobre menos sesiones de las que tiene el periodo.
             </p>
           )}
           <TrendList trends={trendsFor('activity')} />
@@ -417,18 +428,18 @@ export default function HealthReportView({ report, reportId = null }) {
                 <StatBlock
                   key={field}
                   label={label}
-                  value={formatNumber(nutrition[field], unit)}
-                  partial={nutrition.partial_fields?.includes(field)}
+                  value={formatNumber(nutrition[`avg_${field}`], unit)}
+                  samples={nutrition.samples?.[field] ?? 0}
+                  noun="comida" nounPlural="comidas" feminine
                 />
               ))}
             </div>
           )}
-          {nutrition?.incomplete_meals > 0 && (
-            <p className="text-xs text-muted-foreground mt-3">
-              {nutrition.incomplete_meals} comida(s) sin total, así que los macros con
-              «≥» son un suelo: se comió al menos eso, no exactamente eso.
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mt-3">
+            Los macros son medias por comida registrada, no totales del periodo.
+            {nutrition?.incomplete_meals > 0
+              && ` ${nutrition.incomplete_meals} comida(s) sin total, por eso alguna media va sobre menos comidas de las que hay.`}
+          </p>
         </Section>
       )}
 

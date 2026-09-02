@@ -292,7 +292,9 @@ describe('HealthReportView schema 2', () => {
     render(<HealthReportView report={v2({
       nutrition_load: {
         meals: 3, days_with_meals: 2, incomplete_meals: 1,
-        energy_kcal: 1450, protein_g: null, carbs_g: null, fat_g: null, fiber_g: null,
+        samples: { energy_kcal: 2 },
+        avg_energy_kcal: 1450, avg_protein_g: null, avg_carbs_g: null,
+        avg_fat_g: null, avg_fiber_g: null,
       },
     })} />);
 
@@ -304,44 +306,48 @@ describe('HealthReportView schema 2', () => {
     expect(section).not.toHaveTextContent(/\b0 g\b/);
   });
 
-  test('a partial macro is marked ≥ and never confused with a complete total', () => {
-    // The window sums the meals that carried the field; one that did not
-    // makes the figure a floor, not the period's real intake.
+  test('a macro is a mean per meal and says how many meals back it', () => {
+    // The window used to sum the meals that carried the field, which measured
+    // how much got logged rather than how the person ate. The mean says the
+    // thing; the denominator prices it.
     render(<HealthReportView report={v2({
       nutrition_load: {
         meals: 3, days_with_meals: 2, incomplete_meals: 1,
-        partial_fields: ['energy_kcal', 'protein_g'],
-        energy_kcal: 1450, protein_g: 80, carbs_g: 200, fat_g: 60, fiber_g: 20,
+        samples: { energy_kcal: 2, protein_g: 1, carbs_g: 3, fat_g: 3, fiber_g: 3 },
+        avg_energy_kcal: 1450, avg_protein_g: 80, avg_carbs_g: 200,
+        avg_fat_g: 60, avg_fiber_g: 20,
       },
     })} />);
 
     const section = screen.getByTestId('health-report-nutrition');
-    expect(section).toHaveTextContent('≥ 1450 kcal');
-    expect(section).toHaveTextContent('≥ 80 g');
-    expect(section).toHaveTextContent('200 g');
-    expect(section).not.toHaveTextContent('≥ 200 g');
-    expect(section).toHaveTextContent(/un suelo/i);
+    expect(section).toHaveTextContent('1450 kcal');
+    expect(section).toHaveTextContent('media de 2 comidas');
+    // One sample is not a mean, and is not called one.
+    expect(section).toHaveTextContent('en la única comida con ese dato');
+    expect(section).not.toHaveTextContent('≥');
+    expect(section).toHaveTextContent(/medias por comida registrada/i);
   });
 
-  test('a partial training total is marked and explained, not shown as a dash', () => {
-    // `duration_seconds` is a real floor here — 90 min is the sum of the two
-    // sessions that had it, and the third (untyped) session is why it is not
-    // the whole period. Blanking it to "—" would hide the two that were
-    // recorded; showing it bare would claim it covers all three.
+  test('a training magnitude is a mean per session and explains a short denominator', () => {
+    // 45 min is the mean of the two sessions that carried a duration; the
+    // third is untyped, which is why the denominator is smaller than the
+    // window and why the section has to say so.
     render(<HealthReportView report={v2({
       training_load: {
         sessions: 3, strength_sessions: 2, endurance_sessions: 0, untyped_sessions: 1,
-        partial_fields: ['duration_seconds'],
-        duration_seconds: 5400, energy_expenditure_kcal: null, total_sets: null,
-        total_repetitions: null, load_volume_kg: null, distance_m: null,
+        samples: { duration_seconds: 2 },
+        avg_duration_seconds: 2700, avg_energy_expenditure_kcal: null,
+        total_sets: null, total_repetitions: null,
+        avg_load_volume_kg: null, avg_distance_m: null,
         avg_perceived_exertion: 7, sessions_with_pain: 0,
       },
     })} />);
 
     const section = screen.getByTestId('health-report-activity');
-    expect(section).toHaveTextContent('≥ 90 min');
+    expect(section).toHaveTextContent('45 min');
+    expect(section).toHaveTextContent('media de 2 sesiones');
+    expect(section).not.toHaveTextContent('≥');
     expect(section).toHaveTextContent(/sin detalle estructurado/i);
-    expect(section).toHaveTextContent(/un suelo del periodo/i);
   });
 
   test('a training total nobody recorded at all is a bare dash, not a floor', () => {
