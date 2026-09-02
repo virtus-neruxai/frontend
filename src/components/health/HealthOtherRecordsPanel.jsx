@@ -11,6 +11,10 @@ import { useHealthActivities } from '../../presentation/viewmodels/useHealthActi
  *
  * Autocontenido a propósito: no comparte estado con Alimentación ni
  * Entrenamiento, igual que `HealthNotesPanel`.
+ *
+ * Es el único sitio de la app donde se puede crear un registro sin
+ * estructura (`recovery`, `general_health`, `holistic`): Alimentación y
+ * Entrenamiento crean con el tipo fijo a `nutrition`/`training`.
  */
 export default function HealthOtherRecordsPanel() {
   const records = useHealthActivities();
@@ -26,7 +30,7 @@ export default function HealthOtherRecordsPanel() {
       tasks={records.tasks}
       loading={records.loading}
       saving={records.saving}
-      allowCreate={false}
+      onCreate={records.create}
       emptyMessage="No hay registros anteriores sin detalle estructurado."
       onUpdate={records.update}
       onDelete={records.remove}
