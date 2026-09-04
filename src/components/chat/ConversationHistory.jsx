@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { MessageCircle, ChevronRight, Clock, RefreshCw } from 'lucide-react';
@@ -8,8 +8,28 @@ import { getProfileName } from '../../lib/profileUtils';
 import { getStartupRetryDelay, isRetryableStartupError } from '../../lib/startupRetry';
 import { useProfileTheme } from '../../theme/useProfileTheme';
 
-const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation }, ref) => {
+const ConversationHistory = forwardRef(({
+  activeSessionId,
+  onSelectConversation,
+  // Which feed to render. Defaults to the general Mentor's, so every existing
+  // caller keeps working untouched; the health surface passes its own.
+  api = conversationsApi,
+  // The general history is partitioned per mentor profile server-side. The
+  // health one is not — a knee described under one voice is the same knee under
+  // another — so it neither filters by profile nor waits for it to resolve.
+  profileScoped = true,
+  // Null keeps the general Mentor's profile-aware wording; the health
+  // surface passes its own, since naming a profile there would be a lie.
+  emptyLabel = null,
+}, ref) => {
   const { persistedProfileId, isProfileSynced } = useProfileTheme();
+  const profileReady = profileScoped ? isProfileSynced : true;
+  // Memoized: it feeds the fetch callbacks' dependency arrays, so a fresh
+  // object each render would re-create them and refetch in a loop.
+  const listParams = useMemo(
+    () => (profileScoped ? { prompt_profile: persistedProfileId } : {}),
+    [profileScoped, persistedProfileId],
+  );
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -41,7 +61,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
     setLoading(true);
     let retryDelay = null;
     try {
-      const response = await conversationsApi.getAll({ prompt_profile: persistedProfileId });
+      const response = await api.getAll(listParams);
       const data = response.data;
       setConversations(Array.isArray(data) ? data : []);
       setLoadError(false);
@@ -71,7 +91,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
         }, retryDelay);
       }
     }
-  }, [persistedProfileId]);
+  }, [api, listParams]);
 
   // forceSelect: true when the user explicitly clicks a conversation or after
   // sending a message (so the panel always shows); false for auto-loads on
@@ -80,9 +100,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
   // so loading a (possibly empty) new session never clears the list's spinner.
   const fetchConversationDetail = useCallback(async (sessionId, forceSelect = false) => {
     try {
-      const response = await conversationsApi.getById(sessionId, {
-        prompt_profile: persistedProfileId,
-      });
+      const response = await api.getById(sessionId, listParams);
       const data = response.data;
       const loaded = Array.isArray(data.messages) ? data.messages : [];
       setMessages(loaded);
@@ -93,7 +111,7 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
       console.error('Error fetching conversation:', error);
       setMessages([]);
     }
-  }, [persistedProfileId]);
+  }, [api, listParams]);
 
   const fetchFrictionLabels = useCallback(async () => {
     try {
@@ -114,9 +132,9 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
   // would filter by the cached/default one and render a false "no
   // conversations" (the request succeeds, it just matches nothing).
   useEffect(() => {
-    if (!isProfileSynced) return;
+    if (!profileReady) return;
     fetchConversations();
-  }, [persistedProfileId, isProfileSynced, fetchConversations]);
+  }, [persistedProfileId, profileReady, fetchConversations]);
 
   useEffect(() => {
     fetchFrictionLabels();
@@ -124,21 +142,21 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
 
   // Auto-load the active session's messages when activeSessionId changes
   useEffect(() => {
-    if (!isProfileSynced) return;
+    if (!profileReady) return;
     if (activeSessionId) {
       fetchConversationDetail(activeSessionId);
     }
-  }, [activeSessionId, isProfileSynced, fetchConversationDetail]);
+  }, [activeSessionId, profileReady, fetchConversationDetail]);
 
   // Refetch when the tab/window regains focus so the list self-heals after the
   // backend finishes starting or after a transient network error.
   useEffect(() => {
     const onFocus = () => {
-      if (isProfileSynced) fetchConversations();
+      if (profileReady) fetchConversations();
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [isProfileSynced, fetchConversations]);
+  }, [profileReady, fetchConversations]);
 
   // Cancel any pending retry timer on unmount.
   useEffect(() => () => {
@@ -230,16 +248,20 @@ const ConversationHistory = forwardRef(({ activeSessionId, onSelectConversation 
               </button>
             </div>
           ) : conversations.length === 0 ? (
-            // Name the profile being filtered: an empty list is otherwise
-            // indistinguishable from filtering by the wrong profile.
-            <p className="text-muted-foreground text-sm">
-              No tienes conversaciones con el mentor{' '}
-              <span className="font-semibold text-foreground">
-                {getProfileName(persistedProfileId)}
-              </span>{' '}
-              todavía. Empieza una nueva conversación arriba, o cambia de perfil
-              si esperabas ver otras.
-            </p>
+            emptyLabel ? (
+              <p className="text-muted-foreground text-sm">{emptyLabel}</p>
+            ) : (
+              // Name the profile being filtered: an empty list is otherwise
+              // indistinguishable from filtering by the wrong profile.
+              <p className="text-muted-foreground text-sm">
+                No tienes conversaciones con el mentor{' '}
+                <span className="font-semibold text-foreground">
+                  {getProfileName(persistedProfileId)}
+                </span>{' '}
+                todavía. Empieza una nueva conversación arriba, o cambia de perfil
+                si esperabas ver otras.
+              </p>
+            )
           ) : (
             conversations.map((conv) => {
               const isActive = conv.session_id === activeSessionId;

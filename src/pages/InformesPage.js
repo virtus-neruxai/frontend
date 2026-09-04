@@ -4,7 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import CenterView from '../presentation/components/reasoning/CenterView';
 import ReasoningReportTab from '../presentation/components/reasoning/ReasoningReportTab';
-import { Brain, Orbit } from 'lucide-react';
+import HealthReportTab from '../components/health/HealthReportTab';
+import { Brain, HeartPulse, Orbit } from 'lucide-react';
+
+const TAB_LABELS = {
+  centro: 'Mi centro',
+  informe: 'Informe Razonado',
+  'informe-salud': 'Informe de Salud',
+};
 
 export default function InformesPage() {
   const [activeTab, setActiveTab] = useState('centro');
@@ -20,7 +27,7 @@ export default function InformesPage() {
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Espacio activo</p>
               <p className="font-bold text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-                {activeTab === 'informe' ? 'Informe Razonado' : 'Mi centro'}
+                {TAB_LABELS[activeTab] || TAB_LABELS.centro}
               </p>
             </div>
           }
@@ -36,6 +43,10 @@ export default function InformesPage() {
               <Brain className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Informe razonado
             </TabsTrigger>
+            <TabsTrigger value="informe-salud" className="rounded-full data-[state=active]:bg-card">
+              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Informe de salud
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="centro" className="space-y-4">
@@ -44,6 +55,10 @@ export default function InformesPage() {
 
           <TabsContent value="informe" className="space-y-4">
             <ReasoningReportTab />
+          </TabsContent>
+
+          <TabsContent value="informe-salud" className="space-y-4">
+            <HealthReportTab />
           </TabsContent>
         </Tabs>
       </div>

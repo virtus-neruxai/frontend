@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { statsApi, characterApi, tasksApi, missionsApi, profileApi, behaviorsApi } from '../../lib/api';
+import {
+  statsApi, characterApi, tasksApi, missionsApi, profileApi, behaviorsApi,
+  healthPracticesApi, healthReportApi,
+} from '../../lib/api';
 import { buildRelativeDateRange, getPersistedRange, persistRange } from '../../lib/dateRangeUtils';
 import { toast } from 'sonner';
 import {
@@ -16,6 +19,12 @@ const FRICTIONS_RANGE_OPTIONS = [
 ];
 
 const EMOTIONAL_PATTERNS_RANGE_OPTIONS = [
+  { value: '7',  label: 'Últimos 7 días' },
+  { value: '30', label: 'Últimos 30 días' },
+  { value: '90', label: 'Últimos 90 días' },
+];
+
+const POSITIVE_HEALTH_SIGNALS_RANGE_OPTIONS = [
   { value: '7',  label: 'Últimos 7 días' },
   { value: '30', label: 'Últimos 30 días' },
   { value: '90', label: 'Últimos 90 días' },
@@ -66,6 +75,12 @@ export function useDashboard(initialProfile) {
   // Emotional patterns state
   const [learnedResponses, setLearnedResponses] = useState(null);
   const [learnedResponsesLoading, setLearnedResponsesLoading] = useState(false);
+  const [healthPractices, setHealthPractices] = useState(null);
+  const [healthPracticesLoading, setHealthPracticesLoading] = useState(false);
+  const [positiveHealthSignals, setPositiveHealthSignals] = useState(null);
+  const [positiveHealthSignalsLoading, setPositiveHealthSignalsLoading] = useState(false);
+  const [positiveHealthSignalsError, setPositiveHealthSignalsError] = useState('');
+  const [positiveHealthSignalsRange, setPositiveHealthSignalsRange] = useState('7');
   const [emotionalPatterns, setEmotionalPatterns] = useState(null);
   const [emotionalPatternsLoading, setEmotionalPatternsLoading] = useState(false);
   const [emotionalPatternsRange, setEmotionalPatternsRange] = useState('7');
@@ -263,6 +278,51 @@ export function useDashboard(initialProfile) {
     await fetchLearnedResponses();
   }, [fetchLearnedResponses]);
 
+  const fetchHealthPractices = useCallback(async () => {
+    setHealthPracticesLoading(true);
+    try {
+      const res = await healthPracticesApi.list(parseInt(range, 10));
+      setHealthPractices(res.data);
+    } catch (error) {
+      setHealthPractices(null);
+    } finally {
+      setHealthPracticesLoading(false);
+    }
+  }, [range]);
+
+  const recordHealthPracticeApplication = useCallback(async (practiceKey, data) => {
+    await healthPracticesApi.recordApplication(practiceKey, data);
+    await fetchHealthPractices();
+  }, [fetchHealthPractices]);
+
+  const setHealthPracticeStatus = useCallback(async (practiceKey, status) => {
+    await healthPracticesApi.setStatus(practiceKey, status);
+    await fetchHealthPractices();
+  }, [fetchHealthPractices]);
+
+  // Stored-report snapshot only: this does not reread activities, meals,
+  // notes or check-ins. The reasoning endpoint returns a privacy-minimal
+  // aggregate and keeps every citation identifier server-side.
+  const fetchPositiveHealthSignals = useCallback(async () => {
+    setPositiveHealthSignalsLoading(true);
+    setPositiveHealthSignalsError('');
+    try {
+      const res = await healthReportApi.getPositiveSignals(
+        parseInt(positiveHealthSignalsRange, 10)
+      );
+      setPositiveHealthSignals(res.data);
+    } catch (error) {
+      console.error('Error fetching positive health signals:', error);
+      setPositiveHealthSignals(null);
+      setPositiveHealthSignalsError(
+        error?.response?.data?.detail
+        || 'No se pudieron cargar las señales de salud.'
+      );
+    } finally {
+      setPositiveHealthSignalsLoading(false);
+    }
+  }, [positiveHealthSignalsRange]);
+
   const fetchMissionLenses = useCallback(async () => {
     setMissionLensesLoading(true);
     try {
@@ -320,6 +380,14 @@ export function useDashboard(initialProfile) {
     fetchLearnedResponses();
   }, [fetchLearnedResponses]);
 
+  useEffect(() => {
+    fetchHealthPractices();
+  }, [fetchHealthPractices]);
+
+  useEffect(() => {
+    fetchPositiveHealthSignals();
+  }, [fetchPositiveHealthSignals]);
+
   return {
     summary,
     timeseries,
@@ -370,6 +438,17 @@ export function useDashboard(initialProfile) {
     refreshLearnedResponses: fetchLearnedResponses,
     recordBehaviorApplication,
     setBehaviorStatus,
+    healthPractices,
+    healthPracticesLoading,
+    recordHealthPracticeApplication,
+    setHealthPracticeStatus,
+    positiveHealthSignals,
+    positiveHealthSignalsLoading,
+    positiveHealthSignalsError,
+    positiveHealthSignalsRange,
+    setPositiveHealthSignalsRange,
+    positiveHealthSignalsRangeOptions: POSITIVE_HEALTH_SIGNALS_RANGE_OPTIONS,
+    refreshPositiveHealthSignals: fetchPositiveHealthSignals,
     missionLenses,
     missionLensesLoading,
     refreshMissionLenses: fetchMissionLenses,

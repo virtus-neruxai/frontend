@@ -145,6 +145,16 @@ agentApiInstance.interceptors.response.use(
   }
 );
 
+// Which confirmation modal a `ui_action` opens. Shared by a live chat turn
+// (useAgentChat/useHealthChat) and by draft recovery on page load
+// (MentorPage/HealthMentorChatTab): both end up with the same `{action}` shape
+// and must classify it the same way.
+export const draftTypeFromAction = (action) => {
+  if (action === 'SHOW_MISSION_CONFIRMATION_MODAL') return 'mission';
+  if (action === 'SHOW_PROJECT_CONFIRMATION_MODAL') return 'project';
+  return 'task';
+};
+
 export const agentApi = {
   chat: (message, sessionId, deepReasoning = false, userDataQa = false, projectPlan = false) =>
     agentApiInstance.post('/agent/chat', {
@@ -155,16 +165,119 @@ export const agentApi = {
       project_plan: projectPlan,
     }),
   confirmDraft: (data) => agentApiInstance.post('/agent/draft/confirm', data),
+  // A draft outlives the tab that received it — it sits in Redis for
+  // REDIS_DRAFT_TTL (1h) regardless of what the browser remembers. This is
+  // how a page recovers it after a reload: `sessionId` scopes the search to
+  // the active conversation so "Nueva Conversación" does not resurrect a
+  // proposal from a thread already left behind.
+  getPendingDrafts: (sessionId) =>
+    agentApiInstance.get('/agent/drafts', { params: { session_id: sessionId } }),
   // "Mi centro" → Crear tarea/misión/rutina (euler-application.md §6.5). Same
   // plain-JWT handoff the diary reflection already uses — the frontend never
   // sends more than the final reflection's text, its provenance and the
   // action the user explicitly picked.
-  reviewHandoff: (message, actionType) =>
+  // `options` lo usa el seguimiento de objetivos de Salud, que propone por
+  // esta misma vía: cambia la procedencia y marca la superficie sanitaria para
+  // que el borrador y su confirmación no acaben entre las del Mentor general.
+  reviewHandoff: (message, actionType, options = {}) =>
     agentApiInstance.post('/agent/review/handoff', {
       message,
-      source: 'center',
+      source: options.source || 'center',
       action_type: actionType,
+      health_surface: Boolean(options.healthSurface),
     }),
+};
+
+// Health Mentor API — superficie sanitaria, separada del Mentor general.
+//
+// Comparte `agentApiInstance` (mismo host, mismo token, mismo manejo de 401)
+// pero NADA de su contrato: endpoint propio, historial propio y solo dos
+// toggles. "Datos de la app" no existe aquí — el backend devuelve 422 si
+// llega `user_data_qa`, así que enviarlo sería un error, no una opción.
+export const healthAgentApi = {
+  // `usePersonalData` es ortogonal a los dos modos y va el ultimo a proposito:
+  // los cinco primeros parametros son los que ya existian, asi que ninguna
+  // llamada previa cambia de significado al anadirlo.
+  chat: (
+    message, sessionId, deepReasoning = false, projectPlan = false,
+    resetSession = false, usePersonalData = false,
+  ) =>
+    agentApiInstance.post('/agent/health-chat', {
+      message,
+      session_id: sessionId,
+      deep_reasoning: deepReasoning,
+      project_plan: projectPlan,
+      reset_session: resetSession,
+      use_personal_data: usePersonalData,
+    }),
+  // Un único hilo por usuario, sin filtro de perfil: una lesión contada bajo una
+  // voz sigue siendo la misma lesión bajo otra.
+  getInteractions: (params = {}) =>
+    agentApiInstance.get('/agent/health-chat/interactions', {
+      params: { limit: 200, skip: 0, ...params },
+    }),
+  // Same recovery as agentApi.getPendingDrafts, scoped server-side to the
+  // health surface's own drafts.
+  getPendingDrafts: (sessionId) =>
+    agentApiInstance.get('/agent/health-chat/drafts', { params: { session_id: sessionId } }),
+  // Al reconceder el recuerdo hay que volver a indexar: el backend purga al
+  // revocar pero no puede restaurar, porque las notas viven en agent-service.
+  // Devuelve 409 si el consentimiento no esta concedido, en vez de indexar cero
+  // notas y reportar exito — que se leeria como que la concesion habia fallado.
+  reindexNotes: () => agentApiInstance.post('/agent/health-chat/notes/reindex'),
+};
+
+// Health activities API — the person's own record of what they did (meals,
+// sessions, rest, measurements). Canonical data, never a retrieval candidate:
+// nothing here publishes to the outbox (see backend/routes/health_activities.py).
+export const healthActivitiesApi = {
+  getAll: (params = {}) => api.get('/health-activities', { params }),
+  // La otra mitad del mismo gesto: las notas libres de los registros comparten
+  // el scope `health_note_recall` y la misma purga, asi que reconceder tiene
+  // que republicar las dos cosas o la memoria vuelve a medias.
+  reindexNotes: () => api.post('/health-activities/reindex'),
+  getSummary: (params = {}) => api.get('/health-activities/summary', { params }),
+  get: (activityId) => api.get(`/health-activities/${activityId}`),
+  create: (data) => api.post('/health-activities', data),
+  update: (activityId, data) => api.patch(`/health-activities/${activityId}`, data),
+  remove: (activityId) => api.delete(`/health-activities/${activityId}`),
+  // Relleno asistido del formulario. Devuelve una propuesta y no escribe nada:
+  // guardar sigue pasando por `create`, que recalcula todo lo que es del
+  // servidor sin importar como nacio el borrador. 404 con el flag apagado.
+  aiDraft: (data) => api.post('/health-activities/ai-draft', data),
+};
+
+// Personal health library. Foods and exercises are individual autocomplete
+// entries; templates are explicit snapshots of a complete meal or workout.
+// Applying a template creates a new canonical HealthActivity server-side so
+// derived totals/volume/pace are never calculated by the browser.
+const healthLibraryCrud = (resource) => ({
+  getAll: (params = {}) => api.get(`/health-library/${resource}`, { params }),
+  create: (data) => api.post(`/health-library/${resource}`, data),
+  update: (id, data) => api.patch(`/health-library/${resource}/${id}`, data),
+  remove: (id) => api.delete(`/health-library/${resource}/${id}`),
+});
+
+export const healthLibraryApi = {
+  foods: healthLibraryCrud('foods'),
+  exercises: healthLibraryCrud('exercises'),
+  templates: {
+    ...healthLibraryCrud('templates'),
+    apply: (id, data) => api.post(`/health-library/templates/${id}/apply`, data),
+  },
+};
+
+// Health notes API — what the Mentor de Salud has retained from conversation,
+// never the transcript itself. No POST: a note is born from the classifier,
+// the person can only correct (`update`) or remove (`remove`) it.
+export const healthNotesApi = {
+  getAll: (params = {}) => agentApiInstance.get('/agent/health-chat/notes', { params }),
+  update: (noteId, content) =>
+    agentApiInstance.patch(`/agent/health-chat/notes/${noteId}`, { content }),
+  remove: (noteId) => agentApiInstance.delete(`/agent/health-chat/notes/${noteId}`),
+  // Deletes every note at once, each purged from the health index too — the
+  // memory-side twin of resetting the conversation's context.
+  resetAll: () => agentApiInstance.post('/agent/health-chat/notes/reset'),
 };
 
 // Projects API — planificaciones (item_type="project") con sus tasks/routines hijas.
@@ -247,6 +360,68 @@ export const reasoningApi = {
     }),
 };
 
+// Health goal — one live goal per person, on the backend and not in
+// reasoning-service. `get` answers `null` when nothing is declared: the product
+// records a direction, it never proposes one.
+export const healthGoalApi = {
+  get: () => api.get('/health-goal'),
+  set: (payload) => api.put('/health-goal', payload),
+  clear: () => api.delete('/health-goal'),
+};
+
+// Health Report API (Informe Razonado de Salud) — own endpoints, own job
+// store, own history. Never a section of reasoningApi's general report: the
+// two never share a row, a query or a response (see health_report_store.py).
+export const healthReportApi = {
+  generateReport: (daysBack = 14) =>
+    reasoningApiInstance.post('/reasoning/health-report', { days_back: daysBack }),
+  getReportJob: (jobId) => reasoningApiInstance.get(`/reasoning/health-report-jobs/${jobId}`),
+  getReports: () => reasoningApiInstance.get('/reasoning/health-reports'),
+  getPositiveSignals: (days = 30) =>
+    reasoningApiInstance.get('/reasoning/health-positive-signals', { params: { days } }),
+  getReport: (reportId) => reasoningApiInstance.get(`/reasoning/health-reports/${reportId}`),
+  askQuestion: (reportId, data) =>
+    reasoningApiInstance.post(`/reasoning/health-reports/${reportId}/chat`, data),
+  getCompanion: (reportId) =>
+    reasoningApiInstance.get(`/reasoning/health-reports/${reportId}/companion`),
+  generateCompanion: (reportId) =>
+    reasoningApiInstance.post(`/reasoning/health-reports/${reportId}/companion`),
+  adoptAction: (reportId, actionId) =>
+    reasoningApiInstance.post(
+      `/reasoning/health-reports/${reportId}/actions/${encodeURIComponent(actionId)}/adopt`
+    ),
+  // Se envian el informe y la relacion, y ninguna redaccion. El texto de la
+  // nota lo compone el servidor desde la relacion inmutable que guardo: dejar
+  // que el navegador mandase prosa convertiria el boton en una via de escritura
+  // libre a la memoria del Mentor.
+  adoptRelation: (reportId, relationId) =>
+    reasoningApiInstance.post(
+      `/reasoning/health-reports/${reportId}/relations/${encodeURIComponent(relationId)}/adopt`
+    ),
+};
+
+// Seguimiento de objetivos de salud — supervisa el objetivo declarado, no el
+// periodo entero. Colecciones, cuota e historial propios, igual que el informe:
+// generar un seguimiento no gasta ni reutiliza un informe de salud.
+export const healthFollowupApi = {
+  generate: (daysBack = 14) =>
+    reasoningApiInstance.post('/reasoning/health-goal-followup', { days_back: daysBack }),
+  getJob: (jobId) => reasoningApiInstance.get(`/reasoning/health-goal-followup-jobs/${jobId}`),
+  // El vigente y el job en vuelo en una sola llamada: la fuente de verdad de
+  // «se está generando» es el servidor, no el almacenamiento del navegador.
+  getCurrent: () => reasoningApiInstance.get('/reasoning/health-goal-followups/current'),
+  list: () => reasoningApiInstance.get('/reasoning/health-goal-followups'),
+  get: (followupId) => reasoningApiInstance.get(`/reasoning/health-goal-followups/${followupId}`),
+};
+
+export const healthPracticesApi = {
+  list: (days = 90) => api.get('/health-practices', { params: { days } }),
+  recordApplication: (practiceKey, data = {}) =>
+    api.post(`/health-practices/${encodeURIComponent(practiceKey)}/applications`, data),
+  setStatus: (practiceKey, status) =>
+    api.patch(`/health-practices/${encodeURIComponent(practiceKey)}`, { status }),
+};
+
 // Fase 2 — plan y desbloqueos por actividad (backend, no reasoning-service).
 export const meApi = {
   getPlan: () => api.get('/me/plan'),
@@ -300,10 +475,25 @@ const getAgentInteractions = async (params = {}) => {
   return { response, interactions: response.data?.interactions || [] };
 };
 
-// Conversations API — compatibility adapter over agent-service interactions.
-export const conversationsApi = {
+const getHealthInteractions = async (params = {}) => {
+  // prompt_profile is deliberately dropped: the health endpoint has no such
+  // filter, and forwarding it would only look like it partitioned something.
+  const { prompt_profile, ...rest } = params;
+  const response = await agentApiInstance.get('/agent/health-chat/interactions', {
+    params: { limit: 500, skip: 0, ...rest },
+  });
+  return { response, interactions: response.data?.interactions || [] };
+};
+
+// Conversations adapter — groups a flat interaction feed into conversations.
+//
+// Both mentors persist turns the same way (one row per turn, keyed by
+// session_id); they only differ in which endpoint serves them. So the grouping
+// lives here once and each surface supplies its own fetcher, rather than the
+// health history growing a second copy of this logic that can drift.
+const buildConversationsApi = (fetchInteractions) => ({
   getAll: async (params = {}) => {
-    const { response, interactions } = await getAgentInteractions(params);
+    const { response, interactions } = await fetchInteractions(params);
     const conversations = {};
 
     interactions.forEach((item) => {
@@ -332,7 +522,7 @@ export const conversationsApi = {
     };
   },
   getById: async (sessionId, params = {}) => {
-    const { response, interactions } = await getAgentInteractions(params);
+    const { response, interactions } = await fetchInteractions(params);
     const messages = interactions
       .filter((item) => (item.session_id || 'sin-sesion') === sessionId)
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
@@ -358,7 +548,13 @@ export const conversationsApi = {
 
     return { ...response, data: { session_id: sessionId, messages } };
   },
-};
+});
+
+export const conversationsApi = buildConversationsApi(getAgentInteractions);
+
+// Health history: same shape, different endpoint, and no prompt_profile — one
+// thread per user rather than one per mentor voice.
+export const healthConversationsApi = buildConversationsApi(getHealthInteractions);
 
 // Profile API
 export const profileApi = {
@@ -372,6 +568,21 @@ export const profileApi = {
 export const userSettingsApi = {
   getSettings: (config = {}) => api.get('/user/settings', config),
   saveSettings: (data) => api.patch('/user/settings', data),
+};
+
+// Separate from userSettingsApi.saveSettings on purpose: the backend PATCH for
+// /user/settings deliberately ignores these two fields (a second write path
+// would produce grants no revocation could match against). Revoking here also
+// purges the health note index server-side, which a plain settings save never
+// does — so this has to be its own endpoint, not a field in the same PATCH.
+export const healthConsentApi = {
+  // Sin `scope` responde por `health_note_recall`, que es lo que pedian todos
+  // los clientes antes de que existieran los otros dos. Cambiar ese default
+  // volveria a apuntar a otro sitio cada llamada sin versionar.
+  getConsent: (config = {}) => api.get('/health-consent', config),
+  getAllConsent: (config = {}) => api.get('/health-consent/all', config),
+  setConsent: (granted, scope) =>
+    api.post('/health-consent', scope ? { granted, scope } : { granted }),
 };
 
 export default api;

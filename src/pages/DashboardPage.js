@@ -16,6 +16,8 @@ import { DomainDistributionChart } from '../presentation/components/dashboard/Do
 import { DetectedPatternsPanel } from '../presentation/components/dashboard/DetectedPatternsPanel';
 import { EmotionalPatternsPanel } from '../presentation/components/dashboard/EmotionalPatternsPanel';
 import { LearnedResponsesPanel } from '../presentation/components/dashboard/LearnedResponsesPanel';
+import { HealthPracticesPanel } from '../presentation/components/dashboard/HealthPracticesPanel';
+import { PositiveHealthSignalsPanel } from '../presentation/components/dashboard/PositiveHealthSignalsPanel';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
 import { KPI_TOKENS } from '../theme/semanticTokens';
 import { useProfileTheme } from '../theme/useProfileTheme';
@@ -81,6 +83,17 @@ export default function DashboardPageRefactored() {
     learnedResponsesLoading,
     recordBehaviorApplication,
     setBehaviorStatus,
+    healthPractices,
+    healthPracticesLoading,
+    recordHealthPracticeApplication,
+    setHealthPracticeStatus,
+    positiveHealthSignals,
+    positiveHealthSignalsLoading,
+    positiveHealthSignalsError,
+    positiveHealthSignalsRange,
+    setPositiveHealthSignalsRange,
+    positiveHealthSignalsRangeOptions,
+    refreshPositiveHealthSignals,
     missionLenses,
     missionLensesLoading,
   } = useDashboard(persistedProfileId);
@@ -124,7 +137,7 @@ export default function DashboardPageRefactored() {
   const handleTaskModalSaved = async () => {
     setTaskModalOpen(false);
     setEditingTask(null);
-    await Promise.all([refreshStats(), refreshPositiveReflections()]);
+    await refreshStats();
     setListOpen(true);
   };
 
@@ -165,13 +178,22 @@ export default function DashboardPageRefactored() {
         {/* Challenges — seguimiento de cumplimiento de desafíos */}
         <ChallengesCard />
 
-        {/* Conductas adoptadas (NRRM §13.2) — se oculta si no hay ninguna */}
-        <LearnedResponsesPanel
-          data={learnedResponses}
-          loading={learnedResponsesLoading}
-          onRecordApplication={recordBehaviorApplication}
-          onSetStatus={setBehaviorStatus}
-        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Conductas psicológicas y prácticas sanitarias son entidades hermanas,
+              pero nunca comparten almacenamiento ni semántica. */}
+          <LearnedResponsesPanel
+            data={learnedResponses}
+            loading={learnedResponsesLoading}
+            onRecordApplication={recordBehaviorApplication}
+            onSetStatus={setBehaviorStatus}
+          />
+          <HealthPracticesPanel
+            data={healthPractices}
+            loading={healthPracticesLoading}
+            onRecordApplication={recordHealthPracticeApplication}
+            onSetStatus={setHealthPracticeStatus}
+          />
+        </div>
 
         {loading ? (
           <div className="h-96 flex items-center justify-center">
@@ -318,6 +340,16 @@ export default function DashboardPageRefactored() {
             />
           </div>
         )}
+
+        <PositiveHealthSignalsPanel
+          data={positiveHealthSignals}
+          loading={positiveHealthSignalsLoading}
+          error={positiveHealthSignalsError}
+          range={positiveHealthSignalsRange}
+          rangeOptions={positiveHealthSignalsRangeOptions}
+          onRangeChange={setPositiveHealthSignalsRange}
+          onRetry={refreshPositiveHealthSignals}
+        />
       </div>
 
       <TaskListDialog

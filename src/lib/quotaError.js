@@ -40,6 +40,7 @@ export const FEATURE_LABELS = {
   companion: ['los', 'mensajes transformadores'],
   misiones_retos: ['las', 'generaciones de misiones y retos'],
   perfil_ia: ['las', 'actualizaciones de tu perfil con IA'],
+  captura_ia: ['los', 'rellenados de formularios con IA'],
   // Enforcement "scheduler" — nunca generan un 429 (se filtran al encolar, no
   // por request), así que quotaMessage() no los usa. Existen aquí solo para
   // que la pantalla de Uso tenga un sustantivo que mostrar.

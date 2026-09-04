@@ -13,6 +13,12 @@ vi.mock('sonner', () => ({
 vi.mock('../lib/api', () => ({
   agentApi: {
     chat: vi.fn(),
+    getPendingDrafts: vi.fn().mockResolvedValue({ data: { drafts: [] } }),
+  },
+  draftTypeFromAction: (action) => {
+    if (action === 'SHOW_MISSION_CONFIRMATION_MODAL') return 'mission';
+    if (action === 'SHOW_PROJECT_CONFIRMATION_MODAL') return 'project';
+    return 'task';
   },
 }));
 
@@ -35,7 +41,6 @@ vi.mock('../components/chat/ConversationHistory', async () => {
 vi.mock('../components/TaskDraftModal', () => ({ default: () => null }));
 vi.mock('../components/MissionDraftModal', () => ({ default: () => null }));
 vi.mock('../components/ProjectDraftModal', () => ({ default: () => null }));
-vi.mock('../presentation/components/character/ChallengesTab', () => ({ ChallengesTab: () => null }));
 vi.mock('../presentation/components/profile-theme/ProfileHeroCard', () => ({
   ProfileHeroCard: ({ title }) => <div data-testid="profile-hero">{title}</div>,
 }));

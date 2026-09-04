@@ -22,14 +22,16 @@ const DRAFT_TYPE_BY_ACTION = {
 };
 
 /**
- * Check-in corporal — unidad visual independiente del Diario, en la primera
- * pestaña de Caracter. Estado, guardado y errores propios: si el check-in
- * falla, el Diario no se ve afectado (y viceversa). Instancia PROPIA de
- * useDrafts para que confirmar una propuesta del Mentor aquí no interfiera
- * con los drafts del Diario.
+ * Check-in corporal — unidad visual independiente del resto de su pestaña
+ * host. Estado, guardado y errores propios: si el check-in falla, nada más
+ * en la página se ve afectado (y viceversa). Instancia PROPIA de useDrafts
+ * para que confirmar una propuesta del Mentor aquí no interfiera con otros
+ * drafts de la misma página. Primera pestaña ("Registro corporal") del grupo
+ * de sub-pestañas en `HealthDataTab.jsx` ("Salud" en la navegación) — antes
+ * fue la primera pestaña de Carácter.
  *
  * onStatsChanged: el check-in tiene su propio hook/estado (useBodyCheckin),
- * separado del useCharacter() de CharacterPage — sin este callback, un stat
+ * separado del useCharacter() del host — sin este callback, un stat
  * aplicado aquí no se reflejaba en el panel de Estadísticas hasta recargar.
  */
 export function BodyCheckinSection({ statsInfo = {}, onStatsChanged }) {

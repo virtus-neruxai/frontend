@@ -1,0 +1,127 @@
+import { useState } from 'react';
+import { Brain, History, Loader2 } from 'lucide-react';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import HealthReportView from './HealthReportView';
+import { useHealthReport } from '../../presentation/viewmodels/useHealthReport';
+import {
+  HISTORY_ALL,
+  HISTORY_RANGE_OPTIONS,
+  REPORT_RANGE_OPTIONS,
+  filterHistoryByRange,
+  historyRangeLabel,
+  reportRangeLabel,
+} from '../../lib/reportRanges';
+
+/**
+ * Informe Razonado de Salud. A separate report from the general Mentor's —
+ * own generation, own history, own storage — never a tab inside that one
+ * (see reasoning-service/services/health_report_store.py).
+ */
+export default function HealthReportTab() {
+  const { report, generating, daysBack, setDaysBack, history, generate, loadHistory, openReport } = useHealthReport();
+  const [showHistory, setShowHistory] = useState(false);
+  // Filtro propio del historial: se abre entero y solo se recorta al elegir un
+  // rango. El selector de arriba decide qué periodo se genera, no qué se lista.
+  const [historyRange, setHistoryRange] = useState(HISTORY_ALL);
+  const filteredHistory = filterHistoryByRange(history, historyRange);
+
+  const toggleHistory = () => {
+    const next = !showHistory;
+    setShowHistory(next);
+    if (next) loadHistory();
+  };
+
+  return (
+    <div className="space-y-4" data-testid="health-report-tab">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <Brain className="h-5 w-5" /> Informe de salud
+          </h2>
+          <p className="text-sm text-muted-foreground">{reportRangeLabel(daysBack)}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Select value={String(daysBack)} onValueChange={(v) => setDaysBack(Number(v))}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {REPORT_RANGE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={generate} disabled={generating} data-testid="health-report-generate">
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+            Generar informe
+          </Button>
+          <Button variant="outline" onClick={toggleHistory}>
+            <History className="mr-2 h-4 w-4" /> Historial
+          </Button>
+        </div>
+      </div>
+
+      {/* El objetivo se declara y se edita en Salud → Objetivos, junto a la
+          composición corporal y al seguimiento que lo supervisa. Aquí solo
+          aparece la copia congelada que el propio informe generado lleva
+          dentro (HealthReportView, sección «Objetivo»). */}
+
+      {showHistory && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-base">Historial</CardTitle>
+              <Select value={String(historyRange)} onValueChange={setHistoryRange}>
+                <SelectTrigger className="w-44" aria-label="Filtrar historial"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {HISTORY_RANGE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aún no hay informes de salud generados.</p>
+            ) : filteredHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay informes para {historyRangeLabel(historyRange).toLowerCase()}.
+              </p>
+            ) : (
+              filteredHistory.map((r) => (
+                <button
+                  key={r.report_id}
+                  onClick={() => { openReport(r.report_id); setShowHistory(false); }}
+                  className="block w-full rounded-md border p-2 text-left text-sm hover:bg-muted"
+                >
+                  <span className="text-muted-foreground">{(r.created_at || '').slice(0, 16).replace('T', ' ')}</span>
+                  <Badge variant="secondary" className="ml-2">{reportRangeLabel(r.days_back)}</Badge>
+                  {r.summary && <span> — {r.summary.slice(0, 90)}</span>}
+                </button>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {generating && (
+        <Card>
+          <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Generando en segundo plano. Puedes navegar con normalidad; aparecerá en el historial al terminar.
+          </CardContent>
+        </Card>
+      )}
+
+      {report?.report_json ? (
+        <HealthReportView report={report.report_json} reportId={report.id || report.report_id || null} />
+      ) : !generating && (
+        <Card><CardContent className="pt-6 text-center text-muted-foreground">
+          Pulsa <strong>Generar informe</strong> para tu lectura razonada: {reportRangeLabel(daysBack).toLowerCase()}.
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}

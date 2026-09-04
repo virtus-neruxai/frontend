@@ -267,6 +267,20 @@ El Historial de Conversaciones solo muestra la etiqueta de fricción cuando `obs
 
 `missionLenses` alimenta el panel superior del Dashboard, encima de Desafíos. Es una lectura de las lentes ya materializadas por backend/graph-sync en OpenSearch (`identity`, `direction`, `transcendence`), por lo que no añade coste LLM al abrir la pantalla.
 
+El Dashboard carga además `healthPractices` mediante
+`GET /api/v1/health-practices`. `HealthPracticesPanel` se coloca junto a
+`LearnedResponsesPanel`, pero usa almacenamiento y estados propios. Solo
+muestra prácticas adoptadas; «Lo he hecho» envía una fecha y una nota opcional
+y después recarga los agregados derivados por backend. El companion y las
+notas de las aplicaciones no se replican en el panel.
+
+Debajo de esas dos tarjetas, `PositiveHealthSignalsPanel` consume
+`GET /reasoning-api/v1/reasoning/health-positive-signals?days=7|30|90` con el
+rango global del Dashboard. Es un histórico combinado de `positive_signals`
+ya persistidos en informes V2, no una lectura en vivo de actividades o notas.
+El endpoint devuelve solo texto, evidencia derivada y procedencia del informe:
+los ids de las citas y el JSON completo permanecen en reasoning-service.
+
 ### useMissions
 Manages missions state and operations:
 ```javascript

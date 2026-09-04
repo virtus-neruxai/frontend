@@ -139,6 +139,24 @@ se persiste ni participa en `response_key` o personalización. Si la respuesta
 completa ya cabe en el título, la transformación muestra «Respuesta adoptada»
 en vez de duplicarla.
 
+El Informe de Salud V2 mantiene un circuito paralelo, nunca reutiliza estas
+conductas. `HealthPracticeCandidates` adopta solo `{report_id, action_id}`;
+reasoning-service recupera la redacción inmutable. `HealthCompanionCard` genera
+el mensaje sanitario bajo demanda y no aparece en Dashboard. Allí,
+`HealthPracticesPanel` muestra únicamente prácticas ya adoptadas y «Lo he
+hecho» registra fecha y nota opcional sin crear actividades, tareas o stats.
+`PositiveHealthSignalsPanel` vive debajo de Conductas y Prácticas, combina las
+señales de informes V2 dentro del rango global 7/30/90 y consume un read-model
+mínimo de reasoning-service: nunca carga informes completos, ids de citas,
+companion ni contenido de notas. Clasifica con las seis áreas sanitarias y
+presenta «Salud» cuando un V2 histórico no permite inferir una con seguridad;
+no inventa una categoría a partir del origen técnico del registro. Su selector
+7/30/90 es local, como el de Patrones, y el read-model solo devuelve señales con
+fechas explícitas y evidencia `repeated` o superior: una observación puntual se
+queda en el informe que la produjo, no se promociona a historia del Dashboard.
+El orden final del informe es historia positiva → acciones → companion →
+calidad del dato → siguiente mejor acción con preguntas.
+
 Nada de lo anterior borra aplicaciones ni reflexiones. La guía transversal,
 incluidos RAG, read-model, consumidores y fallo seguro, está en
 [`infra/virtus/docs/personalization-feedback-conductas.md`](../infra/virtus/docs/personalization-feedback-conductas.md).

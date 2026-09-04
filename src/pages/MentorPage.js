@@ -14,12 +14,18 @@ import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Textarea } from '../components/ui/textarea';
-import { ChallengesTab } from '../presentation/components/character/ChallengesTab';
+import HealthMentorChatTab from '../components/health/HealthMentorChatTab';
 import { ProfileHeroCard } from '../presentation/components/profile-theme/ProfileHeroCard';
+import { agentApi, draftTypeFromAction } from '../lib/api';
 import { useAgentChat } from '../presentation/viewmodels/useAgentChat';
 import { useDrafts } from '../presentation/viewmodels/useDrafts';
 import { useProfileTheme } from '../theme/useProfileTheme';
-import { Clock, MessageCircle, PlusCircle, Repeat, Rocket, Send } from 'lucide-react';
+import { Clock, HeartPulse, MessageCircle, PlusCircle, Rocket, Send } from 'lucide-react';
+
+const TAB_LABELS = {
+  agent: (profileName) => `Mentor ${profileName}`,
+  salud: () => 'Mentor Salud',
+};
 
 const formatConvDate = (dateString) => {
   if (!dateString) return '';
@@ -102,6 +108,34 @@ export default function MentorPage() {
     }
   }, [pendingDraft, userDataQa, setUserDataQa]);
 
+  // A draft outlives the tab that received it — it sits in Redis for the full
+  // hour (REDIS_DRAFT_TTL) regardless of what the browser remembers. Only
+  // `pendingDraft` itself, plain React state, was lost on reload; this
+  // recovers it once per session so closing the tab does not mean starting
+  // the confirmation over. Scoped to `sessionId` so switching profile or
+  // starting a new conversation does not resurrect an older thread's draft.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    agentApi.getPendingDrafts(sessionId).then(({ data }) => {
+      if (cancelled) return;
+      const draft = data.drafts?.[0];
+      if (!draft?.ui_action) return;
+      const expiresAt = new Date(draft.expires_at).getTime();
+      if (Number.isNaN(expiresAt) || expiresAt <= Date.now()) return;
+      setPendingDraft({
+        draftId: draft.draft_id,
+        uiAction: draft.ui_action,
+        type: draftTypeFromAction(draft.ui_action.action),
+        expiresAt,
+      });
+    }).catch(() => {
+      // Recovery is a convenience, not the main flow: a failed lookup just
+      // means the person starts fresh, same as before this existed.
+    });
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
   const formatDraftType = (type) => {
     if (type === 'task') return 'tarea';
     if (type === 'mission') return 'misión';
@@ -169,12 +203,12 @@ export default function MentorPage() {
         <ProfileHeroCard
           title={`Mentor · ${profileName}`}
           titleAs="h1"
-          description="Convierte conversaciones y desafíos en acciones concretas."
+          description="Convierte conversaciones en acciones concretas."
           action={
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Espacio activo</p>
               <p className="font-bold text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-                {activeTab === 'challenges' ? 'Desafíos' : `Mentor ${profileName}`}
+                {(TAB_LABELS[activeTab] || TAB_LABELS.agent)(profileName)}
               </p>
             </div>
           }
@@ -186,9 +220,9 @@ export default function MentorPage() {
               <MessageCircle className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Mentor {profileName}
             </TabsTrigger>
-            <TabsTrigger value="challenges" className="rounded-full data-[state=active]:bg-card">
-              <Repeat className="w-4 h-4 mr-2" strokeWidth={1.5} />
-              Desafíos
+            <TabsTrigger value="salud" className="rounded-full data-[state=active]:bg-card">
+              <HeartPulse className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              Mentor Salud
             </TabsTrigger>
           </TabsList>
 
@@ -396,8 +430,8 @@ export default function MentorPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="challenges" className="space-y-4">
-            <ChallengesTab />
+          <TabsContent value="salud">
+            <HealthMentorChatTab />
           </TabsContent>
         </Tabs>
 

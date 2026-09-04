@@ -11,13 +11,16 @@ import TransformativeCompanionCard from './TransformativeCompanionCard';
 import { useProfileTheme } from '../../../theme/useProfileTheme';
 import { reasoningApi, tasksApi } from '../../../lib/api';
 import { apiErrorMessage } from '../../../lib/quotaError';
+import {
+  HISTORY_ALL,
+  HISTORY_RANGE_OPTIONS,
+  REPORT_RANGE_OPTIONS,
+  filterHistoryByRange,
+  historyRangeLabel,
+  reportRangeLabel,
+} from '../../../lib/reportRanges';
 import { Brain, History, Loader2, Send } from 'lucide-react';
 
-const REPORT_RANGE_OPTIONS = [
-  { value: 7, label: 'Última semana' },
-  { value: 14, label: 'Últimas 2 semanas' },
-  { value: 30, label: 'Último mes' },
-];
 const REPORT_JOB_STORAGE_KEY = 'virtus.reasoning.active-report-job';
 
 function readPendingReportJobId() {
@@ -42,11 +45,6 @@ function clearPendingReportJobId() {
   } catch {
     // Nothing else is needed: this only controls the local progress indicator.
   }
-}
-
-function reportRangeLabel(daysBack) {
-  const numeric = Number(daysBack) || 14;
-  return REPORT_RANGE_OPTIONS.find((option) => option.value === numeric)?.label || `Últimos ${numeric} días`;
 }
 
 // A recommendation has no schedule; prefill a sensible default the user can edit.
@@ -81,6 +79,9 @@ export default function ReasoningReportTab() {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [selectedDaysBack, setSelectedDaysBack] = useState(14);
+  // El historial se abre entero y solo se recorta si eliges un rango; el rango
+  // de generación de arriba no lo filtra.
+  const [historyRange, setHistoryRange] = useState(HISTORY_ALL);
 
   // Chat about the current report
   const [question, setQuestion] = useState('');
@@ -99,7 +100,7 @@ export default function ReasoningReportTab() {
   // and nothing has generated it for a long time. Documents saved before
   // schema_version existed simply show nothing.
   const schemaVersion = report?.schema_version || reportJson?.schema_version || '1';
-  const filteredHistory = history.filter((item) => Number(item.days_back || 14) === selectedDaysBack);
+  const filteredHistory = filterHistoryByRange(history, historyRange);
   const generating = startingGeneration || Boolean(reportJobId);
 
   // ── NRRM: companion + feedback ────────────────────────────────────────────
@@ -387,12 +388,12 @@ export default function ReasoningReportTab() {
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle className="text-base">Historial de informes</CardTitle>
-              <Select value={String(selectedDaysBack)} onValueChange={(value) => setSelectedDaysBack(Number(value))}>
-                <SelectTrigger className="w-44">
+              <Select value={String(historyRange)} onValueChange={setHistoryRange}>
+                <SelectTrigger className="w-44" aria-label="Filtrar historial">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {REPORT_RANGE_OPTIONS.map((option) => (
+                  {HISTORY_RANGE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={String(option.value)}>
                       {option.label}
                     </SelectItem>
@@ -406,7 +407,7 @@ export default function ReasoningReportTab() {
               <p className="text-sm text-muted-foreground">Aún no hay informes generados.</p>
             ) : filteredHistory.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No hay informes para {reportRangeLabel(selectedDaysBack).toLowerCase()}.
+                No hay informes para {historyRangeLabel(historyRange).toLowerCase()}.
               </p>
             ) : (
               filteredHistory.map((r) => (
