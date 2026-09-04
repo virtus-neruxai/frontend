@@ -200,7 +200,7 @@ export function PositiveHealthSignalsPanel({
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
               <Sparkles size={18} />
             </div>
-            <h3 className="text-base font-semibold">Lo que tu propia historia también demuestra</h3>
+            <h3 className="text-base font-semibold">Señales positivas de Salud</h3>
           </div>
           <RangeSelector
             range={range}
@@ -236,7 +236,7 @@ export function PositiveHealthSignalsPanel({
             <Sparkles size={19} />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Lo que tu propia historia también demuestra</h3>
+            <h3 className="text-lg font-semibold">Señales positivas de Salud</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Evidencias favorables repetidas que aparecen en tus informes de los últimos {range} días.
             </p>

@@ -36,7 +36,7 @@ test('shows report provenance and only the first five combined signals initially
   );
 
   expect(screen.getByTestId('positive-health-signals-panel')).toHaveTextContent(
-    'Lo que tu propia historia también demuestra'
+    'Señales positivas de Salud'
   );
   expect(screen.getByText(/evidencias favorables.*últimos 30 días/i)).toBeInTheDocument();
   expect(screen.getByTestId('positive-health-signals-panel')).toHaveClass(
